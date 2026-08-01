@@ -174,7 +174,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
       }
     : {
         field_order_no: "Field Order no.",
-        ins_meter: "Installed Meter no.",
+        ...(showInstalledMeterSection ? { ins_meter: "Installed Meter no." } : {}),
       }
 
   const errors = {}
@@ -376,6 +376,16 @@ function deletePendingRecord(id) {
   setPendingItems(updated)
 
 }
+
+  // Which sections show below Main Information, based on the chosen FO Action.
+  // No selection yet -> show everything (safe default, preserves existing behavior).
+  const showRemoveMeterSection =
+    !form.fo_action || form.fo_action === 'Retirement FO' || form.fo_action === 'Others'
+  const showInstalledMeterSection =
+    !form.fo_action || form.fo_action === 'Replace FO' || form.fo_action === 'Others'
+  const showRemarksBatchSection =
+    !form.fo_action || form.fo_action === 'Others'
+
   return (
     
     <form onSubmit={(e) => handleSubmit(e, "supabase")}>
@@ -539,6 +549,7 @@ label="FO Action"
       </div>
 
       {/* Section 2 – Remove Meter */}
+      {showRemoveMeterSection && (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SectionTitle title="Remove Meter" />
@@ -568,8 +579,10 @@ label="FO Action"
           </Field>
         </div>
       </div>
+      )}
 
       {/* Section 3 – New Installed Meter */}
+      {showInstalledMeterSection && (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SectionTitle title="New Installed Meter" />
@@ -625,8 +638,10 @@ label="FO Action"
           </Field>
         </div>
       </div>
+      )}
 
       {/* Section 4 – Remarks & Batch */}
+      {showRemarksBatchSection && (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SectionTitle title="Remarks & Batch Information" />
@@ -710,6 +725,7 @@ label="FO Action"
 </Field>
         </div>
       </div>
+      )}
 
 
       {/* Sticky Actions */}

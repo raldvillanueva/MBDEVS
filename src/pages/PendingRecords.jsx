@@ -223,6 +223,15 @@ async function sendSelectedToNewWork() {
   setBulkAction(null)
 }
 
+  // Which sections show below Main Information in the edit drawer, based on FO Action.
+  // No selection yet -> show everything (safe default).
+  const showRemoveMeterSection =
+    !editForm?.fo_action || editForm.fo_action === 'Retirement FO' || editForm.fo_action === 'Others'
+  const showInstalledMeterSection =
+    !editForm?.fo_action || editForm.fo_action === 'Replace FO' || editForm.fo_action === 'Others'
+  const showRemarksBatchSection =
+    !editForm?.fo_action || editForm.fo_action === 'Others'
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }} className="gap-4">
 
@@ -471,6 +480,7 @@ async function sendSelectedToNewWork() {
                 </PF>
               </PS>
 
+              {showRemoveMeterSection && (
               <PS title="Remove Meter">
                 <PF label="Remove Meter No.">
                   <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} className={iCls} />
@@ -491,7 +501,9 @@ async function sendSelectedToNewWork() {
                   <input value={editForm.reading_kwh} onChange={e => sf('reading_kwh', e.target.value)} className={iCls} />
                 </PF>
               </PS>
+              )}
 
+              {showInstalledMeterSection && (
               <PS title="New Installed Meter">
                 <PF label="Installed Meter No.">
                   <input value={editForm.ins_meter} onChange={e => sf('ins_meter', e.target.value)} className={iCls} />
@@ -527,7 +539,9 @@ async function sendSelectedToNewWork() {
                   <input type="date" value={editForm.witness_date} onChange={e => sf('witness_date', e.target.value)} className={iCls} />
                 </PF>
               </PS>
+              )}
 
+              {showRemarksBatchSection && (
               <PS title="Remarks & Batch">
                 <PF label="FO Type">
                   <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} className={iCls}>
@@ -566,6 +580,7 @@ async function sendSelectedToNewWork() {
                   <textarea value={editForm.remarks} onChange={e => sf('remarks', e.target.value)} rows={3} className={`${iCls} resize-none`} />
                 </PF>
               </PS>
+              )}
 
               </fieldset>
 
