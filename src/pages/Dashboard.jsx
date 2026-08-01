@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
   ClipboardList, CheckCircle2, XCircle, RefreshCw,
-  Trash2, Wrench, PackageCheck, AlertCircle, AlertTriangle
+  Wrench, PackageCheck, AlertCircle, AlertTriangle
 } from 'lucide-react'
 import { isOverdue } from '../lib/aging'
 
@@ -46,13 +46,12 @@ export default function Dashboard() {
       const fieldComplete = data.filter(r => r.status_crew?.toUpperCase().includes('FIELD')).length
       const cancel = data.filter(r => r.status_crew?.toUpperCase() === 'CANCEL').length
       const replace = data.filter(r => r.fo_type?.toUpperCase() === 'REPLACE').length
-      const retire = data.filter(r => r.fo_type?.toUpperCase() === 'RETIRE').length
       const remove = data.filter(r => r.fo_type?.toUpperCase() === 'REMOVE').length
       const batched = data.filter(r => r.for_batch?.toUpperCase().includes('ALREADY')).length
       const totalBilled = data.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0)
       const overdue = data.filter(r => !r.archived_at && isOverdue(r)).length
 
-      setStats({ total, fieldComplete, cancel, replace, retire, remove, batched, totalBilled, overdue })
+      setStats({ total, fieldComplete, cancel, replace, remove, batched, totalBilled, overdue })
       setRecent(data.slice(0, 8))
       setLoading(false)
     }
@@ -91,7 +90,6 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Replace Jobs" value={stats.replace} icon={RefreshCw} color="bg-amber-500" />
-            <StatCard label="Retire Jobs" value={stats.retire} icon={Trash2} color="bg-orange-500" />
             <StatCard label="Remove Jobs" value={stats.remove} icon={Wrench} color="bg-slate-500" />
             <StatCard label="Already Batched" value={stats.batched} icon={AlertCircle} color="bg-teal-500" />
           </div>
