@@ -18,6 +18,7 @@ const EMPTY_FORM = {
   location: '',
   service_number: '',
   field_order_no: '',
+  fo_action: '',
   // Remove Meter
   remove_meter: '',
   r_serial_number: '',
@@ -87,7 +88,6 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   const { role } = useAuth()
   const isStaff = role === 'staff'
   const fastFONoRef = useRef(null)
-  const fastMeterRef = useRef(null)
   const autoSubmitLock = useRef(false)
   const [form, setForm] = useState(initialData || EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -168,10 +168,14 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
   // =========================
   // REQUIRED FIELDS
   // =========================
-  const requiredFields = {
-    field_order_no: "Field Order no.",
-    ins_meter: "Installed Meter no.",
-  }
+  const requiredFields = isPending
+    ? {
+        field_order_no: "Field Order no.",
+      }
+    : {
+        field_order_no: "Field Order no.",
+        ins_meter: "Installed Meter no.",
+      }
 
   const errors = {}
 
@@ -204,11 +208,15 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
     return
   }
 
-  const { data: existingMeter } = await supabase
-    .from('field_orders')
-    .select('id')
-    .eq('ins_meter', form.ins_meter)
-    .maybeSingle()
+  let existingMeter = null
+  if (form.ins_meter) {
+    const { data } = await supabase
+      .from('field_orders')
+      .select('id')
+      .eq('ins_meter', form.ins_meter)
+      .maybeSingle()
+    existingMeter = data
+  }
 
   if (existingMeter && existingMeter.id !== recordId) {
     setFieldErrors({ ins_meter: "This Installed Meter number already exists" })
@@ -274,7 +282,7 @@ if (!isPending) {
       return
     }
 
-    if (dupes.some(item => item.ins_meter === form.ins_meter)) {
+    if (form.ins_meter && dupes.some(item => item.ins_meter === form.ins_meter)) {
       setFieldErrors({ ins_meter: "This Installed Meter number already exists in Pending" })
       setSavingPending(false)
       return
@@ -344,7 +352,7 @@ async function submitFastEncoding() {
 function handleFastEncodingKeyDown(e) {
   if (e.key !== 'Enter') return
   e.preventDefault()
-  if (!form.field_order_no || !form.ins_meter) return
+  if (!form.field_order_no) return
   submitFastEncoding()
 }
 
@@ -400,17 +408,18 @@ placeholder="Scan Field Order"
 
 
 <Field
-label="Installed Meter No."
-required
-errorMessage={fieldErrors.ins_meter}
+label="FO Action"
 >
 
-<input
-{...text('ins_meter')}
-ref={fastMeterRef}
-onKeyDown={handleFastEncodingKeyDown}
-placeholder="Scan Installed Meter"
-/>
+<select
+{...text('fo_action')}
+>
+  <option value="">— Select —</option>
+  <option value="Replace FO">Replace FO</option>
+  <option value="Energized FO">Energized FO</option>
+  <option value="Retirement FO">Retirement FO</option>
+  <option value="Others">Others</option>
+</select>
 
 </Field>
 </div>

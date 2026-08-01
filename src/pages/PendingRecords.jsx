@@ -8,12 +8,14 @@ const TYPE_OF_METER_OPTIONS = ['12S', '12S ID METER', '1S', '1S EMC L-G', '25S',
 const JOB_DESCRIPTION_OPTIONS = ['REPLACE', 'REPLACE-EMC', 'REPLACE-EMX', 'RETIRE', 'RETIRE-EMC', 'RETIRE-EMC-WIRE']
 const CREW_NAME_OPTIONS = ['A. TOMADA', 'B. VERDARERO', 'C. BENIGNO', 'D. FABOL', 'E. VILLAREAL', 'J. BITAGO', 'J. J. SERRANO']
 const FO_TYPE_OPTIONS = ['CANCEL', 'CANCEL-EMC', 'CUT SERVICE ENTRANCE', 'ENERGIZED', 'REMOVE', 'REMOVE-EMC', 'REMOVE-EMC-WIRE', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX']
+const FO_ACTION_OPTIONS = ['Replace FO', 'Energized FO', 'Retirement FO', 'Others']
 const BILLED_AMOUNT_OPTIONS = ['0', '172.45', '253.43', '344.9', '383.22', '574.83', '766.44', '958.05', '1013.71', '1689.61']
 const BATCH_OPTIONS = ['ALREADY BATCH', 'FOR BATCH', 'MISSING METER', 'OTHERS PENDING']
 
 const EMPTY_FORM = {
   status_crew: '', date_assign: '', for_check: false, date_executed: '', type_of_meter: '',
   job_description: '', crew_name: '', location: '', service_number: '', field_order_no: '',
+  fo_action: '',
   remove_meter: '', r_serial_number: '', demand_seal_aerolock: '', removed_seal: '',
   cabinet_seal_remove: '', reading_kwh: '', ins_meter: '', ins_serial_number: '',
   demand_seal_installed: '', installed_seal: '', cabinet_seal_installed: '', tln_tag: '',
@@ -289,6 +291,7 @@ async function sendSelectedToNewWork() {
                 )}
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">#</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">FIELD ORDER</th>
+                <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">FO ACTION</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">INSTALLED METER</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">CREW NAME</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">SERVICE ID NUMBER</th>
@@ -300,7 +303,7 @@ async function sendSelectedToNewWork() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-16 text-center">
+                  <td colSpan={isAdmin ? 10 : 9} className="px-4 py-16 text-center">
                     <div className="flex justify-center">
                       <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                     </div>
@@ -308,7 +311,7 @@ async function sendSelectedToNewWork() {
                 </tr>
               ) : displayPending.length === 0 ? (
                 <tr>
-                 <td colSpan={isAdmin ? 9 : 8} className="px-4 py-16 text-center text-slate-400">
+                 <td colSpan={isAdmin ? 10 : 9} className="px-4 py-16 text-center text-slate-400">
                     No pending records.
                   </td>
                 </tr>
@@ -338,6 +341,7 @@ async function sendSelectedToNewWork() {
                     )}
                     <td className="px-3 py-2.5 text-slate-400">{i + 1}</td>
                     <td className="px-3 py-2.5 font-mono text-blue-600 font-medium">{row.field_order_no || '—'}</td>
+                    <td className="px-3 py-2.5 text-slate-700">{row.fo_action || '—'}</td>
                     <td className="px-3 py-2.5 font-mono text-blue-600">{row.ins_meter || '—'}</td>
                     <td className="px-3 py-2.5 text-slate-700">{row.crew_name || '—'}</td>
                     <td className="px-3 py-2.5 text-slate-700 max-w-[240px] overflow-hidden text-ellipsis whitespace-nowrap">{row.service_number || '—'}</td>
@@ -416,6 +420,12 @@ async function sendSelectedToNewWork() {
               <PS title="Main Information">
                 <PF label="Field Order No.">
                   <input value={editForm.field_order_no} onChange={e => sf('field_order_no', e.target.value)} className={iCls} />
+                </PF>
+                <PF label="FO Action">
+                  <select value={editForm.fo_action} onChange={e => sf('fo_action', e.target.value)} className={iCls}>
+                    <option value="">— Select —</option>
+                    {FO_ACTION_OPTIONS.map(option => <option key={option}>{option}</option>)}
+                  </select>
                 </PF>
                 <PF label="Service ID Number">
                   <input value={editForm.service_number} onChange={e => sf('service_number', e.target.value)} className={iCls} />
