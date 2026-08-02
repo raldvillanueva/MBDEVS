@@ -305,14 +305,13 @@ async function sendSelectedToNewWork() {
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">CREW NAME</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">SERVICE ID NUMBER</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">DATE ADDED</th>
-                <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">STATUS</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">ACTION</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 10 : 9} className="px-4 py-16 text-center">
+                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-16 text-center">
                     <div className="flex justify-center">
                       <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                     </div>
@@ -320,7 +319,7 @@ async function sendSelectedToNewWork() {
                 </tr>
               ) : displayPending.length === 0 ? (
                 <tr>
-                 <td colSpan={isAdmin ? 10 : 9} className="px-4 py-16 text-center text-slate-400">
+                 <td colSpan={isAdmin ? 9 : 8} className="px-4 py-16 text-center text-slate-400">
                     No pending records.
                   </td>
                 </tr>
@@ -357,7 +356,6 @@ async function sendSelectedToNewWork() {
                     <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
                       {row.created_at ? new Date(row.created_at).toLocaleDateString() : '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-orange-500 font-semibold">PENDING</td>
                     <td className="px-3 py-2.5">
                       {isAdmin && (
                         <button
