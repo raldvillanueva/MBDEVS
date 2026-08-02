@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
   ClipboardList, CheckCircle2, XCircle, RefreshCw,
-  Wrench, PackageCheck, AlertCircle, AlertTriangle
+  PackageCheck, AlertCircle, AlertTriangle, Zap, Trash2
 } from 'lucide-react'
 import { isOverdue } from '../lib/aging'
 
@@ -32,7 +32,7 @@ export default function Dashboard() {
     async function fetchData() {
       const { data, error } = await supabase
         .from('field_orders')
-        .select('status_crew, fo_type, for_batch, billed_amount, crew_name, field_order_no, location, created_at, seq, date_executed, date_returned, archived_at')
+        .select('status_crew, fo_type, fo_action, for_batch, billed_amount, crew_name, field_order_no, location, created_at, seq, date_executed, date_returned, archived_at')
         .order('seq', { ascending: true, nullsFirst: true })
         .order('created_at', { ascending: false })
 
@@ -46,12 +46,13 @@ export default function Dashboard() {
       const fieldComplete = data.filter(r => r.status_crew?.toUpperCase().includes('FIELD')).length
       const cancel = data.filter(r => r.status_crew?.toUpperCase() === 'CANCEL').length
       const replace = data.filter(r => r.fo_type?.toUpperCase() === 'REPLACE').length
-      const remove = data.filter(r => r.fo_type?.toUpperCase() === 'REMOVE').length
+      const energized = data.filter(r => r.fo_action?.toUpperCase() === 'ENERGIZED FO').length
+      const retirement = data.filter(r => r.fo_action?.toUpperCase() === 'RETIREMENT FO').length
       const batched = data.filter(r => r.for_batch?.toUpperCase().includes('ALREADY')).length
       const totalBilled = data.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0)
       const overdue = data.filter(r => !r.archived_at && isOverdue(r)).length
 
-      setStats({ total, fieldComplete, cancel, replace, remove, batched, totalBilled, overdue })
+      setStats({ total, fieldComplete, cancel, replace, energized, retirement, batched, totalBilled, overdue })
       setRecent(data.slice(0, 8))
       setLoading(false)
     }
@@ -90,7 +91,8 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Replace Jobs" value={stats.replace} icon={RefreshCw} color="bg-amber-500" />
-            <StatCard label="Remove Jobs" value={stats.remove} icon={Wrench} color="bg-slate-500" />
+            <StatCard label="Energized FO" value={stats.energized} icon={Zap} color="bg-yellow-500" />
+            <StatCard label="Retirement" value={stats.retirement} icon={Trash2} color="bg-slate-500" />
             <StatCard label="Already Batched" value={stats.batched} icon={AlertCircle} color="bg-teal-500" />
           </div>
         </>
