@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
-  ClipboardList, CheckCircle2, XCircle, RefreshCw,
-  PackageCheck, AlertCircle, AlertTriangle, Zap, Trash2
+  ClipboardList, CheckCircle2, XCircle, RefreshCw, Clock,
+  PackageCheck, Layers, AlertTriangle, Zap, Trash2, MoreHorizontal
 } from 'lucide-react'
-import { isOverdue } from '../lib/aging'
+import { isOverdueBy } from '../lib/aging'
 
 function StatCard({ label, value, icon: Icon, color, sub }) {
   return (
@@ -22,17 +22,24 @@ function StatCard({ label, value, icon: Icon, color, sub }) {
   )
 }
 
+// A field order still needs crew action while it is neither completed nor cancelled.
+function isPendingTask(row) {
+  const status = row.status_crew?.toUpperCase() || ''
+  return !row.archived_at && !status.includes('FIELD') && !status.includes('CANCEL')
+}
+
 export default function Dashboard() {
-  const [stats, setStats] = useState(null)
-  const [recent, setRecent] = useState([])
+  const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
     async function fetchData() {
       const { data, error } = await supabase
         .from('field_orders')
-        .select('status_crew, fo_type, fo_action, for_batch, billed_amount, crew_name, field_order_no, location, created_at, seq, date_executed, date_returned, archived_at')
+        .select('status_crew, fo_type, fo_action, for_batch, billed_amount, crew_name, field_order_no, location, created_at, seq, date_assign, date_executed, date_returned, archived_at')
         .order('seq', { ascending: true, nullsFirst: true })
         .order('created_at', { ascending: false })
 
@@ -42,22 +49,46 @@ export default function Dashboard() {
         return
       }
 
-      const total = data.length
-      const fieldComplete = data.filter(r => r.status_crew?.toUpperCase().includes('FIELD')).length
-      const cancel = data.filter(r => r.status_crew?.toUpperCase() === 'CANCEL').length
-      const replace = data.filter(r => r.fo_type?.toUpperCase() === 'REPLACE').length
-      const energized = data.filter(r => r.fo_action?.toUpperCase() === 'ENERGIZED FO').length
-      const retirement = data.filter(r => r.fo_action?.toUpperCase() === 'RETIREMENT FO').length
-      const batched = data.filter(r => r.for_batch?.toUpperCase().includes('ALREADY')).length
-      const totalBilled = data.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0)
-      const overdue = data.filter(r => !r.archived_at && isOverdue(r)).length
-
-      setStats({ total, fieldComplete, cancel, replace, energized, retirement, batched, totalBilled, overdue })
-      setRecent(data.slice(0, 8))
+      setRows(data || [])
       setLoading(false)
     }
     fetchData()
   }, [])
+
+  // date_executed is a plain "YYYY-MM-DD" string, so the range check is a
+  // direct string comparison against the date inputs (same format).
+  const filtered = useMemo(() => {
+    if (!dateFrom && !dateTo) return rows
+    return rows.filter(row => {
+      if (!row.date_executed) return false
+      if (dateFrom && row.date_executed < dateFrom) return false
+      if (dateTo && row.date_executed > dateTo) return false
+      return true
+    })
+  }, [rows, dateFrom, dateTo])
+
+  const stats = useMemo(() => {
+    const status = row => row.status_crew?.toUpperCase() || ''
+    const action = row => row.fo_action?.toUpperCase() || ''
+
+    return {
+      assigned: filtered.filter(r => ['ASSIGNED', 'REASSIGN'].includes(status(r))).length,
+      fieldComplete: filtered.filter(r => status(r).includes('FIELD')).length,
+      cancelled: filtered.filter(r => status(r).includes('CANCEL')).length,
+      totalBilled: filtered.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0),
+
+      overdue10: filtered.filter(r => !r.archived_at && isOverdueBy(r, 10)).length,
+      overdue21: filtered.filter(r => !r.archived_at && isOverdueBy(r, 21)).length,
+      batched: filtered.filter(r => r.for_batch?.toUpperCase().includes('ALREADY')).length,
+
+      replacement: filtered.filter(r => action(r) === 'REPLACE FO').length,
+      retirement: filtered.filter(r => action(r) === 'RETIREMENT FO').length,
+      energize: filtered.filter(r => action(r) === 'ENERGIZED FO').length,
+      others: filtered.filter(r => action(r) === 'OTHERS').length,
+    }
+  }, [filtered])
+
+  const todo = useMemo(() => filtered.filter(isPendingTask).slice(0, 8), [filtered])
 
   if (loading) {
     return (
@@ -69,38 +100,79 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <p className="text-slate-500 text-sm mt-1">Overview of all field order activity</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+          <p className="text-slate-500 text-sm mt-1">Overview of all field order activity</p>
+        </div>
+
+        <div className="flex items-end gap-2">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+              className="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
-      {stats && (
-        <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Total Field Orders" value={stats.total} icon={ClipboardList} color="bg-blue-500" />
-            <StatCard label="Field Complete" value={stats.fieldComplete} icon={CheckCircle2} color="bg-emerald-500" />
-            <StatCard label="Cancelled" value={stats.cancel} icon={XCircle} color="bg-red-500" />
-            <StatCard
-              label="Total Billed"
-              value={`₱${stats.totalBilled.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
-              icon={PackageCheck}
-              color="bg-violet-500"
-            />
-            <StatCard label="Overdue (>21 days)" value={stats.overdue} icon={AlertTriangle} color="bg-red-600" sub="Meter not yet returned" />
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Replace Jobs" value={stats.replace} icon={RefreshCw} color="bg-amber-500" />
-            <StatCard label="Energized FO" value={stats.energized} icon={Zap} color="bg-yellow-500" />
-            <StatCard label="Retirement" value={stats.retirement} icon={Trash2} color="bg-slate-500" />
-            <StatCard label="Already Batched" value={stats.batched} icon={AlertCircle} color="bg-teal-500" />
-          </div>
-        </>
+      {(dateFrom || dateTo) && (
+        <p className="text-sm text-slate-500">
+          Showing {filtered.length} of {rows.length} field orders by date executed.
+        </p>
       )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Assigned" value={stats.assigned} icon={ClipboardList} color="bg-blue-500" />
+        <StatCard label="Field Complete" value={stats.fieldComplete} icon={CheckCircle2} color="bg-emerald-500" />
+        <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} color="bg-red-500" />
+        <StatCard
+          label="Total Billed"
+          value={`₱${stats.totalBilled.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+          icon={PackageCheck}
+          color="bg-violet-500"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard label="Overdue (>10 days)" value={stats.overdue10} icon={Clock} color="bg-orange-500" sub="Meter not yet returned" />
+        <StatCard label="Overdue (>21 days)" value={stats.overdue21} icon={AlertTriangle} color="bg-red-600" sub="Meter not yet returned" />
+        <StatCard label="Already Batched" value={stats.batched} icon={Layers} color="bg-teal-500" />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Replacement FO" value={stats.replacement} icon={RefreshCw} color="bg-amber-500" />
+        <StatCard label="Retirement FO" value={stats.retirement} icon={Trash2} color="bg-slate-500" />
+        <StatCard label="Energize FO" value={stats.energize} icon={Zap} color="bg-yellow-500" />
+        <StatCard label="Others" value={stats.others} icon={MoreHorizontal} color="bg-indigo-500" />
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-700">Recent Field Orders</h2>
+          <div>
+            <h2 className="font-semibold text-slate-700">To-Do List</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Pending tasks — field orders not yet completed or cancelled</p>
+          </div>
           <button
             onClick={() => navigate('/field-orders')}
             className="text-sm text-blue-600 hover:underline"
@@ -116,11 +188,11 @@ export default function Dashboard() {
                 <th className="px-6 py-3 text-left font-medium">Crew</th>
                 <th className="px-6 py-3 text-left font-medium">Location</th>
                 <th className="px-6 py-3 text-left font-medium">Status</th>
-                <th className="px-6 py-3 text-left font-medium">FO Type</th>
+                <th className="px-6 py-3 text-left font-medium">FO Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {recent.map((row, i) => (
+              {todo.map((row, i) => (
                 <tr key={i} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-3 font-mono text-slate-700">{row.field_order_no || '—'}</td>
                   <td className="px-6 py-3 text-slate-600">{row.crew_name || '—'}</td>
@@ -128,15 +200,13 @@ export default function Dashboard() {
                   <td className="px-6 py-3">
                     <StatusBadge status={row.status_crew} />
                   </td>
-                  <td className="px-6 py-3">
-                    <FoTypeBadge type={row.fo_type} />
-                  </td>
+                  <td className="px-6 py-3 text-slate-600">{row.fo_action || '—'}</td>
                 </tr>
               ))}
-              {recent.length === 0 && (
+              {todo.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
-                    No records yet. Add your first field order.
+                    No pending tasks.
                   </td>
                 </tr>
               )}
@@ -153,13 +223,4 @@ function StatusBadge({ status }) {
   if (s === 'CANCEL') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">CANCEL</span>
   if (s.includes('FIELD')) return <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">FIELD COMPL.</span>
   return <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
-}
-
-function FoTypeBadge({ type }) {
-  const t = type?.toUpperCase() || ''
-  if (t === 'REPLACE') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">REPLACE</span>
-  if (t === 'RETIRE') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">RETIRE</span>
-  if (t === 'REMOVE') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">REMOVE</span>
-  if (t === 'CANCEL') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">CANCEL</span>
-  return <span className="text-slate-400 text-xs">{type || '—'}</span>
 }

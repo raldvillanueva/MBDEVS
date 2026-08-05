@@ -14,11 +14,15 @@ export function computeAgingDays(dateExecuted) {
   return Math.floor((todayUTC - executedUTC) / 86400000)
 }
 
-export function isOverdue(row) {
+export function isOverdueBy(row, thresholdDays) {
   if (!row) return false
   const days = computeAgingDays(row.date_executed)
   if (days == null) return false
-  return days > OVERDUE_THRESHOLD_DAYS && !row.date_returned
+  return days > thresholdDays && !row.date_returned
+}
+
+export function isOverdue(row) {
+  return isOverdueBy(row, OVERDUE_THRESHOLD_DAYS)
 }
 
 export { OVERDUE_THRESHOLD_DAYS }
