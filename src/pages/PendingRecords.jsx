@@ -223,14 +223,15 @@ async function sendSelectedToNewWork() {
   setBulkAction(null)
 }
 
-  // Which sections show below Main Information in the edit drawer, based on FO Action.
-  // No selection yet -> show everything (safe default).
-  const showRemoveMeterSection =
-    !editForm?.fo_action || editForm.fo_action === 'Retirement FO' || editForm.fo_action === 'Others'
-  const showInstalledMeterSection =
-    !editForm?.fo_action || editForm.fo_action === 'Replace FO' || editForm.fo_action === 'Others'
-  const showRemarksBatchSection =
-    !editForm?.fo_action || editForm.fo_action === 'Others'
+  // Which sections show below Main Information in the edit drawer, based on FO Action:
+  //   Replace FO     -> everything
+  //   Energized FO   -> New Installed Meter + Remarks & Batch (no Remove Meter)
+  //   Retirement FO  -> Remove Meter + Remarks & Batch, and of the New Installed
+  //                     Meter fields only "Installed Seal (1)"
+  //   Others / none  -> everything (safe default)
+  const isRetirementFO = editForm?.fo_action === 'Retirement FO'
+  const showRemoveMeterSection = editForm?.fo_action !== 'Energized FO'
+  const showInstalledMeterFields = !isRetirementFO
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }} className="gap-4">
@@ -501,45 +502,50 @@ async function sendSelectedToNewWork() {
               </PS>
               )}
 
-              {showInstalledMeterSection && (
               <PS title="New Installed Meter">
-                <PF label="Installed Meter No.">
-                  <input value={editForm.ins_meter} onChange={e => sf('ins_meter', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="Serial Number">
-                  <input value={editForm.ins_serial_number} onChange={e => sf('ins_serial_number', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="Demand Seal (5)">
-                  <input value={editForm.demand_seal_installed} onChange={e => sf('demand_seal_installed', e.target.value)} className={iCls} />
-                </PF>
+                {showInstalledMeterFields && (
+                  <>
+                    <PF label="Installed Meter No.">
+                      <input value={editForm.ins_meter} onChange={e => sf('ins_meter', e.target.value)} className={iCls} />
+                    </PF>
+                    <PF label="Serial Number">
+                      <input value={editForm.ins_serial_number} onChange={e => sf('ins_serial_number', e.target.value)} className={iCls} />
+                    </PF>
+                    <PF label="Demand Seal (5)">
+                      <input value={editForm.demand_seal_installed} onChange={e => sf('demand_seal_installed', e.target.value)} className={iCls} />
+                    </PF>
+                  </>
+                )}
                 <PF label="Installed Seal (1)">
                   <input value={editForm.installed_seal} onChange={e => sf('installed_seal', e.target.value)} className={iCls} />
                 </PF>
-                <PF label="Cabinet Seal (2)">
-                  <input value={editForm.cabinet_seal_installed} onChange={e => sf('cabinet_seal_installed', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="TLN Tag">
-                  <input value={editForm.tln_tag} onChange={e => sf('tln_tag', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="Pole Tag">
-                  <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="Booba Number">
-                  <input value={editForm.booba_number} onChange={e => sf('booba_number', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="MDLTR No.">
-                  <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="Aging (days)">
-                  <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="Witness Date">
-                  <input type="date" value={editForm.witness_date} onChange={e => sf('witness_date', e.target.value)} className={iCls} />
-                </PF>
+                {showInstalledMeterFields && (
+                  <>
+                    <PF label="Cabinet Seal (2)">
+                      <input value={editForm.cabinet_seal_installed} onChange={e => sf('cabinet_seal_installed', e.target.value)} className={iCls} />
+                    </PF>
+                    <PF label="TLN Tag">
+                      <input value={editForm.tln_tag} onChange={e => sf('tln_tag', e.target.value)} className={iCls} />
+                    </PF>
+                    <PF label="Pole Tag">
+                      <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} className={iCls} />
+                    </PF>
+                    <PF label="Booba Number">
+                      <input value={editForm.booba_number} onChange={e => sf('booba_number', e.target.value)} className={iCls} />
+                    </PF>
+                    <PF label="MDLTR No.">
+                      <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} className={iCls} />
+                    </PF>
+                    <PF label="Aging (days)">
+                      <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={iCls} />
+                    </PF>
+                    <PF label="Witness Date">
+                      <input type="date" value={editForm.witness_date} onChange={e => sf('witness_date', e.target.value)} className={iCls} />
+                    </PF>
+                  </>
+                )}
               </PS>
-              )}
 
-              {showRemarksBatchSection && (
               <PS title="Remarks & Batch">
                 <PF label="FO Type">
                   <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} className={iCls}>
@@ -578,7 +584,6 @@ async function sendSelectedToNewWork() {
                   <textarea value={editForm.remarks} onChange={e => sf('remarks', e.target.value)} rows={3} className={`${iCls} resize-none`} />
                 </PF>
               </PS>
-              )}
 
               </fieldset>
 

@@ -5,7 +5,7 @@ import { Plus, Search, ChevronLeft, ChevronRight, X, Save, Download, Upload, Arc
 import ImportModal from '../components/ImportModal'
 import RequestDeletionModal from '../components/RequestDeletionModal'
 import { useAuth } from '../lib/AuthContext'
-import { computeAgingDays, isOverdue } from '../lib/aging'
+import { displayAgingDays, isOverdue } from '../lib/aging'
 
 const PAGE_SIZE = 50
 
@@ -16,6 +16,25 @@ const CREW_NAME_OPTIONS = ['All', 'A. TOMADA', 'B. VERDARERO', 'C. BENIGNO', 'D.
 const FO_TYPE_OPTIONS = ['All', 'CANCEL', 'CANCEL-EMC', 'CUT SERVICE ENTRANCE', 'ENERGIZED', 'REMOVE', 'REMOVE-EMC', 'REMOVE-EMC-WIRE', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX']
 const BILLED_AMOUNT_OPTIONS = ['All', '0', '172.45', '253.43', '344.9', '383.22', '574.83', '766.44', '958.05', '1013.71', '1689.61']
 const BATCH_OPTIONS = ['All', 'ALREADY BATCH', 'FOR BATCH', 'MISSING METER', 'OTHERS PENDING']
+
+const MONTH_OPTIONS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+const CURRENT_YEAR = new Date().getFullYear()
+const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => String(CURRENT_YEAR + 1 - i))
+
+// Turns the year/month selection into an inclusive [start, end] date_executed
+// range. Month is only meaningful with a year, so it is ignored without one.
+function periodRange(year, month) {
+  if (year === 'All') return null
+  const y = Number(year)
+  if (month === 'All') return [`${y}-01-01`, `${y}-12-31`]
+  const m = MONTH_OPTIONS.indexOf(month) + 1
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate()
+  const mm = String(m).padStart(2, '0')
+  return [`${y}-${mm}-01`, `${y}-${mm}-${String(lastDay).padStart(2, '0')}`]
+}
 
 const EMPTY_FORM = {
   status_crew: 'FOR ASSIGN', date_assign: '', for_check: false, date_executed: '', type_of_meter: '',
@@ -66,14 +85,14 @@ function PS({ title, children }) {
 
 const COLS = [
   // — MAIN DATA —
-  { label: 'STATUS CREW',         key: 'status_crew',           w: 120, render: r => <StatusBadge status={r.status_crew} /> },
-  { label: 'DATE ASSIGN',         key: 'date_assign',           w: 105, render: r => r.date_assign || '—' },
-  { label: 'FOR CHECK',           key: 'for_check',             w: 80,  render: r => r.for_check ? <span className="text-emerald-600 font-bold">✓</span> : '' },
-  { label: 'DATE EXECUTED',       key: 'date_executed',         w: 140, render: r => r.date_executed || '—' },
-  { label: 'TYPE OF METER',       key: 'type_of_meter',         w: 130, render: r => r.type_of_meter || '—' },
+  { label: 'FIELD ORDER/FO',      key: 'field_order_no',        w: 145, mono: true, render: r => r.field_order_no || '—' },
   { label: 'JOB DESCRIPTION',     key: 'job_description',       w: 120, render: r => r.job_description || '—' },
   { label: 'CREW NAME',           key: 'crew_name',             w: 130, render: r => r.crew_name || '—' },
-  { label: 'FIELD ORDER/FO',      key: 'field_order_no',        w: 145, mono: true, render: r => r.field_order_no || '—' },
+  { label: 'DATE',                key: 'date_executed',         w: 140, render: r => r.date_executed || '—' },
+  { label: 'STATUS CREW',         key: 'status_crew',           w: 120, render: r => <StatusBadge status={r.status_crew} /> },
+  { label: 'CHECK',               key: 'for_check',             w: 80,  render: r => r.for_check ? <span className="text-emerald-600 font-bold">✓</span> : '' },
+  { label: 'DATE ASSIGN',         key: 'date_assign',           w: 105, render: r => r.date_assign || '—' },
+  { label: 'TYPE OF METER',       key: 'type_of_meter',         w: 130, render: r => r.type_of_meter || '—' },
   { label: 'SERVICE ID NUMBER',      key: 'service_number',        w: 135, render: r => r.service_number || '—' },
   // — REMOVE METER —
   { label: 'REMOVE METER',        key: 'remove_meter',          w: 130, render: r => r.remove_meter || '—' },
@@ -95,7 +114,7 @@ const COLS = [
   { label: 'BOOBA NUMBER',        key: 'booba_number',          w: 115, render: r => r.booba_number || '—' },
   { label: 'MDLTR NO.',           key: 'mdltr_no',              w: 90,  render: r => r.mdltr_no || '—' },
   { label: 'AGING',               key: 'aging',                 w: 70,  render: r => {
-      const days = computeAgingDays(r.date_executed)
+      const days = displayAgingDays(r)
       if (days == null) return '—'
       return <span className={isOverdue(r) ? 'text-red-600 font-bold' : ''}>{days}</span>
     }
@@ -136,6 +155,8 @@ export default function FieldOrders() {
   const [batchFilter, setBatchFilter] = useState('All')
   const [dateExecutedFilter, setDateExecutedFilter] = useState('')
   const [dateAssignFilter, setDateAssignFilter] = useState('')
+  const [yearFilter, setYearFilter] = useState('All')
+  const [monthFilter, setMonthFilter] = useState('All')
   const [openFilterKey, setOpenFilterKey] = useState(null)
   const [filterPos, setFilterPos] = useState({ x: 0, y: 0 })
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -265,11 +286,13 @@ prev.filter(x=>x!==id)
     if (batchFilter !== 'All') q = q.ilike('for_batch', batchFilter)
     if (dateExecutedFilter) q = q.eq('date_executed', dateExecutedFilter)
     if (dateAssignFilter) q = q.eq('date_assign', dateAssignFilter)
+    const range = periodRange(yearFilter, monthFilter)
+    if (range) q = q.gte('date_executed', range[0]).lte('date_executed', range[1])
 
     const { data, count, error } = await q
     if (!error) { setRecords(data); setTotal(count) }
     setLoading(false)
-  }, [page, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter, dateAssignFilter])
+  }, [page, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter, dateAssignFilter, yearFilter, monthFilter])
 
 useEffect(() => { 
   fetchRecords() 
@@ -280,7 +303,7 @@ useEffect(() => {
   setPage(0)
   setSelectAllPages(false)
   setSelectedRows([])
-}, [search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter,  dateAssignFilter])
+}, [search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter,  dateAssignFilter, yearFilter, monthFilter])
 
 
   const ROW_HEIGHT = 33
@@ -620,17 +643,51 @@ Add Record
 </div>
       </div>
 
-      {/* Search */}
+      {/* Search + period filter */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 shrink-0">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search FO#, Service ID Number, crew, location..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search FO#, Service ID Number, crew, location..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <select
+            value={yearFilter}
+            onChange={e => {
+              setYearFilter(e.target.value)
+              if (e.target.value === 'All') setMonthFilter('All')
+            }}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="All">All years</option>
+            {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+
+          <select
+            value={monthFilter}
+            onChange={e => setMonthFilter(e.target.value)}
+            disabled={yearFilter === 'All'}
+            title={yearFilter === 'All' ? 'Pick a year first' : 'Filter by month'}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400"
+          >
+            <option value="All">All months</option>
+            {MONTH_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+
+          {yearFilter !== 'All' && (
+            <button
+              onClick={() => { setYearFilter('All'); setMonthFilter('All') }}
+              className="px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
@@ -783,7 +840,9 @@ Add Record
                   records.map((row, idx) => {
                     const sel = editRow?.id === row.id
                     const overdue = isOverdue(row)
-                    const rowBg = sel ? '#eff6ff' : overdue ? '#fef2f2' : (hoverRowId === row.id ? '#f8fafc' : '#ffffff')
+                    // Frozen section is tinted so it reads as its own block,
+                    // distinct from the scrollable columns to its right.
+                    const rowBg = sel ? '#eff6ff' : overdue ? '#fef2f2' : (hoverRowId === row.id ? '#e2e8f0' : '#f1f5f9')
                     return (
                       <tr
                         key={row.id}

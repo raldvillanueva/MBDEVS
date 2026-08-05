@@ -174,7 +174,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
       }
     : {
         field_order_no: "Field Order no.",
-        ...(showInstalledMeterSection ? { ins_meter: "Installed Meter no." } : {}),
+        ...(showInstalledMeterFields ? { ins_meter: "Installed Meter no." } : {}),
       }
 
   const errors = {}
@@ -377,14 +377,15 @@ function deletePendingRecord(id) {
 
 }
 
-  // Which sections show below Main Information, based on the chosen FO Action.
-  // No selection yet -> show everything (safe default, preserves existing behavior).
-  const showRemoveMeterSection =
-    !form.fo_action || form.fo_action === 'Retirement FO' || form.fo_action === 'Others'
-  const showInstalledMeterSection =
-    !form.fo_action || form.fo_action === 'Replace FO' || form.fo_action === 'Others'
-  const showRemarksBatchSection =
-    !form.fo_action || form.fo_action === 'Others'
+  // Which sections show below Main Information, based on the chosen FO Action:
+  //   Replace FO     -> everything
+  //   Energized FO   -> New Installed Meter + Remarks & Batch (no Remove Meter)
+  //   Retirement FO  -> Remove Meter + Remarks & Batch, and of the New Installed
+  //                     Meter fields only "Installed Seal (1)"
+  //   Others / none  -> everything (safe default)
+  const isRetirementFO = form.fo_action === 'Retirement FO'
+  const showRemoveMeterSection = form.fo_action !== 'Energized FO'
+  const showInstalledMeterFields = !isRetirementFO
 
   return (
     
@@ -581,67 +582,72 @@ label="FO Action"
       </div>
       )}
 
-      {/* Section 3 – New Installed Meter */}
-      {showInstalledMeterSection && (
+      {/* Section 3 – New Installed Meter (Retirement FO keeps only Installed Seal) */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SectionTitle title="New Installed Meter" />
 
-          <Field label="Installed Meter No." errorMessage={fieldErrors.ins_meter}>
-            <input {...text('ins_meter')} placeholder="e.g. 125BAS076970" />
-          </Field>
+          {showInstalledMeterFields && (
+            <>
+              <Field label="Installed Meter No." errorMessage={fieldErrors.ins_meter}>
+                <input {...text('ins_meter')} placeholder="e.g. 125BAS076970" />
+              </Field>
 
-          <Field label="Serial Number">
-            <input {...text('ins_serial_number')} placeholder="e.g. SC1076970" />
-          </Field>
+              <Field label="Serial Number">
+                <input {...text('ins_serial_number')} placeholder="e.g. SC1076970" />
+              </Field>
 
-          <Field label="Demand Seal (5)">
-            <input {...text('demand_seal_installed')} placeholder="Demand seal" />
-          </Field>
+              <Field label="Demand Seal (5)">
+                <input {...text('demand_seal_installed')} placeholder="Demand seal" />
+              </Field>
+            </>
+          )}
 
           <Field label="Installed Seal (1)" >
             <input {...text('installed_seal')} placeholder="e.g. A25PT0196346" />
           </Field>
 
-          <Field label="Cabinet Seal (2)">
-            <input {...text('cabinet_seal_installed')} placeholder="Cabinet seal" />
-          </Field>
+          {showInstalledMeterFields && (
+            <>
+              <Field label="Cabinet Seal (2)">
+                <input {...text('cabinet_seal_installed')} placeholder="Cabinet seal" />
+              </Field>
 
-          <Field label="TLN Tag">
-            <input {...text('tln_tag')} placeholder="e.g. 199538" />
-          </Field>
+              <Field label="TLN Tag">
+                <input {...text('tln_tag')} placeholder="e.g. 199538" />
+              </Field>
 
-          <Field label="Pole Tag">
-            <input {...text('pole_tag')} placeholder="e.g. 115-0833" />
-          </Field>
+              <Field label="Pole Tag">
+                <input {...text('pole_tag')} placeholder="e.g. 115-0833" />
+              </Field>
 
-          <Field label="Booba Number">
-            <input {...text('booba_number')} placeholder="e.g. B25BW0109486" />
-          </Field>
+              <Field label="Booba Number">
+                <input {...text('booba_number')} placeholder="e.g. B25BW0109486" />
+              </Field>
 
-          <Field label="MDLTR No.">
-            <input {...text('mdltr_no')} placeholder="e.g. 384356" />
-          </Field>
+              <Field label="MDLTR No.">
+                <input {...text('mdltr_no')} placeholder="e.g. 384356" />
+              </Field>
 
-          <Field label="Aging (days)">
-            <input
-              type="number"
-              value={form.aging ?? ''}
-              onChange={e => set('aging', e.target.value)}
-              className={inputClass}
-              placeholder="e.g. -238"
-            />
-          </Field>
+              <Field label="Aging (days)">
+                <input
+                  type="number"
+                  value={form.aging ?? ''}
+                  onChange={e => set('aging', e.target.value)}
+                  className={inputClass}
+                  placeholder="e.g. -238"
+                />
+              </Field>
 
-          <Field label="Witness Date">
-            <input type="date" {...text('witness_date')} />
-          </Field>
+              <Field label="Witness Date">
+                <input type="date" {...text('witness_date')} />
+              </Field>
+            </>
+          )}
         </div>
       </div>
-      )}
 
-      {/* Section 4 – Remarks & Batch */}
-      {showRemarksBatchSection && (
+      {/* Section 4 – Remarks & Batch (always shown, for every FO Action) */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SectionTitle title="Remarks & Batch Information" />
@@ -725,7 +731,6 @@ label="FO Action"
 </Field>
         </div>
       </div>
-      )}
 
 
       {/* Sticky Actions */}
