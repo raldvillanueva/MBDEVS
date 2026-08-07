@@ -10,7 +10,7 @@ import { isOverdueBy } from '../lib/aging'
 function Section({ title, children }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</h2>
+      <h2 className="text-base font-semibold text-slate-700">{title}</h2>
       {children}
     </section>
   )
@@ -148,7 +148,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 pb-6">
+    <div className="space-y-6 pb-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
