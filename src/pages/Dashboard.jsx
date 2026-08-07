@@ -244,7 +244,13 @@ export default function Dashboard() {
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
             <p className="text-sm text-slate-500">
               Pending tasks — not yet completed or cancelled
-              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+              <span
+                className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  pendingTasks.length > 0
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
                 {pendingTasks.length}
               </span>
             </p>
