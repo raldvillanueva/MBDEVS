@@ -582,13 +582,14 @@ label="FO Action"
       </div>
       )}
 
-      {/* Section 3 – New Installed Meter (Retirement FO keeps only Installed Seal) */}
+      {/* Section 3 – New Installed Meter. Retirement FO keeps only the
+          Installed Seal field, with no section heading above it. */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SectionTitle title="New Installed Meter" />
-
           {showInstalledMeterFields && (
             <>
+              <SectionTitle title="New Installed Meter" />
+
               <Field label="Installed Meter No." errorMessage={fieldErrors.ins_meter}>
                 <input {...text('ins_meter')} placeholder="e.g. 125BAS076970" />
               </Field>

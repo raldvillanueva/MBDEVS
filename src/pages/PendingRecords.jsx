@@ -38,7 +38,9 @@ function PF({ label, children, span2 }) {
 function PS({ title, children }) {
   return (
     <div>
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-1 pb-1.5 border-b border-slate-100">{title}</p>
+      {title && (
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 mt-1 pb-1.5 border-b border-slate-100">{title}</p>
+      )}
       <div className="grid grid-cols-2 gap-3">{children}</div>
     </div>
   )
@@ -502,7 +504,8 @@ async function sendSelectedToNewWork() {
               </PS>
               )}
 
-              <PS title="New Installed Meter">
+              {/* Retirement FO keeps only Installed Seal, with no heading. */}
+              <PS title={showInstalledMeterFields ? 'New Installed Meter' : ''}>
                 {showInstalledMeterFields && (
                   <>
                     <PF label="Installed Meter No.">
