@@ -9,25 +9,27 @@ import { isOverdueBy } from '../lib/aging'
 
 function Section({ title, children }) {
   return (
-    <section className="space-y-2.5">
-      <h2 className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">{title}</h2>
+    <section className="space-y-3.5">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">{title}</h2>
       {children}
     </section>
   )
 }
 
 // Headline figures: icon chip + large number.
-function StatCard({ label, value, icon: Icon, tint, sub }) {
+function StatCard({ label, value, icon: Icon, tint, sub, wide }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 transition-shadow hover:shadow-md">
-      <div className="flex items-center gap-2.5">
-        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tint}`}>
-          <Icon size={16} />
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 transition-shadow hover:shadow-md">
+      <div className="flex items-center gap-3">
+        <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tint}`}>
+          <Icon size={22} />
         </span>
-        <p className="text-sm leading-tight text-slate-500">{label}</p>
+        <p className="text-base leading-snug text-slate-500">{label}</p>
       </div>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-slate-800">{value}</p>
-      {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+      <p className={`mt-4 font-bold tabular-nums tracking-tight text-slate-800 ${wide ? 'text-3xl' : 'text-4xl'}`}>
+        {value}
+      </p>
+      {sub && <p className="mt-1.5 text-sm text-slate-400">{sub}</p>}
     </div>
   )
 }
@@ -36,12 +38,12 @@ function StatCard({ label, value, icon: Icon, tint, sub }) {
 // split reads as supporting detail rather than another row of headlines.
 function MiniStat({ label, value, dot }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3.5">
-      <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
-        <p className="truncate text-sm text-slate-500">{label}</p>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5">
+      <div className="flex items-center gap-2.5">
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} />
+        <p className="truncate text-base text-slate-500">{label}</p>
       </div>
-      <p className="mt-1.5 text-xl font-bold tabular-nums text-slate-800">{value}</p>
+      <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-slate-800">{value}</p>
     </div>
   )
 }
@@ -124,52 +126,52 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-7 pb-4">
+    <div className="space-y-9 pb-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Overview of all field order activity</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-800">Dashboard</h1>
+          <p className="mt-1 text-base text-slate-500">Overview of all field order activity</p>
         </div>
 
         <div
           title="Filter by date executed"
-          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
+          className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm"
         >
-          <Calendar size={15} className="shrink-0 text-slate-400" />
+          <Calendar size={18} className="shrink-0 text-slate-400" />
           <input
             type="date"
             value={dateFrom}
             onChange={e => setDateFrom(e.target.value)}
-            className="w-[130px] bg-transparent text-sm text-slate-700 focus:outline-none"
+            className="w-[145px] bg-transparent text-base text-slate-700 focus:outline-none"
           />
           <span className="text-slate-300">–</span>
           <input
             type="date"
             value={dateTo}
             onChange={e => setDateTo(e.target.value)}
-            className="w-[130px] bg-transparent text-sm text-slate-700 focus:outline-none"
+            className="w-[145px] bg-transparent text-base text-slate-700 focus:outline-none"
           />
           {isFiltered && (
             <button
               onClick={() => { setDateFrom(''); setDateTo('') }}
               title="Clear date filter"
-              className="ml-0.5 rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              className="ml-0.5 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
           )}
         </div>
       </div>
 
       {isFiltered && (
-        <div className="-mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs text-blue-700">
+        <div className="-mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 text-sm text-blue-700">
           Showing <strong className="font-semibold">{filtered.length}</strong> of {rows.length} field orders by date executed
         </div>
       )}
 
       <Section title="Status">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Assigned" value={stats.assigned} icon={ClipboardList} tint="bg-blue-50 text-blue-600" />
           <StatCard label="Field Complete" value={stats.fieldComplete} icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600" />
           <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} tint="bg-rose-50 text-rose-600" />
@@ -178,12 +180,13 @@ export default function Dashboard() {
             value={`₱${stats.totalBilled.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
             icon={PackageCheck}
             tint="bg-violet-50 text-violet-600"
+            wide
           />
         </div>
       </Section>
 
       <Section title="Needs attention">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           <StatCard
             label="Overdue (>10 days)"
             value={stats.overdue10}
@@ -209,7 +212,7 @@ export default function Dashboard() {
       </Section>
 
       <Section title="By FO Action">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <MiniStat label="Replacement FO" value={stats.replacement} dot="bg-amber-500" />
           <MiniStat label="Retirement FO" value={stats.retirement} dot="bg-slate-400" />
           <MiniStat label="Energize FO" value={stats.energize} dot="bg-yellow-500" />
@@ -218,47 +221,47 @@ export default function Dashboard() {
       </Section>
 
       <Section title="To-Do List">
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-            <p className="text-sm text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <p className="text-base text-slate-500">
               Pending tasks — not yet completed or cancelled
-              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+              <span className="ml-2.5 rounded-full bg-slate-100 px-2.5 py-1 text-sm font-semibold text-slate-600">
                 {filtered.filter(isPendingTask).length}
               </span>
             </p>
             <button
               onClick={() => navigate('/field-orders')}
-              className="text-sm font-medium text-blue-600 hover:underline"
+              className="text-base font-medium text-blue-600 hover:underline"
             >
               View all
             </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-base">
               <thead>
-                <tr className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-5 py-2.5 text-left font-medium">Field Order</th>
-                  <th className="px-5 py-2.5 text-left font-medium">Crew</th>
-                  <th className="px-5 py-2.5 text-left font-medium">Location</th>
-                  <th className="px-5 py-2.5 text-left font-medium">Status</th>
-                  <th className="px-5 py-2.5 text-left font-medium">FO Action</th>
+                <tr className="bg-slate-50 text-sm uppercase tracking-wide text-slate-500">
+                  <th className="px-6 py-3.5 text-left font-medium">Field Order</th>
+                  <th className="px-6 py-3.5 text-left font-medium">Crew</th>
+                  <th className="px-6 py-3.5 text-left font-medium">Location</th>
+                  <th className="px-6 py-3.5 text-left font-medium">Status</th>
+                  <th className="px-6 py-3.5 text-left font-medium">FO Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {todo.map((row, i) => (
                   <tr key={i} className="transition-colors hover:bg-slate-50">
-                    <td className="px-5 py-2.5 font-mono text-slate-700">{row.field_order_no || '—'}</td>
-                    <td className="px-5 py-2.5 text-slate-600">{row.crew_name || '—'}</td>
-                    <td className="max-w-xs truncate px-5 py-2.5 text-slate-600">{row.location || '—'}</td>
-                    <td className="px-5 py-2.5">
+                    <td className="px-6 py-3.5 font-mono text-slate-700">{row.field_order_no || '—'}</td>
+                    <td className="px-6 py-3.5 text-slate-600">{row.crew_name || '—'}</td>
+                    <td className="max-w-xs truncate px-6 py-3.5 text-slate-600">{row.location || '—'}</td>
+                    <td className="px-6 py-3.5">
                       <StatusBadge status={row.status_crew} />
                     </td>
-                    <td className="px-5 py-2.5 text-slate-600">{row.fo_action || '—'}</td>
+                    <td className="px-6 py-3.5 text-slate-600">{row.fo_action || '—'}</td>
                   </tr>
                 ))}
                 {todo.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-slate-400">
+                    <td colSpan={5} className="px-6 py-14 text-center text-slate-400">
                       No pending tasks.
                     </td>
                   </tr>
@@ -274,7 +277,7 @@ export default function Dashboard() {
 
 function StatusBadge({ status }) {
   const s = status?.toUpperCase() || ''
-  if (s === 'CANCEL') return <span className="rounded px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-700">CANCEL</span>
-  if (s.includes('FIELD')) return <span className="rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">FIELD COMPL.</span>
-  return <span className="rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
+  if (s === 'CANCEL') return <span className="rounded-md px-2.5 py-1 text-sm font-medium bg-rose-100 text-rose-700">CANCEL</span>
+  if (s.includes('FIELD')) return <span className="rounded-md px-2.5 py-1 text-sm font-medium bg-emerald-100 text-emerald-700">FIELD COMPL.</span>
+  return <span className="rounded-md px-2.5 py-1 text-sm font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
 }
