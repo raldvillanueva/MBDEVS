@@ -2,22 +2,46 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
-  ClipboardList, CheckCircle2, XCircle, RefreshCw, Clock,
-  PackageCheck, Layers, AlertTriangle, Zap, Trash2, MoreHorizontal
+  ClipboardList, CheckCircle2, XCircle, Clock,
+  PackageCheck, Layers, AlertTriangle, Calendar, X
 } from 'lucide-react'
 import { isOverdueBy } from '../lib/aging'
 
-function StatCard({ label, value, icon: Icon, color, sub }) {
+function Section({ title, children }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-start gap-4">
-      <div className={`rounded-lg p-3 ${color}`}>
-        <Icon size={22} className="text-white" />
+    <section className="space-y-2.5">
+      <h2 className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+// Headline figures: icon chip + large number.
+function StatCard({ label, value, icon: Icon, tint, sub }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 transition-shadow hover:shadow-md">
+      <div className="flex items-center gap-2.5">
+        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tint}`}>
+          <Icon size={16} />
+        </span>
+        <p className="text-sm leading-tight text-slate-500">{label}</p>
       </div>
-      <div>
-        <p className="text-slate-500 text-sm">{label}</p>
-        <p className="text-2xl font-bold text-slate-800 mt-0.5">{value}</p>
-        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+      <p className="mt-3 text-2xl font-bold tabular-nums text-slate-800">{value}</p>
+      {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+    </div>
+  )
+}
+
+// Breakdown figures: deliberately lighter than StatCard so the FO Action
+// split reads as supporting detail rather than another row of headlines.
+function MiniStat({ label, value, dot }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3.5">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
+        <p className="truncate text-sm text-slate-500">{label}</p>
       </div>
+      <p className="mt-1.5 text-xl font-bold tabular-nums text-slate-800">{value}</p>
     </div>
   )
 }
@@ -89,138 +113,168 @@ export default function Dashboard() {
   }, [filtered])
 
   const todo = useMemo(() => filtered.filter(isPendingTask).slice(0, 8), [filtered])
+  const isFiltered = !!(dateFrom || dateTo)
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="space-y-7 pb-4">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-          <p className="text-slate-500 text-sm mt-1">Overview of all field order activity</p>
+          <p className="mt-0.5 text-sm text-slate-500">Overview of all field order activity</p>
         </div>
 
-        <div className="flex items-end gap-2">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">From</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={e => setDateFrom(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">To</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={e => setDateTo(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          {(dateFrom || dateTo) && (
+        <div
+          title="Filter by date executed"
+          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
+        >
+          <Calendar size={15} className="shrink-0 text-slate-400" />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="w-[130px] bg-transparent text-sm text-slate-700 focus:outline-none"
+          />
+          <span className="text-slate-300">–</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="w-[130px] bg-transparent text-sm text-slate-700 focus:outline-none"
+          />
+          {isFiltered && (
             <button
               onClick={() => { setDateFrom(''); setDateTo('') }}
-              className="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100"
+              title="Clear date filter"
+              className="ml-0.5 rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
             >
-              Clear
+              <X size={14} />
             </button>
           )}
         </div>
       </div>
 
-      {(dateFrom || dateTo) && (
-        <p className="text-sm text-slate-500">
-          Showing {filtered.length} of {rows.length} field orders by date executed.
-        </p>
+      {isFiltered && (
+        <div className="-mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs text-blue-700">
+          Showing <strong className="font-semibold">{filtered.length}</strong> of {rows.length} field orders by date executed
+        </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Assigned" value={stats.assigned} icon={ClipboardList} color="bg-blue-500" />
-        <StatCard label="Field Complete" value={stats.fieldComplete} icon={CheckCircle2} color="bg-emerald-500" />
-        <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} color="bg-red-500" />
-        <StatCard
-          label="Total Billed"
-          value={`₱${stats.totalBilled.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
-          icon={PackageCheck}
-          color="bg-violet-500"
-        />
-      </div>
+      <Section title="Status">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label="Assigned" value={stats.assigned} icon={ClipboardList} tint="bg-blue-50 text-blue-600" />
+          <StatCard label="Field Complete" value={stats.fieldComplete} icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600" />
+          <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} tint="bg-rose-50 text-rose-600" />
+          <StatCard
+            label="Total Billed"
+            value={`₱${stats.totalBilled.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+            icon={PackageCheck}
+            tint="bg-violet-50 text-violet-600"
+          />
+        </div>
+      </Section>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard label="Overdue (>10 days)" value={stats.overdue10} icon={Clock} color="bg-orange-500" sub="Meter not yet returned" />
-        <StatCard label="Overdue (>21 days)" value={stats.overdue21} icon={AlertTriangle} color="bg-red-600" sub="Meter not yet returned" />
-        <StatCard label="Already Batched" value={stats.batched} icon={Layers} color="bg-teal-500" />
-      </div>
+      <Section title="Needs attention">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Overdue (>10 days)"
+            value={stats.overdue10}
+            icon={Clock}
+            tint="bg-amber-50 text-amber-600"
+            sub="Meter not yet returned"
+          />
+          <StatCard
+            label="Overdue (>21 days)"
+            value={stats.overdue21}
+            icon={AlertTriangle}
+            tint="bg-red-50 text-red-600"
+            sub="Meter not yet returned"
+          />
+          <StatCard
+            label="Already Batched"
+            value={stats.batched}
+            icon={Layers}
+            tint="bg-teal-50 text-teal-600"
+            sub="Counted as returned"
+          />
+        </div>
+      </Section>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Replacement FO" value={stats.replacement} icon={RefreshCw} color="bg-amber-500" />
-        <StatCard label="Retirement FO" value={stats.retirement} icon={Trash2} color="bg-slate-500" />
-        <StatCard label="Energize FO" value={stats.energize} icon={Zap} color="bg-yellow-500" />
-        <StatCard label="Others" value={stats.others} icon={MoreHorizontal} color="bg-indigo-500" />
-      </div>
+      <Section title="By FO Action">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <MiniStat label="Replacement FO" value={stats.replacement} dot="bg-amber-500" />
+          <MiniStat label="Retirement FO" value={stats.retirement} dot="bg-slate-400" />
+          <MiniStat label="Energize FO" value={stats.energize} dot="bg-yellow-500" />
+          <MiniStat label="Others" value={stats.others} dot="bg-indigo-500" />
+        </div>
+      </Section>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <div>
-            <h2 className="font-semibold text-slate-700">To-Do List</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Pending tasks — field orders not yet completed or cancelled</p>
+      <Section title="To-Do List">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+            <p className="text-sm text-slate-500">
+              Pending tasks — not yet completed or cancelled
+              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                {filtered.filter(isPendingTask).length}
+              </span>
+            </p>
+            <button
+              onClick={() => navigate('/field-orders')}
+              className="text-sm font-medium text-blue-600 hover:underline"
+            >
+              View all
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/field-orders')}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            View all
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
-                <th className="px-6 py-3 text-left font-medium">Field Order</th>
-                <th className="px-6 py-3 text-left font-medium">Crew</th>
-                <th className="px-6 py-3 text-left font-medium">Location</th>
-                <th className="px-6 py-3 text-left font-medium">Status</th>
-                <th className="px-6 py-3 text-left font-medium">FO Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {todo.map((row, i) => (
-                <tr key={i} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-3 font-mono text-slate-700">{row.field_order_no || '—'}</td>
-                  <td className="px-6 py-3 text-slate-600">{row.crew_name || '—'}</td>
-                  <td className="px-6 py-3 text-slate-600 max-w-xs truncate">{row.location || '—'}</td>
-                  <td className="px-6 py-3">
-                    <StatusBadge status={row.status_crew} />
-                  </td>
-                  <td className="px-6 py-3 text-slate-600">{row.fo_action || '—'}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-2.5 text-left font-medium">Field Order</th>
+                  <th className="px-5 py-2.5 text-left font-medium">Crew</th>
+                  <th className="px-5 py-2.5 text-left font-medium">Location</th>
+                  <th className="px-5 py-2.5 text-left font-medium">Status</th>
+                  <th className="px-5 py-2.5 text-left font-medium">FO Action</th>
                 </tr>
-              ))}
-              {todo.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
-                    No pending tasks.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {todo.map((row, i) => (
+                  <tr key={i} className="transition-colors hover:bg-slate-50">
+                    <td className="px-5 py-2.5 font-mono text-slate-700">{row.field_order_no || '—'}</td>
+                    <td className="px-5 py-2.5 text-slate-600">{row.crew_name || '—'}</td>
+                    <td className="max-w-xs truncate px-5 py-2.5 text-slate-600">{row.location || '—'}</td>
+                    <td className="px-5 py-2.5">
+                      <StatusBadge status={row.status_crew} />
+                    </td>
+                    <td className="px-5 py-2.5 text-slate-600">{row.fo_action || '—'}</td>
+                  </tr>
+                ))}
+                {todo.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-10 text-center text-slate-400">
+                      No pending tasks.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </Section>
     </div>
   )
 }
 
 function StatusBadge({ status }) {
   const s = status?.toUpperCase() || ''
-  if (s === 'CANCEL') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">CANCEL</span>
-  if (s.includes('FIELD')) return <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">FIELD COMPL.</span>
-  return <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
+  if (s === 'CANCEL') return <span className="rounded px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-700">CANCEL</span>
+  if (s.includes('FIELD')) return <span className="rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">FIELD COMPL.</span>
+  return <span className="rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
 }
