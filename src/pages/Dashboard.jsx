@@ -242,18 +242,21 @@ export default function Dashboard() {
       <Section title="To-Do List">
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-            <p className="text-sm text-slate-500">
-              Pending tasks — not yet completed or cancelled
-              <span
-                className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                  pendingTasks.length > 0
-                    ? 'bg-red-100 text-red-700'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
-              >
-                {pendingTasks.length}
-              </span>
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-slate-700">Pending tasks</p>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                    pendingTasks.length > 0
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {pendingTasks.length}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-400">Not yet completed or cancelled</p>
+            </div>
             <button
               onClick={() => navigate('/field-orders')}
               className="text-sm font-medium text-blue-600 hover:underline"
