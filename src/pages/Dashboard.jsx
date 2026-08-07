@@ -9,8 +9,8 @@ import { isOverdueBy } from '../lib/aging'
 
 function Section({ title, children }) {
   return (
-    <section className="space-y-3">
-      <h2 className="text-base font-semibold text-slate-700">{title}</h2>
+    <section className="space-y-2.5">
+      <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
       {children}
     </section>
   )
@@ -18,14 +18,14 @@ function Section({ title, children }) {
 
 function StatCard({ label, value, icon: Icon, tint, sub, wide }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-center gap-2.5">
-        <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tint}`}>
-          <Icon size={18} />
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tint}`}>
+          <Icon size={16} />
         </span>
         <p className="text-sm leading-snug text-slate-500">{label}</p>
       </div>
-      <p className={`mt-3 font-bold tabular-nums tracking-tight text-slate-800 ${wide ? 'text-2xl' : 'text-3xl'}`}>
+      <p className={`mt-2.5 font-bold tabular-nums tracking-tight text-slate-800 ${wide ? 'text-xl' : 'text-2xl'}`}>
         {value}
       </p>
       {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
@@ -49,7 +49,7 @@ function FoActionPanel({ stats }) {
         <div
           key={tile.key}
           className={[
-            'px-5 py-4 border-slate-100',
+            'px-4 py-3.5 border-slate-100',
             i % 2 === 1 ? 'border-l' : '',
             i >= 2 ? 'border-t' : '',
             'sm:border-t-0',
@@ -60,7 +60,7 @@ function FoActionPanel({ stats }) {
             <span className={`h-2 w-2 shrink-0 rounded-full ${tile.dot}`} />
             <p className="truncate text-sm text-slate-500">{tile.label}</p>
           </div>
-          <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-slate-800">
+          <p className="mt-1.5 text-xl font-bold tabular-nums tracking-tight text-slate-800">
             {stats[tile.key]}
           </p>
         </div>
@@ -148,7 +148,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-5 pb-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -195,7 +195,7 @@ export default function Dashboard() {
       </div>
 
       <Section title="Status">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Assigned" value={stats.assigned} icon={ClipboardList} tint="bg-blue-50 text-blue-600" />
           <StatCard label="Field Complete" value={stats.fieldComplete} icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600" />
           <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} tint="bg-rose-50 text-rose-600" />
@@ -210,7 +210,7 @@ export default function Dashboard() {
       </Section>
 
       <Section title="Needs attention">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
           <StatCard
             label="Overdue (>10 days)"
             value={stats.overdue10}
