@@ -18,17 +18,17 @@ function Section({ title, children }) {
 
 function StatCard({ label, value, icon: Icon, tint, sub, wide }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-center gap-2">
-        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tint}`}>
-          <Icon size={16} />
+        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tint}`}>
+          <Icon size={15} />
         </span>
         <p className="text-sm leading-snug text-slate-500">{label}</p>
       </div>
-      <p className={`mt-2.5 font-bold tabular-nums tracking-tight text-slate-800 ${wide ? 'text-xl' : 'text-2xl'}`}>
+      <p className={`mt-1.5 font-bold tabular-nums tracking-tight text-slate-800 ${wide ? 'text-lg' : 'text-xl'}`}>
         {value}
       </p>
-      {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+      {sub && <p className="mt-0.5 text-xs text-slate-400">{sub}</p>}
     </div>
   )
 }
@@ -49,7 +49,7 @@ function FoActionPanel({ stats }) {
         <div
           key={tile.key}
           className={[
-            'px-4 py-3.5 border-slate-100',
+            'px-4 py-3 border-slate-100',
             i % 2 === 1 ? 'border-l' : '',
             i >= 2 ? 'border-t' : '',
             'sm:border-t-0',
@@ -60,7 +60,7 @@ function FoActionPanel({ stats }) {
             <span className={`h-2 w-2 shrink-0 rounded-full ${tile.dot}`} />
             <p className="truncate text-sm text-slate-500">{tile.label}</p>
           </div>
-          <p className="mt-1.5 text-xl font-bold tabular-nums tracking-tight text-slate-800">
+          <p className="mt-1 text-lg font-bold tabular-nums tracking-tight text-slate-800">
             {stats[tile.key]}
           </p>
         </div>
