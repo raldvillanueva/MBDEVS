@@ -131,9 +131,9 @@ const COLS = [
   { label: 'PLUSCODE',            key: 'pluscode',              w: 90,  render: r => r.pluscode || '—' },
 ]
 
-// Columns pinned to the left (Status Crew → Service Number). Everything after
-// this stays in its own horizontally-scrollable table starting at Remove Meter.
-const FROZEN_COL_COUNT = 9
+// Columns pinned to the left (Field Order → Check). Everything after this —
+// starting with Date Assign — lives in the horizontally-scrollable table.
+const FROZEN_COL_COUNT = 6
 const FROZEN_COLS = COLS.slice(0, FROZEN_COL_COUNT)
 const SCROLL_COLS = COLS.slice(FROZEN_COL_COUNT)
 
