@@ -88,7 +88,7 @@ const COLS = [
   { label: 'FIELD ORDER/FO',      key: 'field_order_no',        w: 145, mono: true, render: r => r.field_order_no || '—' },
   { label: 'JOB DESCRIPTION',     key: 'job_description',       w: 120, render: r => r.job_description || '—' },
   { label: 'CREW NAME',           key: 'crew_name',             w: 130, render: r => r.crew_name || '—' },
-  { label: 'DATE',                key: 'date_executed',         w: 140, render: r => r.date_executed || '—' },
+  { label: 'DATE EXECUTED',       key: 'date_executed',         w: 140, render: r => r.date_executed || '—' },
   { label: 'STATUS CREW',         key: 'status_crew',           w: 120, render: r => <StatusBadge status={r.status_crew} /> },
   { label: 'CHECK',               key: 'for_check',             w: 80,  render: r => r.for_check ? <span className="text-emerald-600 font-bold">✓</span> : '' },
   { label: 'DATE ASSIGN',         key: 'date_assign',           w: 105, render: r => r.date_assign || '—' },
