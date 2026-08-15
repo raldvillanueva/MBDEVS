@@ -75,11 +75,22 @@ function isPendingTask(row) {
   return !row.archived_at && !status.includes('FIELD') && !status.includes('CANCEL')
 }
 
+// Local calendar date as "YYYY-MM-DD", matching the format date inputs and
+// Postgres date columns both use.
+function toISODate(date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+const YEAR_START = `${new Date().getFullYear()}-01-01`
+const TODAY = toISODate(new Date())
+
 export default function Dashboard() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(YEAR_START)
+  const [dateTo, setDateTo] = useState(TODAY)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -135,7 +146,10 @@ export default function Dashboard() {
     }
   }, [filtered])
 
-  const pendingTasks = useMemo(() => filtered.filter(isPendingTask), [filtered])
+  // Deliberately built from every row, not the date-filtered set: a pending
+  // task has not been executed yet, so it has no date_executed and any
+  // execution-date range would always exclude it.
+  const pendingTasks = useMemo(() => rows.filter(isPendingTask), [rows])
   const todo = pendingTasks.slice(0, 8)
   const isFiltered = !!(dateFrom || dateTo)
 
