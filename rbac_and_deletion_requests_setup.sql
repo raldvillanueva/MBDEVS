@@ -195,27 +195,10 @@ create policy "pending_orders_delete_admin" on public.pending_orders
   for delete to authenticated using (public.is_admin());
 
 -- ---------------------------------------------------------------------
--- 9. new_work_orders: SELECT for everyone, INSERT/UPDATE/DELETE
---    admin-only. Existing policy name per new_work_orders_setup.sql
---    is "Allow all new work orders".
+-- 9. (removed) new_work_orders — the New Work Orders stage was dropped
+--    from the app. Pending Records now sends straight to field_orders,
+--    so the table and its policies no longer exist.
 -- ---------------------------------------------------------------------
-drop policy if exists "Allow all new work orders" on public.new_work_orders;
-
-drop policy if exists "new_work_orders_select_all" on public.new_work_orders;
-create policy "new_work_orders_select_all" on public.new_work_orders
-  for select to authenticated using (true);
-
-drop policy if exists "new_work_orders_insert_admin" on public.new_work_orders;
-create policy "new_work_orders_insert_admin" on public.new_work_orders
-  for insert to authenticated with check (public.is_admin());
-
-drop policy if exists "new_work_orders_update_admin" on public.new_work_orders;
-create policy "new_work_orders_update_admin" on public.new_work_orders
-  for update to authenticated using (public.is_admin()) with check (public.is_admin());
-
-drop policy if exists "new_work_orders_delete_admin" on public.new_work_orders;
-create policy "new_work_orders_delete_admin" on public.new_work_orders
-  for delete to authenticated using (public.is_admin());
 
 -- ---------------------------------------------------------------------
 -- 10. Troubleshooting note (not executable): if any of the above
