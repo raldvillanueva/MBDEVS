@@ -62,7 +62,6 @@ export default function Sidebar() {
     { to: '/summary', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/field-orders', icon: ClipboardList, label: 'Field Orders' },
     { to: '/pending-records', icon: Clock, label: 'Pending Records', badge: pendingCount },
-    { to: '/new-work-orders', icon: ClipboardList, label: 'New Work Orders' },
     { to: '/archived-work-orders', icon: Archive, label: 'Archived Work Orders' },
     ...(role === 'admin'
       ? [{ to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }]

@@ -4,7 +4,6 @@ import Sectors from './pages/Sectors'
 import SectorPlaceholder from './pages/SectorPlaceholder'
 import Dashboard from './pages/Dashboard'
 import FieldOrders from './pages/FieldOrders'
-import NewWorkOrders from './pages/NewWorkOrders'
 import PendingRecords from './pages/PendingRecords'
 import ArchivedWorkOrders from './pages/ArchivedWorkOrders'
 import AddRecord from './pages/AddRecord'
@@ -36,7 +35,6 @@ export default function App() {
               <Route path="sectors/:sector" element={<SectorPlaceholder />} />
               <Route path="summary" element={<Dashboard />} />
               <Route path="field-orders" element={<FieldOrders />} />
-              <Route path="new-work-orders" element={<NewWorkOrders />} />
               <Route path="field-orders/add" element={<AdminRoute><AddRecord /></AdminRoute>} />
               <Route path="field-orders/edit/:id" element={<AdminRoute><EditRecord /></AdminRoute>} />
               <Route path="pending-records" element={<PendingRecords />} />

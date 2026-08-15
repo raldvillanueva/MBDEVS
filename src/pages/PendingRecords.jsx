@@ -152,7 +152,7 @@ export default function PendingRecords() {
     setSavingToFO(true)
     setSaveError('')
     const payload = savePayload()
-    const { error } = await supabase.from('new_work_orders').insert([payload])
+    const { error } = await supabase.from('field_orders').insert([payload])
     if (error) { setSaveError(friendlySaveError(error)); setSavingToFO(false); return }
     await supabase.from('pending_orders').delete().eq('id', editRow.id)
     setSavingToFO(false)
@@ -210,12 +210,12 @@ async function bulkDelete() {
   })
 }
 
-async function sendSelectedToNewWork() {
+async function sendSelectedToFieldOrders() {
   if (selectedRows.length === 0) return
   const selected = pending.filter(row => selectedRows.includes(row.id))
   setBulkAction('send')
   setPageError('')
-  const { error: insertError } = await supabase.from('new_work_orders').insert(selected.map(toPayload))
+  const { error: insertError } = await supabase.from('field_orders').insert(selected.map(toPayload))
   if (insertError) { setPageError(friendlySaveError(insertError)); setBulkAction(null); return }
   const { error: deleteError } = await supabase.from('pending_orders').delete().in('id', selectedRows)
   if (deleteError) setPageError('The selected records were sent, but some could not be removed from Pending. Please refresh the page.')
@@ -250,7 +250,7 @@ async function sendSelectedToNewWork() {
           {isAdmin && selectedRows.length > 0 && (
   <>
     <button
-      onClick={sendSelectedToNewWork}
+      onClick={sendSelectedToFieldOrders}
       disabled={!!bulkAction}
       className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
     >
@@ -401,7 +401,7 @@ async function sendSelectedToNewWork() {
                       className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors"
                     >
                       <CheckCircle size={13} />
-                      {savingToFO ? 'Saving…' : 'Send to New Work'}
+                      {savingToFO ? 'Saving…' : 'Send to Field Orders'}
                     </button>
                     <button
                       onClick={updatePending}
