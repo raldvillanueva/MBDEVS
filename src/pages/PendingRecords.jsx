@@ -123,6 +123,13 @@ export default function PendingRecords() {
 
   function closeEdit() { setEditRow(null); setEditForm(null) }
   function sf(field, value) { setEditForm(prev => ({ ...prev, [field]: value })) }
+
+  useEffect(() => {
+    if (!editRow) return
+    function onKeyDown(e) { if (e.key === 'Escape') closeEdit() }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [editRow])
   function toPayload(record) {
     const { id, created_at, ...rest } = record
     return {
@@ -381,11 +388,14 @@ async function sendSelectedToFieldOrders() {
         </div>
       </div>
 
-      {/* Edit Drawer */}
+      {/* Edit Modal */}
       {editRow && editForm && (
         <>
-          <div className="fixed inset-0 bg-black/20 z-40" onClick={closeEdit} />
-          <div className="fixed right-0 top-0 h-full w-[500px] bg-white shadow-2xl z-50 flex flex-col">
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={closeEdit} />
+          {/* pointer-events-none lets clicks outside the card fall through to
+              the backdrop above, which closes the modal. */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div className="pointer-events-auto flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
 
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
               <div>
@@ -602,6 +612,7 @@ async function sendSelectedToFieldOrders() {
               )}
 
             </div>
+          </div>
           </div>
         </>
       )}
