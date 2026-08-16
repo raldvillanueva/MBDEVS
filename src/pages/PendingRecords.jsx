@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { X, Save, CheckCircle, Search } from 'lucide-react'
+import { X, Save, CheckCircle, Search, Info } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
 const STATUS_CREW_OPTIONS = ['FOR ASSIGN', 'ASSIGNED', 'REASSIGN','CANCEL', 'CANCEL-EMC', 'FC CANCEL', 'FIELD COMPLETED', 'REVISITED FIELD COM.', 'REVISITED CANCEL']
@@ -26,10 +26,15 @@ const EMPTY_FORM = {
 
 const iCls = 'w-full px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
 
-function PF({ label, children, span2 }) {
+// Every field on a pending record has to be filled in before it moves on to
+// Field Orders — Remarks is the only optional one, so it opts out explicitly.
+function PF({ label, children, span2, optional }) {
   return (
     <div className={span2 ? 'col-span-2' : ''}>
-      <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{label}</label>
+      <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+        {label}
+        {!optional && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
       {children}
     </div>
   )
@@ -435,6 +440,14 @@ async function sendSelectedToFieldOrders() {
 
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-6">
 
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <p>
+                  Fields marked <span className="font-bold text-red-500">*</span> must be filled in
+                  before this record is sent to Field Orders. Only <strong>Remarks</strong> is optional.
+                </p>
+              </div>
+
               <fieldset disabled={!isAdmin} className="space-y-6 border-0 p-0 m-0 min-w-0">
 
               <PS title="Main Information">
@@ -593,7 +606,7 @@ async function sendSelectedToFieldOrders() {
                     <span className="text-sm text-slate-600">Checked</span>
                   </label>
                 </PF>
-                <PF label="Remarks" span2>
+                <PF label="Remarks" span2 optional>
                   <textarea value={editForm.remarks} onChange={e => sf('remarks', e.target.value)} rows={3} className={`${iCls} resize-none`} />
                 </PF>
               </PS>
