@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
   ClipboardList, CheckCircle2, XCircle, Clock,
-  PackageCheck, Layers, AlertTriangle, Calendar, X
+  PackageCheck, Layers, AlertTriangle, Calendar, X, RotateCcw
 } from 'lucide-react'
 import { isOverdueBy } from '../lib/aging'
 
@@ -152,6 +152,7 @@ export default function Dashboard() {
   const pendingTasks = useMemo(() => rows.filter(isPendingTask), [rows])
   const todo = pendingTasks.slice(0, 8)
   const isFiltered = !!(dateFrom || dateTo)
+  const isDefaultRange = dateFrom === YEAR_START && dateTo === TODAY
 
   if (loading) {
     return (
@@ -192,13 +193,24 @@ export default function Dashboard() {
             {isFiltered && (
               <button
                 onClick={() => { setDateFrom(''); setDateTo('') }}
-                title="Clear date filter"
+                title="Clear date filter (show all time)"
                 className="ml-0.5 rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
               >
                 <X size={14} />
               </button>
             )}
           </div>
+
+          {!isDefaultRange && (
+            <button
+              onClick={() => { setDateFrom(YEAR_START); setDateTo(TODAY) }}
+              title={`Back to ${YEAR_START} – ${TODAY}`}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
+            >
+              <RotateCcw size={13} />
+              This year
+            </button>
+          )}
 
           {isFiltered && (
             <span className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
