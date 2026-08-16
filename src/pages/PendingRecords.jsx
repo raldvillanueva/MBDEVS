@@ -51,6 +51,40 @@ function PS({ title, children }) {
   )
 }
 
+// Fields that must be filled before a pending record can move to Field Orders.
+// Checkboxes are excluded (a checkbox always has a value) and Remarks is
+// optional. The rest follow whichever sections the chosen FO Action shows, so
+// a record is never blocked on a field it isn't being asked for.
+function requiredKeys(form) {
+  const keys = [
+    'field_order_no', 'fo_action', 'service_number', 'status_crew',
+    'date_assign', 'date_executed', 'type_of_meter', 'job_description',
+    'crew_name', 'location',
+    'installed_seal',
+    'fo_type', 'billed_amount', 'for_batch', 'date_returned', 'crew_payrol', 'pluscode',
+  ]
+  if (form.fo_action !== 'Energized FO') {
+    keys.push(
+      'remove_meter', 'r_serial_number', 'demand_seal_aerolock',
+      'removed_seal', 'cabinet_seal_remove', 'reading_kwh',
+    )
+  }
+  if (form.fo_action !== 'Retirement FO') {
+    keys.push(
+      'ins_meter', 'ins_serial_number', 'demand_seal_installed', 'cabinet_seal_installed',
+      'tln_tag', 'pole_tag', 'booba_number', 'mdltr_no', 'aging', 'witness_date',
+    )
+  }
+  return keys
+}
+
+function findMissing(form) {
+  return requiredKeys(form).filter(key => {
+    const value = form[key]
+    return value === '' || value === null || value === undefined
+  })
+}
+
 function friendlySaveError(error) {
   const message = error?.message?.toLowerCase() || ''
 
@@ -83,6 +117,9 @@ export default function PendingRecords() {
   const [selectedRows, setSelectedRows] = useState([])
   const [bulkAction, setBulkAction] = useState(null)
   const [pageError, setPageError] = useState('')
+  const [missing, setMissing] = useState([])
+
+  const cls = key => (missing.includes(key) ? `${iCls} !border-red-500 !bg-red-50` : iCls)
 
   const filtered = pending.filter(r => {
     if (!search) return true
@@ -124,10 +161,16 @@ export default function PendingRecords() {
     for (const k of Object.keys(EMPTY_FORM)) f[k] = row[k] ?? EMPTY_FORM[k]
     setEditForm(f)
     setSaveError('')
+    setMissing([])
   }
 
-  function closeEdit() { setEditRow(null); setEditForm(null) }
-  function sf(field, value) { setEditForm(prev => ({ ...prev, [field]: value })) }
+  function closeEdit() { setEditRow(null); setEditForm(null); setMissing([]) }
+
+  function sf(field, value) {
+    setEditForm(prev => ({ ...prev, [field]: value }))
+    // Clear the field's red highlight as soon as it is being filled in.
+    setMissing(prev => (prev.includes(field) ? prev.filter(key => key !== field) : prev))
+  }
 
   useEffect(() => {
     if (!editRow) return
@@ -161,6 +204,17 @@ export default function PendingRecords() {
   }
 
   async function saveToFieldOrders() {
+    const gaps = findMissing(editForm)
+    if (gaps.length > 0) {
+      setMissing(gaps)
+      setSaveError(
+        `${gaps.length} required field${gaps.length > 1 ? 's are' : ' is'} still empty. ` +
+        'Fill in everything marked in red before sending this record to Field Orders.'
+      )
+      return
+    }
+
+    setMissing([])
     setSavingToFO(true)
     setSaveError('')
     const payload = savePayload()
@@ -225,6 +279,18 @@ async function bulkDelete() {
 async function sendSelectedToFieldOrders() {
   if (selectedRows.length === 0) return
   const selected = pending.filter(row => selectedRows.includes(row.id))
+
+  // Same completeness rule as the single-record send, so bulk cannot bypass it.
+  const incomplete = selected.filter(row => findMissing({ ...EMPTY_FORM, ...row }).length > 0)
+  if (incomplete.length > 0) {
+    setPageError(
+      `${incomplete.length} of the selected record${incomplete.length > 1 ? 's are' : ' is'} incomplete ` +
+      `(${incomplete.map(row => row.field_order_no || 'no FO#').join(', ')}). ` +
+      'Open each one and fill in every required field before sending.'
+    )
+    return
+  }
+
   setBulkAction('send')
   setPageError('')
   const { error: insertError } = await supabase.from('field_orders').insert(selected.map(toPayload))
@@ -452,49 +518,49 @@ async function sendSelectedToFieldOrders() {
 
               <PS title="Main Information">
                 <PF label="Field Order No.">
-                  <input value={editForm.field_order_no} onChange={e => sf('field_order_no', e.target.value)} className={iCls} />
+                  <input value={editForm.field_order_no} onChange={e => sf('field_order_no', e.target.value)} className={cls('field_order_no')} />
                 </PF>
                 <PF label="FO Action">
-                  <select value={editForm.fo_action} onChange={e => sf('fo_action', e.target.value)} className={iCls}>
+                  <select value={editForm.fo_action} onChange={e => sf('fo_action', e.target.value)} className={cls('fo_action')}>
                     <option value="">— Select —</option>
                     {FO_ACTION_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Service ID Number">
-                  <input value={editForm.service_number} onChange={e => sf('service_number', e.target.value)} className={iCls} />
+                  <input value={editForm.service_number} onChange={e => sf('service_number', e.target.value)} className={cls('service_number')} />
                 </PF>
                 <PF label="Status Crew">
-                  <select value={editForm.status_crew} onChange={e => sf('status_crew', e.target.value)} className={iCls}>
+                  <select value={editForm.status_crew} onChange={e => sf('status_crew', e.target.value)} className={cls('status_crew')}>
                     <option value="">— Select —</option>
                     {STATUS_CREW_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Date Assign">
-                  <input type="date" value={editForm.date_assign} onChange={e => sf('date_assign', e.target.value)} className={iCls} />
+                  <input type="date" value={editForm.date_assign} onChange={e => sf('date_assign', e.target.value)} className={cls('date_assign')} />
                 </PF>
                 <PF label="Date Execution">
-                  <input type="date" value={editForm.date_executed} onChange={e => sf('date_executed', e.target.value)} className={iCls} />
+                  <input type="date" value={editForm.date_executed} onChange={e => sf('date_executed', e.target.value)} className={cls('date_executed')} />
                 </PF>
                 <PF label="Type of Meter">
-                  <select value={editForm.type_of_meter} onChange={e => sf('type_of_meter', e.target.value)} className={iCls}>
+                  <select value={editForm.type_of_meter} onChange={e => sf('type_of_meter', e.target.value)} className={cls('type_of_meter')}>
                     <option value="">— Select —</option>
                     {TYPE_OF_METER_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF> 
                 <PF label="Job Description">
-                  <select value={editForm.job_description} onChange={e => sf('job_description', e.target.value)} className={iCls}>
+                  <select value={editForm.job_description} onChange={e => sf('job_description', e.target.value)} className={cls('job_description')}>
                     <option value="">— Select —</option>
                     {JOB_DESCRIPTION_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Crew Name">
-                  <select value={editForm.crew_name} onChange={e => sf('crew_name', e.target.value)} className={iCls}>
+                  <select value={editForm.crew_name} onChange={e => sf('crew_name', e.target.value)} className={cls('crew_name')}>
                     <option value="">— Select —</option>
                     {CREW_NAME_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Location" span2>
-                  <input value={editForm.location} onChange={e => sf('location', e.target.value)} className={iCls} />
+                  <input value={editForm.location} onChange={e => sf('location', e.target.value)} className={cls('location')} />
                 </PF>
                 <PF label="For Check">
                   <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
@@ -507,22 +573,22 @@ async function sendSelectedToFieldOrders() {
               {showRemoveMeterSection && (
               <PS title="Remove Meter">
                 <PF label="Remove Meter No.">
-                  <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} className={iCls} />
+                  <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} className={cls('remove_meter')} />
                 </PF>
                 <PF label="R. Serial Number">
-                  <input value={editForm.r_serial_number} onChange={e => sf('r_serial_number', e.target.value)} className={iCls} />
+                  <input value={editForm.r_serial_number} onChange={e => sf('r_serial_number', e.target.value)} className={cls('r_serial_number')} />
                 </PF>
                 <PF label="Demand Seal Aerolock">
-                  <input value={editForm.demand_seal_aerolock} onChange={e => sf('demand_seal_aerolock', e.target.value)} className={iCls} />
+                  <input value={editForm.demand_seal_aerolock} onChange={e => sf('demand_seal_aerolock', e.target.value)} className={cls('demand_seal_aerolock')} />
                 </PF>
                 <PF label="Removed Seal">
-                  <input value={editForm.removed_seal} onChange={e => sf('removed_seal', e.target.value)} className={iCls} />
+                  <input value={editForm.removed_seal} onChange={e => sf('removed_seal', e.target.value)} className={cls('removed_seal')} />
                 </PF>
                 <PF label="Cabinet Seal (Remove)">
-                  <input value={editForm.cabinet_seal_remove} onChange={e => sf('cabinet_seal_remove', e.target.value)} className={iCls} />
+                  <input value={editForm.cabinet_seal_remove} onChange={e => sf('cabinet_seal_remove', e.target.value)} className={cls('cabinet_seal_remove')} />
                 </PF>
                 <PF label="Reading (kWh)">
-                  <input value={editForm.reading_kwh} onChange={e => sf('reading_kwh', e.target.value)} className={iCls} />
+                  <input value={editForm.reading_kwh} onChange={e => sf('reading_kwh', e.target.value)} className={cls('reading_kwh')} />
                 </PF>
               </PS>
               )}
@@ -532,41 +598,41 @@ async function sendSelectedToFieldOrders() {
                 {showInstalledMeterFields && (
                   <>
                     <PF label="Installed Meter No.">
-                      <input value={editForm.ins_meter} onChange={e => sf('ins_meter', e.target.value)} className={iCls} />
+                      <input value={editForm.ins_meter} onChange={e => sf('ins_meter', e.target.value)} className={cls('ins_meter')} />
                     </PF>
                     <PF label="Serial Number">
-                      <input value={editForm.ins_serial_number} onChange={e => sf('ins_serial_number', e.target.value)} className={iCls} />
+                      <input value={editForm.ins_serial_number} onChange={e => sf('ins_serial_number', e.target.value)} className={cls('ins_serial_number')} />
                     </PF>
                     <PF label="Demand Seal (5)">
-                      <input value={editForm.demand_seal_installed} onChange={e => sf('demand_seal_installed', e.target.value)} className={iCls} />
+                      <input value={editForm.demand_seal_installed} onChange={e => sf('demand_seal_installed', e.target.value)} className={cls('demand_seal_installed')} />
                     </PF>
                   </>
                 )}
                 <PF label="Installed Seal (1)">
-                  <input value={editForm.installed_seal} onChange={e => sf('installed_seal', e.target.value)} className={iCls} />
+                  <input value={editForm.installed_seal} onChange={e => sf('installed_seal', e.target.value)} className={cls('installed_seal')} />
                 </PF>
                 {showInstalledMeterFields && (
                   <>
                     <PF label="Cabinet Seal (2)">
-                      <input value={editForm.cabinet_seal_installed} onChange={e => sf('cabinet_seal_installed', e.target.value)} className={iCls} />
+                      <input value={editForm.cabinet_seal_installed} onChange={e => sf('cabinet_seal_installed', e.target.value)} className={cls('cabinet_seal_installed')} />
                     </PF>
                     <PF label="TLN Tag">
-                      <input value={editForm.tln_tag} onChange={e => sf('tln_tag', e.target.value)} className={iCls} />
+                      <input value={editForm.tln_tag} onChange={e => sf('tln_tag', e.target.value)} className={cls('tln_tag')} />
                     </PF>
                     <PF label="Pole Tag">
-                      <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} className={iCls} />
+                      <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} className={cls('pole_tag')} />
                     </PF>
                     <PF label="Booba Number">
-                      <input value={editForm.booba_number} onChange={e => sf('booba_number', e.target.value)} className={iCls} />
+                      <input value={editForm.booba_number} onChange={e => sf('booba_number', e.target.value)} className={cls('booba_number')} />
                     </PF>
                     <PF label="MDLTR No.">
-                      <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} className={iCls} />
+                      <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} className={cls('mdltr_no')} />
                     </PF>
                     <PF label="Aging (days)">
-                      <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={iCls} />
+                      <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={cls('aging')} />
                     </PF>
                     <PF label="Witness Date">
-                      <input type="date" value={editForm.witness_date} onChange={e => sf('witness_date', e.target.value)} className={iCls} />
+                      <input type="date" value={editForm.witness_date} onChange={e => sf('witness_date', e.target.value)} className={cls('witness_date')} />
                     </PF>
                   </>
                 )}
@@ -574,31 +640,31 @@ async function sendSelectedToFieldOrders() {
 
               <PS title="Remarks & Batch">
                 <PF label="FO Type">
-                  <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} className={iCls}>
+                  <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} className={cls('fo_type')}>
                     <option value="">— Select —</option>
                     {FO_TYPE_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Billed Amount (₱)">
-                  <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} className={iCls}>
+                  <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} className={cls('billed_amount')}>
                     <option value="">— Select —</option>
                     {BILLED_AMOUNT_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="For Batch">
-                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={iCls}>
+                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={cls('for_batch')}>
                     <option value="">— Select —</option>
                     {BATCH_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Date Returned">
-                  <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} className={iCls} />
+                  <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} className={cls('date_returned')} />
                 </PF>
                 <PF label="Crew Payrol (₱)">
-                  <input type="number" step="0.01" value={editForm.crew_payrol} onChange={e => sf('crew_payrol', e.target.value)} className={iCls} />
+                  <input type="number" step="0.01" value={editForm.crew_payrol} onChange={e => sf('crew_payrol', e.target.value)} className={cls('crew_payrol')} />
                 </PF>
                 <PF label="Plus Code">
-                  <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} className={iCls} />
+                  <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} className={cls('pluscode')} />
                 </PF>
                 <PF label="MFLT Checklist">
                   <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
