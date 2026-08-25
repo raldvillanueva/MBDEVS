@@ -134,12 +134,16 @@ export default function Dashboard() {
     fetchData()
   }, [])
 
-  // On the MBDEVCO rollup the user picks a sector; everywhere else the page
-  // already shows a single sector's data.
+  // Which sector's records this page is summarising. On the MBDEVCO rollup the
+  // user picks it ('all' means every sector); anywhere else it is the sector
+  // that was chosen at sign-in, so e.g. Rizal shows Rizal's records only and
+  // never an all-sector total.
+  const scope = isSummaryOnly ? summarySector : sector
+
   const sectorRows = useMemo(() => {
-    if (!isSummaryOnly || summarySector === 'all') return rows
-    return rows.filter(row => rowSector(row) === summarySector)
-  }, [rows, isSummaryOnly, summarySector])
+    if (scope === 'all' || !scope) return rows
+    return rows.filter(row => rowSector(row) === scope)
+  }, [rows, scope])
 
   // date_executed is a plain "YYYY-MM-DD" string, so the range check is a
   // direct string comparison against the date inputs (same format).
@@ -266,11 +270,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {isSummaryOnly && sectorRows.length === 0 && (
+      {scope !== 'all' && sectorRows.length === 0 && (
         <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
           No records for{' '}
           <strong className="font-semibold text-slate-700">
-            {SUMMARY_SECTORS.find(option => option.key === summarySector)?.label}
+            {SUMMARY_SECTORS.find(option => option.key === scope)?.label || scope}
           </strong>{' '}
           yet — every figure below is zero.
         </div>
