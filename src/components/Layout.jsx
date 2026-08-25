@@ -10,6 +10,16 @@ export default function Layout() {
     return <Navigate to="/sectors" replace />
   }
 
+  // MBDEVCO is a summary-only sector: keep it on the dashboard so the
+  // data-entry pages cannot be reached by typing a URL.
+  if (
+    sector === 'mbdevco' &&
+    location.pathname !== '/summary' &&
+    !location.pathname.startsWith('/sectors')
+  ) {
+    return <Navigate to="/summary" replace />
+  }
+
   return (
     <div className="flex h-screen bg-[#F4F4F4]">
       <Sidebar />

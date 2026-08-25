@@ -58,7 +58,7 @@ export default function Sidebar() {
     return () => supabase.removeChannel(channel)
   }, [role])
 
-  const navItems = sector === 'rizal' ? [
+  const rizalNav = [
     { to: '/summary', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/field-orders', icon: ClipboardList, label: 'Field Orders' },
     { to: '/pending-records', icon: Clock, label: 'Pending Records', badge: pendingCount },
@@ -66,7 +66,14 @@ export default function Sidebar() {
     ...(role === 'admin'
       ? [{ to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }]
       : []),
-  ] : []
+  ]
+
+  // MBDEVCO is a read-only rollup across all sectors: Dashboard only, no
+  // data-entry or record-management tabs.
+  const navItems =
+    sector === 'rizal' ? rizalNav
+    : sector === 'mbdevco' ? [{ to: '/summary', icon: LayoutDashboard, label: 'Dashboard' }]
+    : []
 
   return (
     <aside className="fixed left-0 top-0 z-30 flex min-h-screen w-64 flex-col bg-[#2E2E2E] text-white shadow-xl">

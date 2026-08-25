@@ -6,6 +6,7 @@ import {
   PackageCheck, Layers, AlertTriangle, Calendar, X, RotateCcw
 } from 'lucide-react'
 import { isOverdueBy } from '../lib/aging'
+import { useSector } from '../lib/SectorContext'
 
 function Section({ title, children }) {
   return (
@@ -92,6 +93,9 @@ export default function Dashboard() {
   const [dateFrom, setDateFrom] = useState(YEAR_START)
   const [dateTo, setDateTo] = useState(TODAY)
   const navigate = useNavigate()
+  const { sector } = useSector()
+  // MBDEVCO sees a read-only rollup: no links out to the record pages.
+  const isSummaryOnly = sector === 'mbdevco'
 
   useEffect(() => {
     async function fetchData() {
@@ -167,8 +171,14 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">Dashboard</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Overview of all field order activity</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800">
+            {isSummaryOnly ? 'MBDEVCO Summary' : 'Dashboard'}
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {isSummaryOnly
+              ? 'Read-only overview across all sectors'
+              : 'Overview of all field order activity'}
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -283,12 +293,14 @@ export default function Dashboard() {
               </div>
               <p className="mt-0.5 text-xs text-slate-400">Not yet completed or cancelled</p>
             </div>
-            <button
-              onClick={() => navigate('/field-orders')}
-              className="text-sm font-medium text-blue-600 hover:underline"
-            >
-              View all
-            </button>
+            {!isSummaryOnly && (
+              <button
+                onClick={() => navigate('/field-orders')}
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
+                View all
+              </button>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

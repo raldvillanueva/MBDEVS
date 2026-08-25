@@ -48,7 +48,7 @@ export default function Sectors() {
         ))}
       </div>
 
-      <SectorBox label="MBDEVCO" icon={Building2} onClick={() => selectSector('mbdevco', '/sectors/mbdevco')} wide />
+      <SectorBox label="MBDEVCO" icon={Building2} onClick={() => selectSector('mbdevco', '/summary')} wide />
     </div>
   )
 }
