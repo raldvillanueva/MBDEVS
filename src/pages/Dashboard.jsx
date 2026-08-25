@@ -139,6 +139,9 @@ export default function Dashboard() {
   // that was chosen at sign-in, so e.g. Rizal shows Rizal's records only and
   // never an all-sector total.
   const scope = isSummaryOnly ? summarySector : sector
+  const scopeLabel =
+    SUMMARY_SECTORS.find(option => option.key === scope)?.label ||
+    (scope ? scope.charAt(0).toUpperCase() + scope.slice(1) : 'All sectors')
 
   const sectorRows = useMemo(() => {
     if (scope === 'all' || !scope) return rows
@@ -199,13 +202,22 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-            {isSummaryOnly ? 'MBDEVCO Summary' : 'Dashboard'}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-800">
+              {isSummaryOnly ? 'MBDEVCO Summary' : 'Dashboard'}
+            </h1>
+            {/* Always name the sector being shown — with an "All sectors"
+                filter the figures alone give no clue what they cover. */}
+            <span className="rounded-full bg-[#D89B00]/15 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-[#8A6400]">
+              {scopeLabel}
+            </span>
+          </div>
           <p className="mt-0.5 text-sm text-slate-500">
             {isSummaryOnly
-              ? 'Read-only overview across all sectors'
-              : 'Overview of all field order activity'}
+              ? scope === 'all'
+                ? 'Read-only overview — every sector combined'
+                : `Read-only overview — ${scopeLabel} sector only`
+              : `Field order activity for ${scopeLabel}`}
           </p>
         </div>
 
