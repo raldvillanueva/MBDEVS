@@ -103,6 +103,40 @@ function rowSector(row) {
 const YEAR_START = `${new Date().getFullYear()}-01-01`
 const TODAY = toISODate(new Date())
 
+// date_executed is a plain "YYYY-MM-DD" string, so the range check is a direct
+// string comparison against the date inputs (same format).
+function inDateRange(rows, from, to) {
+  if (!from && !to) return rows
+  return rows.filter(row => {
+    if (!row.date_executed) return false
+    if (from && row.date_executed < from) return false
+    if (to && row.date_executed > to) return false
+    return true
+  })
+}
+
+function computeStats(list) {
+  const status = row => row.status_crew?.toUpperCase() || ''
+  const action = row => row.fo_action?.toUpperCase() || ''
+
+  return {
+    total: list.length,
+    assigned: list.filter(r => ['ASSIGNED', 'REASSIGN'].includes(status(r))).length,
+    fieldComplete: list.filter(r => status(r).includes('FIELD')).length,
+    cancelled: list.filter(r => status(r).includes('CANCEL')).length,
+    totalBilled: list.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0),
+
+    overdue10: list.filter(r => !r.archived_at && isOverdueBy(r, 10)).length,
+    overdue21: list.filter(r => !r.archived_at && isOverdueBy(r, 21)).length,
+    batched: list.filter(r => r.for_batch?.toUpperCase().includes('ALREADY')).length,
+
+    replacement: list.filter(r => action(r) === 'REPLACE FO').length,
+    retirement: list.filter(r => action(r) === 'RETIREMENT FO').length,
+    energize: list.filter(r => action(r) === 'ENERGIZED FO').length,
+    others: list.filter(r => action(r) === 'OTHERS').length,
+  }
+}
+
 export default function Dashboard() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -148,38 +182,25 @@ export default function Dashboard() {
     return rows.filter(row => rowSector(row) === scope)
   }, [rows, scope])
 
-  // date_executed is a plain "YYYY-MM-DD" string, so the range check is a
-  // direct string comparison against the date inputs (same format).
-  const filtered = useMemo(() => {
-    if (!dateFrom && !dateTo) return sectorRows
-    return sectorRows.filter(row => {
-      if (!row.date_executed) return false
-      if (dateFrom && row.date_executed < dateFrom) return false
-      if (dateTo && row.date_executed > dateTo) return false
-      return true
-    })
-  }, [sectorRows, dateFrom, dateTo])
+  const filtered = useMemo(
+    () => inDateRange(sectorRows, dateFrom, dateTo),
+    [sectorRows, dateFrom, dateTo],
+  )
 
-  const stats = useMemo(() => {
-    const status = row => row.status_crew?.toUpperCase() || ''
-    const action = row => row.fo_action?.toUpperCase() || ''
+  const stats = useMemo(() => computeStats(filtered), [filtered])
 
-    return {
-      assigned: filtered.filter(r => ['ASSIGNED', 'REASSIGN'].includes(status(r))).length,
-      fieldComplete: filtered.filter(r => status(r).includes('FIELD')).length,
-      cancelled: filtered.filter(r => status(r).includes('CANCEL')).length,
-      totalBilled: filtered.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0),
-
-      overdue10: filtered.filter(r => !r.archived_at && isOverdueBy(r, 10)).length,
-      overdue21: filtered.filter(r => !r.archived_at && isOverdueBy(r, 21)).length,
-      batched: filtered.filter(r => r.for_batch?.toUpperCase().includes('ALREADY')).length,
-
-      replacement: filtered.filter(r => action(r) === 'REPLACE FO').length,
-      retirement: filtered.filter(r => action(r) === 'RETIREMENT FO').length,
-      energize: filtered.filter(r => action(r) === 'ENERGIZED FO').length,
-      others: filtered.filter(r => action(r) === 'OTHERS').length,
-    }
-  }, [filtered])
+  // Per-sector figures for the breakdown table. Date-filtered like everything
+  // else, but never sector-filtered, so each sector is always listed — a sector
+  // with no records shows zeros rather than disappearing.
+  const bySector = useMemo(() => {
+    const dated = inDateRange(rows, dateFrom, dateTo)
+    return SUMMARY_SECTORS
+      .filter(option => option.key !== 'all')
+      .map(option => ({
+        ...option,
+        stats: computeStats(dated.filter(row => rowSector(row) === option.key)),
+      }))
+  }, [rows, dateFrom, dateTo])
 
   // Deliberately built from every row, not the date-filtered set: a pending
   // task has not been executed yet, so it has no date_executed and any
@@ -336,6 +357,65 @@ export default function Dashboard() {
       <Section title="By FO Action">
         <FoActionPanel stats={stats} />
       </Section>
+
+      {isSummaryOnly && (
+      <Section title="By sector">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-2.5 text-left font-medium">Sector</th>
+                <th className="px-4 py-2.5 text-right font-medium">Records</th>
+                <th className="px-4 py-2.5 text-right font-medium">Assigned</th>
+                <th className="px-4 py-2.5 text-right font-medium">Field Complete</th>
+                <th className="px-4 py-2.5 text-right font-medium">Cancelled</th>
+                <th className="px-4 py-2.5 text-right font-medium">Overdue (&gt;21)</th>
+                <th className="px-4 py-2.5 text-right font-medium">Total Billed</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {bySector.map(entry => {
+                const isEmpty = entry.stats.total === 0
+                const isPicked = scope === entry.key
+                return (
+                  <tr
+                    key={entry.key}
+                    className={`transition-colors ${isPicked ? 'bg-amber-50' : 'hover:bg-slate-50'}`}
+                  >
+                    <td className="px-4 py-2.5 font-medium text-slate-700">
+                      {entry.label}
+                      {isPicked && (
+                        <span className="ml-2 rounded-full bg-[#D89B00]/15 px-2 py-0.5 text-[10px] font-bold uppercase text-[#8A6400]">
+                          Showing
+                        </span>
+                      )}
+                    </td>
+                    {isEmpty ? (
+                      <td colSpan={6} className="px-4 py-2.5 text-right text-slate-400">
+                        No records
+                      </td>
+                    ) : (
+                      <>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">{entry.stats.total}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.assigned}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.fieldComplete}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.cancelled}</td>
+                        <td className={`px-4 py-2.5 text-right tabular-nums ${entry.stats.overdue21 > 0 ? 'font-semibold text-red-600' : 'text-slate-600'}`}>
+                          {entry.stats.overdue21}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
+                          {`₱${entry.stats.totalBilled.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+      )}
 
       {!isSummaryOnly && (
       <Section title="To-Do List">
