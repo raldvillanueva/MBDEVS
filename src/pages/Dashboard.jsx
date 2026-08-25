@@ -84,6 +84,22 @@ function toISODate(date) {
   return `${date.getFullYear()}-${month}-${day}`
 }
 
+const SUMMARY_SECTORS = [
+  { key: 'all', label: 'All sectors' },
+  { key: 'rizal', label: 'Rizal' },
+  { key: 'manila', label: 'Manila' },
+  { key: 'pasig', label: 'Pasig' },
+  { key: 'balintawak', label: 'Balintawak' },
+]
+
+// field_orders has no sector column yet, and every record so far was encoded
+// under Rizal — so a row with no sector counts as Rizal. When a sector column
+// is added, include it in the select below and this filter starts working for
+// the other sectors with no further changes here.
+function rowSector(row) {
+  return (row.sector || 'rizal').toLowerCase()
+}
+
 const YEAR_START = `${new Date().getFullYear()}-01-01`
 const TODAY = toISODate(new Date())
 
@@ -96,6 +112,7 @@ export default function Dashboard() {
   const { sector } = useSector()
   // MBDEVCO sees a read-only rollup: no links out to the record pages.
   const isSummaryOnly = sector === 'mbdevco'
+  const [summarySector, setSummarySector] = useState('all')
 
   useEffect(() => {
     async function fetchData() {
@@ -117,17 +134,24 @@ export default function Dashboard() {
     fetchData()
   }, [])
 
+  // On the MBDEVCO rollup the user picks a sector; everywhere else the page
+  // already shows a single sector's data.
+  const sectorRows = useMemo(() => {
+    if (!isSummaryOnly || summarySector === 'all') return rows
+    return rows.filter(row => rowSector(row) === summarySector)
+  }, [rows, isSummaryOnly, summarySector])
+
   // date_executed is a plain "YYYY-MM-DD" string, so the range check is a
   // direct string comparison against the date inputs (same format).
   const filtered = useMemo(() => {
-    if (!dateFrom && !dateTo) return rows
-    return rows.filter(row => {
+    if (!dateFrom && !dateTo) return sectorRows
+    return sectorRows.filter(row => {
       if (!row.date_executed) return false
       if (dateFrom && row.date_executed < dateFrom) return false
       if (dateTo && row.date_executed > dateTo) return false
       return true
     })
-  }, [rows, dateFrom, dateTo])
+  }, [sectorRows, dateFrom, dateTo])
 
   const stats = useMemo(() => {
     const status = row => row.status_crew?.toUpperCase() || ''
@@ -182,6 +206,18 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          {isSummaryOnly && (
+            <select
+              value={summarySector}
+              onChange={e => setSummarySector(e.target.value)}
+              title="Choose which sector to summarise"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {SUMMARY_SECTORS.map(option => (
+                <option key={option.key} value={option.key}>{option.label}</option>
+              ))}
+            </select>
+          )}
           <div
             title="Filter by date executed"
             className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm"
@@ -224,11 +260,21 @@ export default function Dashboard() {
 
           {isFiltered && (
             <span className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
-              <strong className="font-semibold">{filtered.length}</strong> of {rows.length}
+              <strong className="font-semibold">{filtered.length}</strong> of {sectorRows.length}
             </span>
           )}
         </div>
       </div>
+
+      {isSummaryOnly && sectorRows.length === 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+          No records for{' '}
+          <strong className="font-semibold text-slate-700">
+            {SUMMARY_SECTORS.find(option => option.key === summarySector)?.label}
+          </strong>{' '}
+          yet — every figure below is zero.
+        </div>
+      )}
 
       <Section title="Status">
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -275,6 +321,7 @@ export default function Dashboard() {
         <FoActionPanel stats={stats} />
       </Section>
 
+      {!isSummaryOnly && (
       <Section title="To-Do List">
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
@@ -337,6 +384,7 @@ export default function Dashboard() {
           </div>
         </div>
       </Section>
+      )}
     </div>
   )
 }
