@@ -58,7 +58,10 @@ export default function Sidebar() {
     return () => supabase.removeChannel(channel)
   }, [role])
 
-  const rizalNav = [
+  // Full record-management nav, shared by every sector that has real data
+  // entry (Rizal, Manila, Pasig, Balintawak). All sectors read from the same
+  // shared field_orders/pending_orders tables — no per-sector filtering.
+  const fullNav = [
     { to: '/summary', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/field-orders', icon: ClipboardList, label: 'Field Orders' },
     { to: '/pending-records', icon: Clock, label: 'Pending Records', badge: pendingCount },
@@ -71,7 +74,7 @@ export default function Sidebar() {
   // MBDEVCO is a read-only rollup across all sectors: Dashboard only, no
   // data-entry or record-management tabs.
   const navItems =
-    sector === 'rizal' ? rizalNav
+    ['rizal', 'manila', 'pasig', 'balintawak'].includes(sector) ? fullNav
     : sector === 'mbdevco' ? [{ to: '/summary', icon: LayoutDashboard, label: 'Dashboard' }]
     : []
 

@@ -5,9 +5,9 @@ import logo from '../assets/mb-logo.jpg'
 
 const SECTORS = [
   { label: 'Rizal', key: 'rizal', to: '/summary', icon: MapPin },
-  { label: 'Manila', key: 'manila', to: '/sectors/manila', icon: MapPin },
-  { label: 'Pasig', key: 'pasig', to: '/sectors/pasig', icon: MapPin },
-  { label: 'Balintawak', key: 'balintawak', to: '/sectors/balintawak', icon: MapPin },
+  { label: 'Manila', key: 'manila', to: '/summary', icon: MapPin },
+  { label: 'Pasig', key: 'pasig', to: '/summary', icon: MapPin },
+  { label: 'Balintawak', key: 'balintawak', to: '/summary', icon: MapPin },
 ]
 
 function SectorBox({ label, onClick, icon: Icon, wide }) {
