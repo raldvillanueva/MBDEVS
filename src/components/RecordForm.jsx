@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useSector } from '../lib/SectorContext'
+import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
 import { Save, X } from 'lucide-react'
 import { addPendingOrders } from '../lib/pendingStorage'
 import { useLocation } from 'react-router-dom'
@@ -85,6 +87,9 @@ function SectionTitle({ title }) {
 }
 
 export default function RecordForm({ initialData, recordId, repeatCount }) {
+  const { sector } = useSector()
+  const foTable = fieldOrdersTable(sector)
+  const poTable = pendingOrdersTable(sector)
   const { role } = useAuth()
   const isStaff = role === 'staff'
   const fastFONoRef = useRef(null)
@@ -148,13 +153,13 @@ function text(field) {
 async function saveRecord(payload, recordId) {
   if (recordId) {
     return await supabase
-      .from('field_orders')
+      .from(foTable)
       .update(payload)
       .eq('id', recordId)
   }
 
   return await supabase
-    .from('field_orders')
+    .from(foTable)
     .insert([payload])
 }
 
@@ -197,7 +202,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
   // DUPLICATE CHECKS
   // =========================
   const { data: existingFO } = await supabase
-    .from('field_orders')
+    .from(foTable)
     .select('id')
     .eq('field_order_no', form.field_order_no)
     .maybeSingle()
@@ -211,7 +216,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
   let existingMeter = null
   if (form.ins_meter) {
     const { data } = await supabase
-      .from('field_orders')
+      .from(foTable)
       .select('id')
       .eq('ins_meter', form.ins_meter)
       .maybeSingle()
@@ -254,12 +259,12 @@ if (!isPending) {
 
   if (recordId) {
     result = await supabase
-      .from('field_orders')
+      .from(foTable)
       .update(payload)
       .eq('id', recordId)
   } else {
     result = await supabase
-      .from('field_orders')
+      .from(foTable)
       .insert([payload])
   }
 
@@ -271,7 +276,7 @@ if (!isPending) {
 }
   if (isPending) {
     const { data: existingPending } = await supabase
-      .from('pending_orders')
+      .from(poTable)
       .select('field_order_no, ins_meter')
 
     const dupes = existingPending || []
@@ -289,7 +294,7 @@ if (!isPending) {
     }
 
     const { error: pendingError } = await supabase
-      .from('pending_orders')
+      .from(poTable)
       .insert([payload])
 
     if (pendingError) {

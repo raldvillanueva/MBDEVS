@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useSector } from '../lib/SectorContext'
+import { fieldOrdersTable } from '../lib/sectorTables'
 import RecordForm from '../components/RecordForm'
 
 export default function EditRecord() {
+  const { sector } = useSector()
+  const foTable = fieldOrdersTable(sector)
   const { id } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState(null)
@@ -13,7 +17,7 @@ export default function EditRecord() {
 
   useEffect(() => {
     supabase
-      .from('field_orders')
+      .from(foTable)
       .select('*')
       .eq('id', id)
       .single()
@@ -30,7 +34,7 @@ setIsArchived(!!data.archived_at)
         }
         setLoading(false)
       })
-  }, [id, navigate])
+  }, [foTable, id, navigate])
 
   if (loading) {
     return (

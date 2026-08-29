@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Check, X as XIcon, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { fieldOrdersTable } from '../lib/sectorTables'
 import { useAuth } from '../lib/AuthContext'
 
 const STATUS_TABS = ['pending', 'approved', 'rejected', 'all']
@@ -40,7 +41,9 @@ export default function DeletionRequests() {
     setActingId(request.id)
     setError('')
     if (request.field_order_id) {
-      const { error: deleteError } = await supabase.from('field_orders').delete().eq('id', request.field_order_id)
+      // Older requests predate per-sector tables and are all Rizal's.
+      const table = fieldOrdersTable(request.sector || 'rizal')
+      const { error: deleteError } = await supabase.from(table).delete().eq('id', request.field_order_id)
       if (deleteError) { setError('We could not delete the field order. Please try again.'); setActingId(null); return }
     }
     const { error: updateError } = await supabase.from('deletion_requests').update({

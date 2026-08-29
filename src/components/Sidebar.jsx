@@ -5,6 +5,7 @@ import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
 import { supabase } from '../lib/supabase'
+import { pendingOrdersTable, isDataSector } from '../lib/sectorTables'
 
 const SECTOR_NAMES = { rizal: 'Rizal', manila: 'Manila', pasig: 'Pasig', balintawak: 'Balintawak', mbdevco: 'MBDEVCO' }
 
@@ -29,17 +30,20 @@ export default function Sidebar() {
   }
 
   useEffect(() => {
+    // MBDEVCO owns no tables of its own, so it has nothing to count.
+    if (!isDataSector(sector)) { setPendingCount(0); return }
+    const table = pendingOrdersTable(sector)
     async function fetchPendingCount() {
-      const { count } = await supabase.from('pending_orders').select('id', { count: 'exact', head: true })
+      const { count } = await supabase.from(table).select('id', { count: 'exact', head: true })
       setPendingCount(count || 0)
     }
     fetchPendingCount()
     const channel = supabase
-      .channel('sidebar_pending_count')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_orders' }, fetchPendingCount)
+      .channel(`sidebar_pending_count_${sector}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table }, fetchPendingCount)
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [])
+  }, [sector])
 
   useEffect(() => {
     if (role !== 'admin') { setDeletionCount(0); return }

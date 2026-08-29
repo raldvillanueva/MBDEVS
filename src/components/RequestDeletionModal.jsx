@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useSector } from '../lib/SectorContext'
 import { useAuth } from '../lib/AuthContext'
 
 export default function RequestDeletionModal({ record, onClose, onSubmitted }) {
   const { session, profile } = useAuth()
+  const { sector } = useSector()
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -16,6 +18,9 @@ export default function RequestDeletionModal({ record, onClose, onSubmitted }) {
     const { error: insertError } = await supabase.from('deletion_requests').insert([{
       field_order_id: record.id,
       field_order_no: record.field_order_no,
+      // Records live in per-sector tables, so the approver needs to know which
+      // table to delete from.
+      sector,
       requested_by: session.user.id,
       requested_by_name: profile?.full_name || session.user.email,
       reason: reason.trim(),

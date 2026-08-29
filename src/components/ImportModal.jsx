@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { useSector } from '../lib/SectorContext'
+import { fieldOrdersTable } from '../lib/sectorTables'
 import { X, Upload, CheckCircle } from 'lucide-react'
  
 const DB_FIELDS = [
@@ -152,6 +154,8 @@ function coerce(dbField, raw) {
 }
 
 export default function ImportModal({ onClose, onImported }) {
+  const { sector } = useSector()
+  const foTable = fieldOrdersTable(sector)
   const [step, setStep] = useState('upload')
   const [csvHeaders, setCsvHeaders] = useState([])
   const [csvRows, setCsvRows] = useState([])
@@ -216,7 +220,7 @@ export default function ImportModal({ onClose, onImported }) {
 
     for (let i = 0; i < payloads.length; i += BATCH) {
       const batch = payloads.slice(i, i + BATCH)
-      const { error } = await supabase.from('field_orders').insert(batch)
+      const { error } = await supabase.from(foTable).insert(batch)
       if (error) errors += batch.length
       else done += batch.length
       setProgress({ done: done + errors, total, errors })

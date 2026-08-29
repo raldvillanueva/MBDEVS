@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { useSector } from '../lib/SectorContext'
+import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
 import { X, Save, CheckCircle, Search, Info } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
@@ -102,6 +104,9 @@ function friendlySaveError(error) {
 }
 
 export default function PendingRecords() {
+  const { sector } = useSector()
+  const foTable = fieldOrdersTable(sector)
+  const poTable = pendingOrdersTable(sector)
   const { role } = useAuth()
   const isAdmin = role === 'admin'
   const [pending, setPending] = useState([])
@@ -136,22 +141,22 @@ export default function PendingRecords() {
 
   const fetchPending = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from('pending_orders').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from(poTable).select('*').order('created_at', { ascending: false })
     if (data) {
       setPending(data)
       setSelectedRows(previous => previous.filter(id => data.some(row => row.id === id)))
     }
     setLoading(false)
-  }, [])
+  }, [poTable])
 
   useEffect(() => {
     fetchPending()
     const channel = supabase
-      .channel('pending_records_page')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_orders' }, () => fetchPending())
+      .channel(`pending_records_page_${sector}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: poTable }, () => fetchPending())
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [fetchPending])
+  }, [fetchPending, poTable, sector])
 
   useEffect(() => { setSelectedRows([]) }, [search])
 
@@ -196,7 +201,7 @@ export default function PendingRecords() {
   async function updatePending() {
     setSaving(true)
     setSaveError('')
-    const { error } = await supabase.from('pending_orders').update(savePayload()).eq('id', editRow.id)
+    const { error } = await supabase.from(poTable).update(savePayload()).eq('id', editRow.id)
     setSaving(false)
     if (error) { setSaveError(friendlySaveError(error)); return }
     fetchPending()
@@ -218,9 +223,9 @@ export default function PendingRecords() {
     setSavingToFO(true)
     setSaveError('')
     const payload = savePayload()
-    const { error } = await supabase.from('field_orders').insert([payload])
+    const { error } = await supabase.from(foTable).insert([payload])
     if (error) { setSaveError(friendlySaveError(error)); setSavingToFO(false); return }
-    await supabase.from('pending_orders').delete().eq('id', editRow.id)
+    await supabase.from(poTable).delete().eq('id', editRow.id)
     setSavingToFO(false)
     fetchPending()
     closeEdit()
@@ -230,7 +235,7 @@ export default function PendingRecords() {
     setConfirm({
       message: 'Remove this pending record? This cannot be undone.',
       onConfirm: async () => {
-        await supabase.from('pending_orders').delete().eq('id', id)
+        await supabase.from(poTable).delete().eq('id', id)
         fetchPending()
         setConfirm(null)
         if (editRow?.id === id) closeEdit()
@@ -263,7 +268,7 @@ async function bulkDelete() {
       setBulkAction('delete')
       setPageError('')
       const { error } = await supabase
-        .from('pending_orders')
+        .from(poTable)
         .delete()
         .in('id', selectedRows)
 
@@ -293,9 +298,9 @@ async function sendSelectedToFieldOrders() {
 
   setBulkAction('send')
   setPageError('')
-  const { error: insertError } = await supabase.from('field_orders').insert(selected.map(toPayload))
+  const { error: insertError } = await supabase.from(foTable).insert(selected.map(toPayload))
   if (insertError) { setPageError(friendlySaveError(insertError)); setBulkAction(null); return }
-  const { error: deleteError } = await supabase.from('pending_orders').delete().in('id', selectedRows)
+  const { error: deleteError } = await supabase.from(poTable).delete().in('id', selectedRows)
   if (deleteError) setPageError('The selected records were sent, but some could not be removed from Pending. Please refresh the page.')
   setSelectedRows([])
   await fetchPending()

@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useSector } from '../lib/SectorContext'
+import { fieldOrdersTable } from '../lib/sectorTables'
 import { Plus, Search, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive } from 'lucide-react'
 import ImportModal from '../components/ImportModal'
 import RequestDeletionModal from '../components/RequestDeletionModal'
@@ -138,6 +140,8 @@ const FROZEN_COLS = COLS.slice(0, FROZEN_COL_COUNT)
 const SCROLL_COLS = COLS.slice(FROZEN_COL_COUNT)
 
 export default function FieldOrders() {
+  const { sector } = useSector()
+  const foTable = fieldOrdersTable(sector)
   const { role } = useAuth()
   const isAdmin = role === 'admin'
   const [showDeletionRequest, setShowDeletionRequest] = useState(false)
@@ -181,7 +185,7 @@ function deleteSelected() {
     message: `Delete ${count.toLocaleString()} record${count > 1 ? 's' : ''}? This cannot be undone.`,
     onConfirm: async () => {
       if (selectAllPages) {
-        let q = supabase.from('field_orders').delete().is('archived_at', null)
+        let q = supabase.from(foTable).delete().is('archived_at', null)
         const hasFilters = search || statusFilter !== 'All' || typeOfMeterFilter !== 'All' || jobDescriptionFilter !== 'All' || crewNameFilter !== 'All' || foTypeFilter !== 'All' || billedAmountFilter !== 'All' || batchFilter !== 'All' || dateExecutedFilter || dateAssignFilter
         if (!hasFilters) {
           q = q.neq('id', '00000000-0000-0000-0000-000000000000')
@@ -199,7 +203,7 @@ function deleteSelected() {
         }
         await q
       } else {
-        await supabase.from('field_orders').delete().in('id', selectedRows)
+        await supabase.from(foTable).delete().in('id', selectedRows)
       }
       setSelectedRows([])
       setSelectAllPages(false)
@@ -216,7 +220,7 @@ function archiveSelected() {
     tone: 'archive',
     onConfirm: async () => {
       if (selectAllPages) {
-        let q = supabase.from('field_orders').update({ archived_at: new Date().toISOString() }).is('archived_at', null)
+        let q = supabase.from(foTable).update({ archived_at: new Date().toISOString() }).is('archived_at', null)
         const hasFilters = search || statusFilter !== 'All' || typeOfMeterFilter !== 'All' || jobDescriptionFilter !== 'All' || crewNameFilter !== 'All' || foTypeFilter !== 'All' || billedAmountFilter !== 'All' || batchFilter !== 'All' || dateExecutedFilter || dateAssignFilter
         if (!hasFilters) {
           q = q.neq('id', '00000000-0000-0000-0000-000000000000')
@@ -234,7 +238,7 @@ function archiveSelected() {
         }
         await q
       } else {
-        await supabase.from('field_orders').update({ archived_at: new Date().toISOString() }).in('id', selectedRows)
+        await supabase.from(foTable).update({ archived_at: new Date().toISOString() }).in('id', selectedRows)
       }
       setSelectedRows([])
       setSelectAllPages(false)
@@ -263,7 +267,7 @@ prev.filter(x=>x!==id)
   const fetchRecords = useCallback(async () => {
     setLoading(true)
     let q = supabase
-      .from('field_orders')
+      .from(foTable)
       .select('*', { count: 'exact' })
       .is('archived_at', null)
       .order('seq', { ascending: true, nullsFirst: true })
@@ -292,7 +296,7 @@ prev.filter(x=>x!==id)
     const { data, count, error } = await q
     if (!error) { setRecords(data); setTotal(count) }
     setLoading(false)
-  }, [page, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter, dateAssignFilter, yearFilter, monthFilter])
+  }, [foTable, page, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter, dateAssignFilter, yearFilter, monthFilter])
 
 useEffect(() => { 
   fetchRecords() 
@@ -436,7 +440,7 @@ useEffect(() => {
 
 
 
-  const { error } = await supabase.from('field_orders').update(payload).eq('id', editRow.id)
+  const { error } = await supabase.from(foTable).update(payload).eq('id', editRow.id)
 
 
 
@@ -462,7 +466,7 @@ useEffect(() => {
 }
 
   async function handleDelete(id) {
-    const { error } = await supabase.from('field_orders').delete().eq('id', id)
+    const { error } = await supabase.from(foTable).delete().eq('id', id)
     if (!error) { setDeleteTarget(null); fetchRecords() }
   }
 
@@ -470,7 +474,7 @@ useEffect(() => {
     setSaving(true)
     setSaveError('')
     const { error } = await supabase
-      .from('field_orders')
+      .from(foTable)
       .update({ archived_at: new Date().toISOString() })
       .eq('id', editRow.id)
     setSaving(false)
@@ -531,7 +535,7 @@ useEffect(() => {
     if (selectedRows.length === 0) return
     setExportingSelected(true)
     const { data, error } = await supabase
-      .from('field_orders')
+      .from(foTable)
       .select('*')
       .in('id', selectedRows)
       .order('seq', { ascending: true, nullsFirst: true })

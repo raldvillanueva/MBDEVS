@@ -2,9 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArchiveRestore, Pencil, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useSector } from '../lib/SectorContext'
+import { fieldOrdersTable } from '../lib/sectorTables'
 import { useAuth } from '../lib/AuthContext'
 
 export default function ArchivedWorkOrders() {
+  const { sector } = useSector()
+  const foTable = fieldOrdersTable(sector)
   const { role } = useAuth()
   const isAdmin = role === 'admin'
   const [records, setRecords] = useState([])
@@ -20,7 +24,7 @@ export default function ArchivedWorkOrders() {
     setLoading(true)
     setError('')
     let query = supabase
-      .from('field_orders')
+      .from(foTable)
       .select('*')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
@@ -37,7 +41,7 @@ export default function ArchivedWorkOrders() {
       setSelectedRows(previous => previous.filter(id => (data || []).some(record => record.id === id)))
     }
     setLoading(false)
-  }, [search])
+  }, [foTable, search])
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
   useEffect(() => { setSelectedRows([]) }, [search])
@@ -45,7 +49,7 @@ export default function ArchivedWorkOrders() {
   async function restoreRecord(id) {
     setRestoringId(id)
     const { error: restoreError } = await supabase
-      .from('field_orders')
+      .from(foTable)
       .update({ archived_at: null })
       .eq('id', id)
 
@@ -79,7 +83,7 @@ async function restoreSelected() {
   setBulkRestoring(true)
   setError('')
   const { error } = await supabase
-    .from('field_orders')
+    .from(foTable)
     .update({
       archived_at: null
     })

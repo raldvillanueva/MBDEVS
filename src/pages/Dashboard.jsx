@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { isOverdueBy } from '../lib/aging'
 import { useSector } from '../lib/SectorContext'
+import { DATA_SECTORS, SECTOR_LABELS, fieldOrdersTable, isDataSector } from '../lib/sectorTables'
 
 function Section({ title, children }) {
   return (
@@ -86,18 +87,18 @@ function toISODate(date) {
 
 const SUMMARY_SECTORS = [
   { key: 'all', label: 'All sectors' },
-  { key: 'rizal', label: 'Rizal' },
-  { key: 'manila', label: 'Manila' },
-  { key: 'pasig', label: 'Pasig' },
-  { key: 'balintawak', label: 'Balintawak' },
+  ...DATA_SECTORS.map(key => ({ key, label: SECTOR_LABELS[key] })),
 ]
 
-// field_orders has no sector column yet, and every record so far was encoded
-// under Rizal — so a row with no sector counts as Rizal. When a sector column
-// is added, include it in the select below and this filter starts working for
-// the other sectors with no further changes here.
+const FO_COLUMNS =
+  'status_crew, fo_type, fo_action, for_batch, billed_amount, crew_name, ' +
+  'field_order_no, location, created_at, seq, date_assign, date_executed, ' +
+  'date_returned, archived_at'
+
+// Each sector lives in its own table, so rows are tagged with the table they
+// came from as they are loaded. Nothing infers a sector from row contents.
 function rowSector(row) {
-  return (row.sector || 'rizal').toLowerCase()
+  return row.__sector
 }
 
 const YEAR_START = `${new Date().getFullYear()}-01-01`
@@ -149,24 +150,33 @@ export default function Dashboard() {
   const [summarySector, setSummarySector] = useState('all')
 
   useEffect(() => {
+    // The MBDEVCO rollup reads every sector table; a normal sector reads
+    // only its own. Each row is tagged so the breakdown can group them.
+    const sectorsToLoad = isSummaryOnly
+      ? DATA_SECTORS
+      : isDataSector(sector) ? [sector] : []
+
     async function fetchData() {
-      const { data, error } = await supabase
-        .from('field_orders')
-        .select('status_crew, fo_type, fo_action, for_batch, billed_amount, crew_name, field_order_no, location, created_at, seq, date_assign, date_executed, date_returned, archived_at')
-        .order('seq', { ascending: true, nullsFirst: true })
-        .order('created_at', { ascending: false })
+      const perSector = await Promise.all(sectorsToLoad.map(async key => {
+        const { data, error } = await supabase
+          .from(fieldOrdersTable(key))
+          .select(FO_COLUMNS)
+          .order('seq', { ascending: true, nullsFirst: true })
+          .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error(error)
-        setLoading(false)
-        return
-      }
+        if (error) {
+          // One missing sector table must not blank the whole dashboard.
+          console.error(`Failed to load ${key} field orders:`, error)
+          return []
+        }
+        return (data || []).map(row => ({ ...row, __sector: key }))
+      }))
 
-      setRows(data || [])
+      setRows(perSector.flat())
       setLoading(false)
     }
     fetchData()
-  }, [])
+  }, [isSummaryOnly, sector])
 
   // Which sector's records this page is summarising. On the MBDEVCO rollup the
   // user picks it ('all' means every sector); anywhere else it is the sector
