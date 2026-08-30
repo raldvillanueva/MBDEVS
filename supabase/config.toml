@@ -1,0 +1,11 @@
+project_id = "ofgggclyliouuocgoovj"
+
+# Both functions authenticate callers themselves — the relay with a shared
+# secret from the database trigger, the pull endpoint with the partner's API
+# key — so Supabase's default JWT check would only get in the way.
+
+[functions.fo-relay]
+verify_jwt = false
+
+[functions.field-orders]
+verify_jwt = false
