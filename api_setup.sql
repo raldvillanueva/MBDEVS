@@ -114,19 +114,57 @@ create policy "relay_failures_select_admin" on public.relay_failures
 --   select * from public.relay_failures where replayed_at is null order by created_at;
 
 -- ---------------------------------------------------------------------
--- 4. Database Webhooks -> the relay function.
+-- 4. Fire a request at the relay function on every row change.
 --
---    Enable Database Webhooks ONCE in the dashboard first
---    (Database -> Webhooks), which installs the supabase_functions
---    schema these triggers depend on.
+--    This calls pg_net directly instead of going through Supabase's
+--    "Database Webhooks" UI. Same mechanism underneath — that feature is
+--    a wrapper around pg_net — but it needs no dashboard toggle, and the
+--    payload is built here so it matches the Edge Function exactly.
 --
---    Replace REPLACE_WITH_RELAY_SECRET below with the same value you set
---    as the RELAY_SECRET secret on the Edge Function. It is what stops
---    anyone else from POSTing fake events at the endpoint.
+--    Replace REPLACE_WITH_RELAY_SECRET with the RELAY_SECRET you set on
+--    the Edge Function. It is what stops anyone else POSTing fake events.
 --
---    NOTE: the secret is stored in the trigger definition, so anyone
---    with database access can read it. Rotate it if DB access changes.
+--    NOTE: the secret sits in the function body, readable by anyone with
+--    database access. Rotate it if that group changes.
 -- ---------------------------------------------------------------------
+create extension if not exists pg_net;
+
+create or replace function public.relay_field_order_change()
+returns trigger
+language plpgsql
+-- SECURITY DEFINER so the call runs as the owner: ordinary staff accounts
+-- have no rights on the net schema, and without this their saves would
+-- fail on the trigger rather than the relay simply not firing.
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  payload jsonb;
+begin
+  payload := jsonb_build_object(
+    'type',       tg_op,
+    'table',      tg_table_name,
+    'schema',     tg_table_schema,
+    'record',     case when tg_op = 'DELETE' then null else to_jsonb(new) end,
+    'old_record', case when tg_op = 'INSERT' then null else to_jsonb(old) end
+  );
+
+  -- pg_net queues the request and returns immediately, so a slow or
+  -- unreachable partner can never hold up a save in the app.
+  perform net.http_post(
+    url := 'https://ofgggclyliouuocgoovj.functions.supabase.co/fo-relay',
+    body := payload,
+    headers := jsonb_build_object(
+      'Content-Type',   'application/json',
+      'x-relay-secret', 'REPLACE_WITH_RELAY_SECRET'
+    ),
+    timeout_milliseconds := 5000
+  );
+
+  return null;  -- AFTER trigger: return value is ignored
+end;
+$fn$;
+
 do $$
 declare
   t text;
@@ -136,16 +174,10 @@ begin
     'field_orders_pasig', 'field_orders_balintawak'
   ] loop
     execute format('drop trigger if exists fo_relay on public.%I', t);
-    execute format($f$
-      create trigger fo_relay
-        after insert or update or delete on public.%I
-        for each row execute function supabase_functions.http_request(
-          'https://ofgggclyliouuocgoovj.functions.supabase.co/fo-relay',
-          'POST',
-          '{"Content-Type":"application/json","x-relay-secret":"REPLACE_WITH_RELAY_SECRET"}',
-          '{}',
-          '5000'
-        )$f$, t);
+    execute format(
+      'create trigger fo_relay
+         after insert or update or delete on public.%I
+         for each row execute function public.relay_field_order_change()', t);
   end loop;
 end $$;
 
