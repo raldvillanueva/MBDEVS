@@ -2,10 +2,18 @@
 //
 // The real-time relay only covers changes from the moment it is switched on,
 // and a webhook that fails is gone. This endpoint is the safety net: the
-// initial backfill of existing records, and periodic reconciliation so a
-// missed event heals itself instead of becoming a permanent gap.
+// initial backfill of existing records, reporting over a date range, and
+// periodic reconciliation so a missed event heals itself instead of becoming
+// a permanent gap.
 //
-// GET /functions/v1/field-orders?sector=&since=&limit=&offset=
+// GET /functions/v1/field-orders
+//     ?sector=      rizal | manila | pasig | balintawak
+//     &date_from=   YYYY-MM-DD   inclusive
+//     &date_to=     YYYY-MM-DD   inclusive
+//     &date_field=  which date the range applies to (default date_executed)
+//     &since=       ISO timestamp, updated_at >= since (for reconciliation)
+//     &limit=       default 500, max 1000
+//     &offset=      paging cursor
 //   x-api-key: <PARTNER_API_KEY>
 //
 // Secrets (Edge Function settings):
@@ -48,10 +56,25 @@ const SHARED_COLUMNS = [
 
 const VALID_SECTORS = ['rizal', 'manila', 'pasig', 'balintawak']
 
+// Whitelisted so date_field can never be used to probe columns we do not share.
+const DATE_FIELDS = [
+  'date_executed',
+  'date_assign',
+  'date_returned',
+  'created_at',
+  'updated_at',
+]
+const DEFAULT_DATE_FIELD = 'date_executed'
+
+// created_at/updated_at carry a time; the plain date columns do not.
+const TIMESTAMP_FIELDS = ['created_at', 'updated_at']
+
 // PostgREST caps a response at 1000 rows regardless of what is asked for, so
 // the ceiling is explicit here rather than silently truncating the caller.
 const MAX_LIMIT = 1000
 const DEFAULT_LIMIT = 500
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body, null, 2), {
@@ -72,6 +95,10 @@ Deno.serve(async req => {
   const url = new URL(req.url)
   const sector = url.searchParams.get('sector')
   const since = url.searchParams.get('since')
+  const dateFrom = url.searchParams.get('date_from')
+  const dateTo = url.searchParams.get('date_to')
+  const dateField = url.searchParams.get('date_field') ?? DEFAULT_DATE_FIELD
+
   const offset = Math.max(0, Number(url.searchParams.get('offset') ?? 0) || 0)
   const limit = Math.min(
     MAX_LIMIT,
@@ -82,15 +109,40 @@ Deno.serve(async req => {
     return json({ error: `sector must be one of ${VALID_SECTORS.join(', ')}` }, 400)
   }
 
+  if (!DATE_FIELDS.includes(dateField)) {
+    return json({ error: `date_field must be one of ${DATE_FIELDS.join(', ')}` }, 400)
+  }
+
+  for (const [name, value] of [['date_from', dateFrom], ['date_to', dateTo]]) {
+    if (value && !DATE_ONLY.test(value)) {
+      return json({ error: `${name} must be formatted YYYY-MM-DD` }, 400)
+    }
+  }
+
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
   let query = admin
     .from('all_field_orders')
     .select(['sector', ...SHARED_COLUMNS].join(','), { count: 'exact' })
     .order('updated_at', { ascending: true })
+    // Tiebreaker: without it, rows sharing an updated_at come back in an
+    // arbitrary order and offset paging can skip or repeat records.
+    .order('id', { ascending: true })
     .range(offset, offset + limit - 1)
 
   if (sector) query = query.eq('sector', sector)
+
+  // Inclusive range on the chosen date column.
+  if (dateFrom) query = query.gte(dateField, dateFrom)
+  if (dateTo) {
+    // On a timestamp column "2026-08-30" means midnight, which would drop
+    // almost the whole day the caller asked for. Stretch it to the day's end.
+    const upperBound = TIMESTAMP_FIELDS.includes(dateField)
+      ? `${dateTo}T23:59:59.999Z`
+      : dateTo
+    query = query.lte(dateField, upperBound)
+  }
+
   // Reconciliation: everything touched since the caller's last successful sync.
   if (since) query = query.gte('updated_at', since)
 
@@ -106,6 +158,13 @@ Deno.serve(async req => {
 
   return json({
     data,
+    filters: {
+      sector: sector ?? 'all',
+      date_field: dateField,
+      date_from: dateFrom,
+      date_to: dateTo,
+      since,
+    },
     pagination: {
       limit,
       offset,
