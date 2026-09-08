@@ -11,6 +11,8 @@
 //     &date_from=   YYYY-MM-DD   inclusive
 //     &date_to=     YYYY-MM-DD   inclusive
 //     &date_field=  which date the range applies to (default date_executed)
+//     &status=      completed | cancelled | pending
+//     &status_crew= exact status_crew value, when a preset is too broad
 //     &since=       ISO timestamp, updated_at >= since (for reconciliation)
 //     &limit=       default 500, max 1000
 //     &offset=      paging cursor
@@ -56,6 +58,13 @@ const SHARED_COLUMNS = [
 
 const VALID_SECTORS = ['rizal', 'manila', 'pasig', 'balintawak']
 
+// Crews record status in several wordings, so a caller asking for "completed"
+// should not have to know all of them. Each preset is a substring match:
+//   completed -> FIELD COMPLETED, REVISITED FIELD COM.
+//   cancelled -> CANCEL, CANCEL-EMC, FC CANCEL, REVISITED CANCEL
+//   pending   -> anything still needing crew action (neither of the above)
+const STATUS_PRESETS = ['completed', 'cancelled', 'pending']
+
 // Whitelisted so date_field can never be used to probe columns we do not share.
 const DATE_FIELDS = [
   'date_executed',
@@ -98,6 +107,8 @@ Deno.serve(async req => {
   const dateFrom = url.searchParams.get('date_from')
   const dateTo = url.searchParams.get('date_to')
   const dateField = url.searchParams.get('date_field') ?? DEFAULT_DATE_FIELD
+  const status = url.searchParams.get('status')
+  const statusCrew = url.searchParams.get('status_crew')
 
   const offset = Math.max(0, Number(url.searchParams.get('offset') ?? 0) || 0)
   const limit = Math.min(
@@ -111,6 +122,10 @@ Deno.serve(async req => {
 
   if (!DATE_FIELDS.includes(dateField)) {
     return json({ error: `date_field must be one of ${DATE_FIELDS.join(', ')}` }, 400)
+  }
+
+  if (status && !STATUS_PRESETS.includes(status)) {
+    return json({ error: `status must be one of ${STATUS_PRESETS.join(', ')}` }, 400)
   }
 
   for (const [name, value] of [['date_from', dateFrom], ['date_to', dateTo]]) {
@@ -143,6 +158,19 @@ Deno.serve(async req => {
     query = query.lte(dateField, upperBound)
   }
 
+  // Exact match wins when given; otherwise fall back to the preset.
+  if (statusCrew) {
+    query = query.ilike('status_crew', statusCrew)
+  } else if (status === 'completed') {
+    query = query.ilike('status_crew', '%FIELD%')
+  } else if (status === 'cancelled') {
+    query = query.ilike('status_crew', '%CANCEL%')
+  } else if (status === 'pending') {
+    query = query
+      .not('status_crew', 'ilike', '%FIELD%')
+      .not('status_crew', 'ilike', '%CANCEL%')
+  }
+
   // Reconciliation: everything touched since the caller's last successful sync.
   if (since) query = query.gte('updated_at', since)
 
@@ -163,6 +191,8 @@ Deno.serve(async req => {
       date_field: dateField,
       date_from: dateFrom,
       date_to: dateTo,
+      status: status ?? null,
+      status_crew: statusCrew ?? null,
       since,
     },
     pagination: {
