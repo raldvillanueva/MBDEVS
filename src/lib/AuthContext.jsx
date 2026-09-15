@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
   const fetchProfile = useCallback(async (userId) => {
     if (!userId) { setProfile(null); setProfileLoading(false); return }
     setProfileLoading(true)
-    const { data } = await supabase.from('profiles').select('id, role, full_name').eq('id', userId).maybeSingle()
+    const { data } = await supabase.from('profiles').select('id, role, full_name, account_type').eq('id', userId).maybeSingle()
     setProfile(data || null)
     setProfileLoading(false)
   }, [])
@@ -29,10 +29,19 @@ export function AuthProvider({ children }) {
 
   const loading = session === undefined || profileLoading
 
+  const role = profile?.role || 'staff' // fail-closed: unknown/unfetched profile => least privilege
+
+  // Admin/Supervisor/Super Admin and Encoder/Viewer are all real accounts
+  // under the hood ('admin' or 'staff' respectively) — account_type just
+  // says which of the two page variants within that bucket to show.
+  // Falls back sensibly for profile rows created before this column existed.
+  const accountType = profile?.account_type || (role === 'admin' ? 'admin' : 'encoder')
+
   const value = {
     session,
     profile,
-    role: profile?.role || 'staff', // fail-closed: unknown/unfetched profile => least privilege
+    role,
+    accountType,
     loading,
   }
 

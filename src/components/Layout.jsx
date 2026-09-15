@@ -10,11 +10,12 @@ export default function Layout() {
     return <Navigate to="/sectors" replace />
   }
 
-  // MBDEVCO is a summary-only sector: keep it on the dashboard so the
-  // data-entry pages cannot be reached by typing a URL.
+  // MBDEVCO is a summary-only sector: keep it on the dashboard/reports so
+  // the data-entry pages cannot be reached by typing a URL.
   if (
     sector === 'mbdevco' &&
     location.pathname !== '/summary' &&
+    location.pathname !== '/reports' &&
     !location.pathname.startsWith('/sectors')
   ) {
     return <Navigate to="/summary" replace />

@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText } from 'lucide-react'
 import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
@@ -10,7 +10,7 @@ import { pendingOrdersTable, isDataSector } from '../lib/sectorTables'
 const SECTOR_NAMES = { rizal: 'Rizal', manila: 'Manila', pasig: 'Pasig', balintawak: 'Balintawak', mbdevco: 'MBDEVCO' }
 
 export default function Sidebar() {
-  const { role, profile, session } = useAuth()
+  const { role, profile, session, accountType } = useAuth()
   const { sector, clearSector } = useSector()
   const navigate = useNavigate()
   const [pendingCount, setPendingCount] = useState(0)
@@ -65,21 +65,31 @@ export default function Sidebar() {
   // Full record-management nav, shared by every sector that has real data
   // entry (Rizal, Manila, Pasig, Balintawak). All sectors read from the same
   // shared field_orders/pending_orders tables — no per-sector filtering.
+  // Viewer accounts aren't part of the Audit Reports feature yet (only
+  // Encoder submits, only Supervisor/Admin/Super Admin review), so the tab
+  // stays hidden for them rather than opening onto an empty page.
+  const canSeeReports = accountType !== 'viewer'
+
   const fullNav = [
     { to: '/summary', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/field-orders', icon: ClipboardList, label: 'Field Orders' },
     { to: '/pending-records', icon: Clock, label: 'Pending Records', badge: pendingCount },
     { to: '/archived-work-orders', icon: Archive, label: 'Archived Work Orders' },
+    ...(canSeeReports ? [{ to: '/reports', icon: FileText, label: 'Audit Reports' }] : []),
     ...(role === 'admin'
       ? [{ to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }]
       : []),
   ]
 
-  // MBDEVCO is a read-only rollup across all sectors: Dashboard only, no
-  // data-entry or record-management tabs.
+  // MBDEVCO is a read-only rollup across all sectors: Dashboard (+ Audit
+  // Reports for reviewer accounts) only, no data-entry/record tabs.
   const navItems =
     ['rizal', 'manila', 'pasig', 'balintawak'].includes(sector) ? fullNav
-    : sector === 'mbdevco' ? [{ to: '/summary', icon: LayoutDashboard, label: 'Dashboard' }]
+    : sector === 'mbdevco'
+      ? [
+          { to: '/summary', icon: LayoutDashboard, label: 'Dashboard' },
+          ...(canSeeReports ? [{ to: '/reports', icon: FileText, label: 'Audit Reports' }] : []),
+        ]
     : []
 
   return (

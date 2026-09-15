@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
 import {
   ClipboardList, CheckCircle2, XCircle, Clock,
   PackageCheck, Layers, AlertTriangle, Calendar, X, RotateCcw
 } from 'lucide-react'
-import { isOverdueBy } from '../lib/aging'
 import { useSector } from '../lib/SectorContext'
-import { DATA_SECTORS, SECTOR_LABELS, fieldOrdersTable, isDataSector } from '../lib/sectorTables'
+import { DATA_SECTORS, SECTOR_LABELS, isDataSector } from '../lib/sectorTables'
+import { YEAR_START, TODAY, inDateRange, computeStats, fetchSectorRows } from '../lib/reportStats'
 
 function Section({ title, children }) {
   return (
@@ -77,65 +76,15 @@ function isPendingTask(row) {
   return !row.archived_at && !status.includes('FIELD') && !status.includes('CANCEL')
 }
 
-// Local calendar date as "YYYY-MM-DD", matching the format date inputs and
-// Postgres date columns both use.
-function toISODate(date) {
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
-
 const SUMMARY_SECTORS = [
   { key: 'all', label: 'All sectors' },
   ...DATA_SECTORS.map(key => ({ key, label: SECTOR_LABELS[key] })),
 ]
 
-const FO_COLUMNS =
-  'status_crew, fo_type, fo_action, for_batch, billed_amount, crew_name, ' +
-  'field_order_no, location, created_at, seq, date_assign, date_executed, ' +
-  'date_returned, archived_at'
-
 // Each sector lives in its own table, so rows are tagged with the table they
 // came from as they are loaded. Nothing infers a sector from row contents.
 function rowSector(row) {
   return row.__sector
-}
-
-const YEAR_START = `${new Date().getFullYear()}-01-01`
-const TODAY = toISODate(new Date())
-
-// date_executed is a plain "YYYY-MM-DD" string, so the range check is a direct
-// string comparison against the date inputs (same format).
-function inDateRange(rows, from, to) {
-  if (!from && !to) return rows
-  return rows.filter(row => {
-    if (!row.date_executed) return false
-    if (from && row.date_executed < from) return false
-    if (to && row.date_executed > to) return false
-    return true
-  })
-}
-
-function computeStats(list) {
-  const status = row => row.status_crew?.toUpperCase() || ''
-  const action = row => row.fo_action?.toUpperCase() || ''
-
-  return {
-    total: list.length,
-    assigned: list.filter(r => ['ASSIGNED', 'REASSIGN'].includes(status(r))).length,
-    fieldComplete: list.filter(r => status(r).includes('FIELD')).length,
-    cancelled: list.filter(r => status(r).includes('CANCEL')).length,
-    totalBilled: list.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0),
-
-    overdue10: list.filter(r => !r.archived_at && isOverdueBy(r, 10)).length,
-    overdue21: list.filter(r => !r.archived_at && isOverdueBy(r, 21)).length,
-    batched: list.filter(r => r.for_batch?.toUpperCase().includes('ALREADY')).length,
-
-    replacement: list.filter(r => action(r) === 'REPLACE FO').length,
-    retirement: list.filter(r => action(r) === 'RETIREMENT FO').length,
-    energize: list.filter(r => action(r) === 'ENERGIZED FO').length,
-    others: list.filter(r => action(r) === 'OTHERS').length,
-  }
 }
 
 export default function Dashboard() {
@@ -157,21 +106,7 @@ export default function Dashboard() {
       : isDataSector(sector) ? [sector] : []
 
     async function fetchData() {
-      const perSector = await Promise.all(sectorsToLoad.map(async key => {
-        const { data, error } = await supabase
-          .from(fieldOrdersTable(key))
-          .select(FO_COLUMNS)
-          .order('seq', { ascending: true, nullsFirst: true })
-          .order('created_at', { ascending: false })
-
-        if (error) {
-          // One missing sector table must not blank the whole dashboard.
-          console.error(`Failed to load ${key} field orders:`, error)
-          return []
-        }
-        return (data || []).map(row => ({ ...row, __sector: key }))
-      }))
-
+      const perSector = await Promise.all(sectorsToLoad.map(fetchSectorRows))
       setRows(perSector.flat())
       setLoading(false)
     }
