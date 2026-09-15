@@ -9,8 +9,9 @@ import { useAuth } from '../lib/AuthContext'
 export default function ArchivedWorkOrders() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
-  const { role } = useAuth()
-  const isAdmin = role === 'admin'
+  const { role, canManage } = useAuth()
+  // Restoring from the archive is reversible, so Supervisor keeps it.
+  const isAdmin = canManage || role === 'admin'
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')

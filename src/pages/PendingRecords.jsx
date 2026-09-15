@@ -107,8 +107,9 @@ export default function PendingRecords() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
   const poTable = pendingOrdersTable(sector)
-  const { role } = useAuth()
-  const isAdmin = role === 'admin'
+  const { role, canManage } = useAuth()
+  // Removing from Pending and bulk actions are review decisions.
+  const isAdmin = canManage || role === 'admin'
   const [pending, setPending] = useState([])
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState('STACK')

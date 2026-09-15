@@ -142,8 +142,9 @@ const SCROLL_COLS = COLS.slice(FROZEN_COL_COUNT)
 export default function FieldOrders() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
-  const { role } = useAuth()
-  const isAdmin = role === 'admin'
+  const { role, canManage, canDelete } = useAuth()
+  // canManage covers Supervisor and up — everything except permanent delete.
+  const isAdmin = canManage || role === 'admin'
   const [showDeletionRequest, setShowDeletionRequest] = useState(false)
   const [records, setRecords] = useState([])
   const [total, setTotal] = useState(0)
@@ -754,12 +755,14 @@ Add Record
               <Archive size={14} />
               Archive {(selectAllPages ? total : selectedRows.length).toLocaleString()}
             </button>
+            {canDelete && (
             <button
               onClick={deleteSelected}
               className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${selectAllPages ? 'bg-white text-red-600 hover:bg-red-50' : 'bg-red-600 text-white hover:bg-red-700'}`}
             >
               Delete {(selectAllPages ? total : selectedRows.length).toLocaleString()} records
             </button>
+            )}
           </div>
         </div>
       )}
@@ -1256,7 +1259,7 @@ Add Record
               </fieldset>
 
               <div className="pt-1 border-t border-slate-100">
-                {isAdmin ? (
+                {canDelete ? (
                   <button
                     onClick={() => { closeEdit(); setDeleteTarget(editRow) }}
                     className="w-full px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"

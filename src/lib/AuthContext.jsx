@@ -52,11 +52,23 @@ export function AuthProvider({ children }) {
   // Falls back sensibly for profile rows created before this column existed.
   const accountType = profile?.account_type || (role === 'admin' ? 'admin' : 'encoder')
 
+  // Capability flags, mirroring the SQL helpers in role_permissions_setup.sql
+  // one for one. These only decide what the UI offers — the database enforces
+  // the same rules, so hiding a button is a courtesy, not the control.
+  const canEncode = ['encoder', 'supervisor', 'admin', 'super_admin'].includes(accountType)
+  const canManage = ['supervisor', 'admin', 'super_admin'].includes(accountType)
+  const canDelete = ['admin', 'super_admin'].includes(accountType)
+  const isSuperAdmin = accountType === 'super_admin'
+
   const value = {
     session,
     profile,
     role,
     accountType,
+    canEncode,
+    canManage,
+    canDelete,
+    isSuperAdmin,
     loading,
   }
 
