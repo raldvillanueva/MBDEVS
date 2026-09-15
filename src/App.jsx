@@ -13,6 +13,7 @@ import AuditReports from './pages/AuditReports'
 import Login from './pages/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
+import SuperAdminRoute from './components/SuperAdminRoute'
 import { AuthProvider } from './lib/AuthContext'
 import { SectorProvider } from './lib/SectorContext'
 
@@ -45,12 +46,12 @@ export default function App() {
                 AuthContext/Login) at these same paths. */}
             <Route path="/role-select" element={<RoleSelect />} />
             <Route path="/coming-soon" element={<ComingSoon />} />
-            <Route path="/super-admin" element={<SuperAdminDashboard />} />
-            <Route path="/super-admin/manage-users" element={<ManageUsers />} />
-            <Route path="/super-admin/manage-admins" element={<ManageAdmins />} />
-            <Route path="/super-admin/records" element={<ViewRecords />} />
-            <Route path="/super-admin/audit-logs" element={<AuditLogs />} />
-            <Route path="/super-admin/settings" element={<SystemSettings />} />
+            <Route path="/super-admin" element={<SuperAdminRoute><SuperAdminDashboard /></SuperAdminRoute>} />
+            <Route path="/super-admin/manage-users" element={<SuperAdminRoute><ManageUsers /></SuperAdminRoute>} />
+            <Route path="/super-admin/manage-admins" element={<SuperAdminRoute><ManageAdmins /></SuperAdminRoute>} />
+            <Route path="/super-admin/records" element={<SuperAdminRoute><ViewRecords /></SuperAdminRoute>} />
+            <Route path="/super-admin/audit-logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
+            <Route path="/super-admin/settings" element={<SuperAdminRoute><SystemSettings /></SuperAdminRoute>} />
             <Route path="/admin" element={<RoleDashboard role="admin" />} />
             <Route path="/supervisor" element={<RoleDashboard role="supervisor" />} />
             <Route path="/encoder" element={<RoleDashboard role="encoder" />} />

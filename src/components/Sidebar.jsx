@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck } from 'lucide-react'
 import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
@@ -63,8 +63,8 @@ export default function Sidebar() {
   }, [role])
 
   // Full record-management nav, shared by every sector that has real data
-  // entry (Rizal, Manila, Pasig, Balintawak). All sectors read from the same
-  // shared field_orders/pending_orders tables — no per-sector filtering.
+  // entry (Rizal, Manila, Pasig, Balintawak). Each of those sectors reads
+  // from its OWN tables — see src/lib/sectorTables.js.
   // Viewer accounts aren't part of the Audit Reports feature yet (only
   // Encoder submits, only Supervisor/Admin/Super Admin review), so the tab
   // stays hidden for them rather than opening onto an empty page.
@@ -83,6 +83,11 @@ export default function Sidebar() {
 
   // MBDEVCO is a read-only rollup across all sectors: Dashboard (+ Audit
   // Reports for reviewer accounts) only, no data-entry/record tabs.
+  // Same rule as SuperAdminRoute: the account_type tag wins once it is set,
+  // role is only the pre-migration fallback.
+  const isSuperAdmin =
+    accountType === 'super_admin' || (profile?.account_type == null && role === 'admin')
+
   const navItems =
     ['rizal', 'manila', 'pasig', 'balintawak'].includes(sector) ? fullNav
     : sector === 'mbdevco'
@@ -169,6 +174,18 @@ export default function Sidebar() {
           ))}
 
         </div>
+
+        {isSuperAdmin && (
+          <div className="mt-4 border-t border-[#444] pt-4">
+            <NavLink
+              to="/super-admin"
+              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-300 transition-all duration-200 hover:bg-[#3C3C3C] hover:text-white"
+            >
+              <ShieldCheck size={19} />
+              <span className="flex-1">Super Admin</span>
+            </NavLink>
+          </div>
+        )}
 
       </nav>
 
