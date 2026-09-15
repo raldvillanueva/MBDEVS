@@ -11,7 +11,22 @@ export function AuthProvider({ children }) {
   const fetchProfile = useCallback(async (userId) => {
     if (!userId) { setProfile(null); setProfileLoading(false); return }
     setProfileLoading(true)
-    const { data } = await supabase.from('profiles').select('id, role, full_name, account_type').eq('id', userId).maybeSingle()
+
+    // select('*') rather than a column list on purpose. Naming a column that
+    // does not exist yet fails the whole query, which lands here as "no
+    // profile" and silently demotes every admin to staff — a migration
+    // arriving after a deploy should not be able to strip privileges.
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (error) {
+      // Swallowing this is what made the demotion invisible last time.
+      console.error('Could not load profile — falling back to least privilege', error)
+    }
+
     setProfile(data || null)
     setProfileLoading(false)
   }, [])
