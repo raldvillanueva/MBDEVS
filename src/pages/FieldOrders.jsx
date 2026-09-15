@@ -1166,6 +1166,41 @@ Add Record
                 <PF label="DEMAND (kWh)/Cum Demand">
                   <input value={editForm.demand_kwh_cum} onChange={e => sf('demand_kwh_cum', e.target.value)} className={iCls} />
                 </PF>
+                {/* Normal removal vs Meter For Lab Test. Booba number and
+                    witnessing date apply only to an MFLT. */}
+                <PF label="Removed Meter Type" span2>
+                  <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!editForm.mflt_checklist}
+                      onChange={e => {
+                        const on = e.target.checked
+                        sf('mflt_checklist', on)
+                        if (!on) { sf('booba_number', ''); sf('witness_date', '') }
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-600">MFLT — Meter For Lab Test</span>
+                  </label>
+                </PF>
+                <PF label="Booba Number">
+                  <input
+                    value={editForm.booba_number}
+                    onChange={e => sf('booba_number', e.target.value)}
+                    disabled={!editForm.mflt_checklist}
+                    placeholder={editForm.mflt_checklist ? '' : 'MFLT only'}
+                    className={`${iCls} disabled:bg-slate-100 disabled:text-slate-400`}
+                  />
+                </PF>
+                <PF label="Witnessing Date">
+                  <input
+                    type="date"
+                    value={editForm.witness_date}
+                    onChange={e => sf('witness_date', e.target.value)}
+                    disabled={!editForm.mflt_checklist}
+                    className={`${iCls} disabled:bg-slate-100 disabled:text-slate-400`}
+                  />
+                </PF>
               </PS>
 
               <PS title="New Installed Meter">
@@ -1190,17 +1225,11 @@ Add Record
                 <PF label="Pole Tag">
                   <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} className={iCls} />
                 </PF>
-                <PF label="Booba Number">
-                  <input value={editForm.booba_number} onChange={e => sf('booba_number', e.target.value)} className={iCls} />
-                </PF>
                 <PF label="MDLTR No.">
                   <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} className={iCls} />
                 </PF>
                 <PF label="Aging (days)">
                   <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="Witness Date">
-                  <input type="date" value={editForm.witness_date} onChange={e => sf('witness_date', e.target.value)} className={iCls} />
                 </PF>
               </PS>
 
@@ -1234,12 +1263,6 @@ Add Record
                 </PF>
                 <PF label="Plus Code">
                   <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} className={iCls} />
-                </PF>
-                <PF label="MFLT Checklist">
-                  <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
-                    <input type="checkbox" checked={!!editForm.mflt_checklist} onChange={e => sf('mflt_checklist', e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                    <span className="text-sm text-slate-600">Checked</span>
-                  </label>
                 </PF>
                 <PF label="Remarks" span2>
   <textarea

@@ -180,6 +180,11 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
     : {
         field_order_no: "Field Order no.",
         ...(showInstalledMeterFields ? { ins_meter: "Installed Meter no." } : {}),
+        // An MFLT removal is not complete without these two.
+        ...(form.mflt_checklist ? {
+          booba_number: "Booba Number",
+          witness_date: "Witnessing Date",
+        } : {}),
       }
 
   const errors = {}
@@ -583,6 +588,65 @@ label="FO Action"
           <Field label="Reading (kWh)">
             <input {...text('reading_kwh')} placeholder="e.g. 37812 / NDD / ERROR" />
           </Field>
+
+          {/* A removed meter is either a normal removal or a Meter For Lab
+              Test. Only an MFLT needs a booba number and a witnessing date,
+              so those two stay disabled until the box is ticked — and become
+              required once it is. */}
+          <Field label="Removed Meter Type" span2>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="checkbox"
+                id="mflt_checklist"
+                checked={!!form.mflt_checklist}
+                onChange={e => {
+                  const on = e.target.checked
+                  set('mflt_checklist', on)
+                  // Clear the MFLT-only fields when switching back to a normal
+                  // removal, so a stale booba number cannot be saved against a
+                  // record that is no longer for lab test.
+                  if (!on) {
+                    set('booba_number', '')
+                    set('witness_date', '')
+                    setFieldErrors(prev => ({ ...prev, booba_number: false, witness_date: false }))
+                  }
+                }}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="mflt_checklist" className="text-sm text-slate-600">
+                MFLT — Meter For Lab Test
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Leave unticked for a normal removed meter.
+            </p>
+          </Field>
+
+          <Field
+            label="Booba Number"
+            required={!!form.mflt_checklist}
+            errorMessage={fieldErrors.booba_number}
+          >
+            <input
+              {...text('booba_number')}
+              disabled={!form.mflt_checklist}
+              placeholder={form.mflt_checklist ? 'e.g. B25BW0109486' : 'MFLT only'}
+              className={`${inputClass} ${fieldErrors.booba_number ? '!border-red-500 !bg-red-200' : ''} disabled:bg-slate-100 disabled:text-slate-400`}
+            />
+          </Field>
+
+          <Field
+            label="Witnessing Date"
+            required={!!form.mflt_checklist}
+            errorMessage={fieldErrors.witness_date}
+          >
+            <input
+              type="date"
+              {...text('witness_date')}
+              disabled={!form.mflt_checklist}
+              className={`${inputClass} ${fieldErrors.witness_date ? '!border-red-500 !bg-red-200' : ''} disabled:bg-slate-100 disabled:text-slate-400`}
+            />
+          </Field>
         </div>
       </div>
       )}
@@ -627,10 +691,6 @@ label="FO Action"
                 <input {...text('pole_tag')} placeholder="e.g. 115-0833" />
               </Field>
 
-              <Field label="Booba Number">
-                <input {...text('booba_number')} placeholder="e.g. B25BW0109486" />
-              </Field>
-
               <Field label="MDLTR No.">
                 <input {...text('mdltr_no')} placeholder="e.g. 384356" />
               </Field>
@@ -645,9 +705,6 @@ label="FO Action"
                 />
               </Field>
 
-              <Field label="Witness Date">
-                <input type="date" {...text('witness_date')} />
-              </Field>
             </>
           )}
         </div>
@@ -707,19 +764,6 @@ label="FO Action"
 
           <Field label="Plus Code">
             <input {...text('pluscode')} placeholder="Plus code" />
-          </Field>
-
-          <Field label="MFLT Checklist">
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                type="checkbox"
-                id="mflt_checklist"
-                checked={!!form.mflt_checklist}
-                onChange={e => set('mflt_checklist', e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="mflt_checklist" className="text-sm text-slate-600">Checked</label>
-            </div>
           </Field>
 
           <Field label="Remarks">

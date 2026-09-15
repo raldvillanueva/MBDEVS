@@ -74,8 +74,13 @@ function requiredKeys(form) {
   if (form.fo_action !== 'Retirement FO') {
     keys.push(
       'ins_meter', 'ins_serial_number', 'demand_seal_installed', 'cabinet_seal_installed',
-      'tln_tag', 'pole_tag', 'booba_number', 'mdltr_no', 'aging', 'witness_date',
+      'tln_tag', 'pole_tag', 'mdltr_no', 'aging',
     )
+  }
+  // Booba number and witnessing date belong to the removed meter, and only
+  // when it is going for lab test. Required then, not applicable otherwise.
+  if (form.mflt_checklist) {
+    keys.push('booba_number', 'witness_date')
   }
   return keys
 }
@@ -596,6 +601,44 @@ async function sendSelectedToFieldOrders() {
                 <PF label="Reading (kWh)">
                   <input value={editForm.reading_kwh} onChange={e => sf('reading_kwh', e.target.value)} className={cls('reading_kwh')} />
                 </PF>
+                {/* Normal removal vs Meter For Lab Test. Booba number and
+                    witnessing date only apply to an MFLT, so they stay
+                    disabled — and unrequired — until the box is ticked. */}
+                <PF label="Removed Meter Type" span2 optional>
+                  <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!editForm.mflt_checklist}
+                      onChange={e => {
+                        const on = e.target.checked
+                        sf('mflt_checklist', on)
+                        // Drop MFLT-only values when reverting to a normal
+                        // removal, so nothing stale is saved against it.
+                        if (!on) { sf('booba_number', ''); sf('witness_date', '') }
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-600">MFLT — Meter For Lab Test</span>
+                  </label>
+                </PF>
+                <PF label="Booba Number" optional={!editForm.mflt_checklist}>
+                  <input
+                    value={editForm.booba_number}
+                    onChange={e => sf('booba_number', e.target.value)}
+                    disabled={!editForm.mflt_checklist}
+                    placeholder={editForm.mflt_checklist ? '' : 'MFLT only'}
+                    className={`${cls('booba_number')} disabled:bg-slate-100 disabled:text-slate-400`}
+                  />
+                </PF>
+                <PF label="Witnessing Date" optional={!editForm.mflt_checklist}>
+                  <input
+                    type="date"
+                    value={editForm.witness_date}
+                    onChange={e => sf('witness_date', e.target.value)}
+                    disabled={!editForm.mflt_checklist}
+                    className={`${cls('witness_date')} disabled:bg-slate-100 disabled:text-slate-400`}
+                  />
+                </PF>
               </PS>
               )}
 
@@ -628,17 +671,11 @@ async function sendSelectedToFieldOrders() {
                     <PF label="Pole Tag">
                       <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} className={cls('pole_tag')} />
                     </PF>
-                    <PF label="Booba Number">
-                      <input value={editForm.booba_number} onChange={e => sf('booba_number', e.target.value)} className={cls('booba_number')} />
-                    </PF>
                     <PF label="MDLTR No.">
                       <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} className={cls('mdltr_no')} />
                     </PF>
                     <PF label="Aging (days)">
                       <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={cls('aging')} />
-                    </PF>
-                    <PF label="Witness Date">
-                      <input type="date" value={editForm.witness_date} onChange={e => sf('witness_date', e.target.value)} className={cls('witness_date')} />
                     </PF>
                   </>
                 )}
@@ -671,12 +708,6 @@ async function sendSelectedToFieldOrders() {
                 </PF>
                 <PF label="Plus Code">
                   <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} className={cls('pluscode')} />
-                </PF>
-                <PF label="MFLT Checklist">
-                  <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
-                    <input type="checkbox" checked={!!editForm.mflt_checklist} onChange={e => sf('mflt_checklist', e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                    <span className="text-sm text-slate-600">Checked</span>
-                  </label>
                 </PF>
                 <PF label="Remarks" span2 optional>
                   <textarea value={editForm.remarks} onChange={e => sf('remarks', e.target.value)} rows={3} className={`${iCls} resize-none`} />
