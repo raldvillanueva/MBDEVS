@@ -9,3 +9,9 @@ verify_jwt = false
 
 [functions.field-orders]
 verify_jwt = false
+
+# Verifies the caller's token itself, then checks they are a Super Admin —
+# Supabase's own JWT gate would only confirm "signed in", which is not enough
+# for an endpoint that creates accounts.
+[functions.admin-users]
+verify_jwt = false

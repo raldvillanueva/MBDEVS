@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Users, Search, RefreshCw, AlertTriangle, Info } from 'lucide-react'
+import { Users, Search, RefreshCw, AlertTriangle, Info, UserPlus } from 'lucide-react'
+import CreateAccountModal from '../../components/CreateAccountModal'
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
@@ -35,6 +36,7 @@ export default function ManageUsers() {
   const [notice, setNotice] = useState('')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
+  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -101,21 +103,30 @@ export default function ManageUsers() {
             Every account in the system, and what each one is allowed to do.
           </p>
         </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-2 rounded-lg border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-        >
-          <RefreshCw size={15} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={load}
+            className="flex items-center gap-2 rounded-lg border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            <RefreshCw size={15} />
+            Refresh
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-[#D89B00] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#C58A00]"
+          >
+            <UserPlus size={16} />
+            Create Account
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex max-w-4xl items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
         <Info size={16} className="mt-0.5 shrink-0" />
         <p>
-          Create the sign-in itself in <strong>Supabase → Authentication → Users</strong>, then set
-          what it can do here. Creating a login needs the service key, which can never live in a
-          browser — so that step stays in the Supabase dashboard.
+          New accounts can sign in immediately with the email and password you set — there is no
+          confirmation email to wait for. Change what an account is allowed to do with the dropdown
+          on its row.
         </p>
       </div>
 
@@ -228,6 +239,12 @@ export default function ManageUsers() {
           </tbody>
         </table>
       </div>
+
+      <CreateAccountModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={load}
+      />
     </SuperAdminLayout>
   )
 }

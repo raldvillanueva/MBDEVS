@@ -12,6 +12,7 @@ import {
   Info,
 } from 'lucide-react'
 import { SECTOR_LABELS, DATA_SECTORS } from '../lib/sectorTables'
+import { supabase } from '../lib/supabase'
 
 // The four account kinds a Super Admin can hand out from this modal.
 // Super Admin accounts themselves are never created here — that's a
@@ -63,12 +64,13 @@ function generatePassword() {
   return out
 }
 
-export default function CreateAccountModal({ open, onClose }) {
+export default function CreateAccountModal({ open, onClose, onCreated }) {
   const [step, setStep] = useState('role') // 'role' | 'details' | 'done'
   const [role, setRole] = useState(null)
   const [form, setForm] = useState(initialForm)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   if (!open) return null
 
@@ -94,7 +96,7 @@ export default function CreateAccountModal({ open, onClose }) {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
 
@@ -111,11 +113,52 @@ export default function CreateAccountModal({ open, onClose }) {
       return
     }
 
-    // Placeholder only: no Supabase call is made yet. Once backend access
-    // is available, this should call supabase.auth.admin.createUser(...)
-    // to create the sign-in, then insert/update the matching row in the
-    // `profiles` table with { id, role, full_name, sector }.
-    setStep('done')
+    setSubmitting(true)
+
+    // The service key needed to create a sign-in can never live in a
+    // browser, so this goes through the admin-users function, which checks
+    // server-side that the caller really is a Super Admin.
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData?.session?.access_token
+
+    if (!token) {
+      setSubmitting(false)
+      setError('Your session has expired. Sign in again and retry.')
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            email: form.email.trim(),
+            password: form.password,
+            full_name: form.fullName.trim(),
+            account_type: role,
+          }),
+        },
+      )
+
+      const result = await response.json()
+      setSubmitting(false)
+
+      if (!response.ok) {
+        setError(result.error || 'Could not create the account.')
+        return
+      }
+
+      setStep('done')
+      onCreated?.()
+    } catch {
+      setSubmitting(false)
+      setError('Could not reach the server. Check your connection and retry.')
+    }
   }
 
   const activeRole = ROLE_OPTIONS.find((r) => r.value === role)
@@ -327,24 +370,24 @@ export default function CreateAccountModal({ open, onClose }) {
               </button>
               <button
                 type="submit"
-                className="rounded-lg bg-[#D89B00] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#C58A00]"
+                disabled={submitting}
+                className="rounded-lg bg-[#D89B00] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#C58A00] disabled:opacity-60"
               >
-                Create Account
+                {submitting ? 'Creating\u2026' : 'Create Account'}
               </button>
             </div>
           </form>
         )}
 
-        {/* Step 3: confirmation (still placeholder) */}
+        {/* Step 3: confirmation */}
         {step === 'done' && (
           <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
             <CheckCircle2 size={40} className="text-emerald-500" />
-            <p className="font-semibold text-[#2E2E2E]">Form looks good</p>
+            <p className="font-semibold text-[#2E2E2E]">Account created</p>
             <p className="max-w-sm text-sm text-slate-500">
-              This is a UI placeholder, so <strong>{form.fullName || 'this account'}</strong>{' '}
-              wasn’t actually created. Once Supabase is connected, submitting this
-              form will create the {activeRole?.label.toLowerCase()} sign-in and add
-              them to the Active Users list.
+              <strong>{form.fullName || form.email}</strong> can sign in now as a{' '}
+              {activeRole?.label.toLowerCase()}, using the email and password you set.
+              They appear in the list below straight away.
             </p>
             <button
               onClick={handleClose}
