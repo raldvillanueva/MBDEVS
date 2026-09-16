@@ -32,7 +32,8 @@ export default function Login(){
 
         }else{
 
-            navigate("/sectors");
+            // /home forwards to this account's own dashboard once the profile loads.
+            navigate("/home");
 
         }
 

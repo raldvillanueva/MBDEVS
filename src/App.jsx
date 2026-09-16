@@ -14,6 +14,8 @@ import Login from './pages/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import SuperAdminRoute from './components/SuperAdminRoute'
+import RoleRoute from './components/RoleRoute'
+import HomeRedirect from './pages/HomeRedirect'
 import { AuthProvider } from './lib/AuthContext'
 import { SectorProvider } from './lib/SectorContext'
 
@@ -39,11 +41,10 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Login />} />
 
-            {/* Role landing pages — final production paths, no auth guard
-                yet. No accounts are tied to these roles, so they're kept
-                separate from the protected app below on purpose. When
-                accounts exist, point the post-login redirect (see
-                AuthContext/Login) at these same paths. */}
+            {/* Role landing pages. Each is gated to the account type that
+                owns it; Super Admin may view any of them. Login sends
+                everyone to /home, which forwards by account type. */}
+            <Route path="/home" element={<HomeRedirect />} />
             <Route path="/role-select" element={<RoleSelect />} />
             <Route path="/coming-soon" element={<ComingSoon />} />
             <Route path="/super-admin" element={<SuperAdminRoute><SuperAdminDashboard /></SuperAdminRoute>} />
@@ -52,10 +53,10 @@ export default function App() {
             <Route path="/super-admin/records" element={<SuperAdminRoute><ViewRecords /></SuperAdminRoute>} />
             <Route path="/super-admin/audit-logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
             <Route path="/super-admin/settings" element={<SuperAdminRoute><SystemSettings /></SuperAdminRoute>} />
-            <Route path="/admin" element={<RoleDashboard role="admin" />} />
-            <Route path="/supervisor" element={<RoleDashboard role="supervisor" />} />
-            <Route path="/encoder" element={<RoleDashboard role="encoder" />} />
-            <Route path="/viewer" element={<RoleDashboard role="viewer" />} />
+            <Route path="/admin" element={<RoleRoute allow="admin"><RoleDashboard role="admin" /></RoleRoute>} />
+            <Route path="/supervisor" element={<RoleRoute allow="supervisor"><RoleDashboard role="supervisor" /></RoleRoute>} />
+            <Route path="/encoder" element={<RoleRoute allow="encoder"><RoleDashboard role="encoder" /></RoleRoute>} />
+            <Route path="/viewer" element={<RoleRoute allow="viewer"><RoleDashboard role="viewer" /></RoleRoute>} />
             <Route
               path="/"
               element={

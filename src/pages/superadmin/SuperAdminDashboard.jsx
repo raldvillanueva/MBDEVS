@@ -1,40 +1,60 @@
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
-  Circle,
   ArrowUpRight,
   ShieldPlus,
   ShieldCheck,
   UserCheck2,
   ClipboardList,
   Eye,
-  Wifi,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react'
 import SuperAdminLayout from './SuperAdminLayout'
+import { supabase } from '../../lib/supabase'
 
-// Sample data only — there is no login/session and no online-presence
-// tracking wired up yet, so this is a stand-in for layout purposes.
-const SAMPLE_USERS = [
-  { name: 'Marco Bautista', email: 'marco.bautista@mbdevs.com', role: 'Admin', online: true },
-  { name: 'Jessa Villanueva', email: 'jessa.villanueva@mbdevs.com', role: 'Supervisor', online: true },
-  { name: 'Ronald Cruz', email: 'ronald.cruz@mbdevs.com', role: 'Encoder', online: false },
-  { name: 'Aira Domingo', email: 'aira.domingo@mbdevs.com', role: 'Encoder', online: true },
-  { name: 'Kevin Santos', email: 'kevin.santos@mbdevs.com', role: 'Viewer', online: false },
-]
-
+// Online/offline is deliberately absent: nothing tracks presence, and a
+// made-up "3 online" is worse than no number at all.
 const ROLE_CARDS = [
-  { role: 'Admin', icon: ShieldCheck, iconClass: 'bg-amber-100 text-amber-700' },
-  { role: 'Supervisor', icon: UserCheck2, iconClass: 'bg-emerald-100 text-emerald-700' },
-  { role: 'Encoder', icon: ClipboardList, iconClass: 'bg-purple-100 text-purple-700' },
-  { role: 'Viewer', icon: Eye, iconClass: 'bg-slate-200 text-slate-700' },
+  { type: 'admin', label: 'Admin', icon: ShieldCheck, iconClass: 'bg-amber-100 text-amber-700' },
+  { type: 'supervisor', label: 'Supervisor', icon: UserCheck2, iconClass: 'bg-emerald-100 text-emerald-700' },
+  { type: 'encoder', label: 'Encoder', icon: ClipboardList, iconClass: 'bg-purple-100 text-purple-700' },
+  { type: 'viewer', label: 'Viewer', icon: Eye, iconClass: 'bg-slate-200 text-slate-700' },
 ]
+
+const TYPE_LABELS = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  supervisor: 'Supervisor',
+  encoder: 'Encoder',
+  viewer: 'Viewer',
+}
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate()
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const totalUsers = SAMPLE_USERS.length
-  const onlineCount = SAMPLE_USERS.filter((u) => u.online).length
-  const recentlyActive = SAMPLE_USERS.filter((u) => u.online).slice(0, 3)
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    const { data, error: err } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, account_type, created_at')
+      .order('created_at', { ascending: false })
+    if (err) setError(err.message)
+    else setUsers(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const totalUsers = users.length
+  // Newest accounts, since "recently active" needs presence tracking we
+  // do not have.
+  const newest = users.slice(0, 3)
 
   function goToManageUsers() {
     navigate('/super-admin/manage-users')
@@ -58,33 +78,30 @@ export default function SuperAdminDashboard() {
         </span>
       </div>
 
-      <p className="mb-6 max-w-3xl rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-        The numbers below are sample data — online/offline status isn't tracked
-        in the database yet, so this is a layout placeholder, not live data.
-      </p>
+      {error && (
+        <div className="mb-4 flex max-w-3xl items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
 
       {/* Top stat row */}
-      <div className="mb-6 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid max-w-3xl grid-cols-2 gap-4">
         <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2 text-slate-400">
             <Users size={16} />
-            <span className="text-xs font-semibold uppercase tracking-wide">Total Users</span>
+            <span className="text-xs font-semibold uppercase tracking-wide">Total Accounts</span>
           </div>
-          <p className="mt-2 text-3xl font-bold text-[#2E2E2E]">{totalUsers}</p>
+          <p className="mt-2 text-3xl font-bold text-[#2E2E2E]">{loading ? '—' : totalUsers}</p>
         </div>
         <div className="rounded-2xl border border-[#D9D9D9] bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-emerald-500">
-            <Wifi size={16} />
-            <span className="text-xs font-semibold uppercase tracking-wide">Online Now</span>
+          <div className="flex items-center gap-2 text-blue-500">
+            <ShieldCheck size={16} />
+            <span className="text-xs font-semibold uppercase tracking-wide">Super Admins</span>
           </div>
-          <p className="mt-2 text-3xl font-bold text-[#2E2E2E]">{onlineCount}</p>
-        </div>
-        <div className="rounded-2xl border border-dashed border-[#D89B00] bg-[#FFF6E5] p-4 shadow-sm sm:col-span-1 col-span-2">
-          <div className="flex items-center gap-2 text-[#D89B00]">
-            <Circle size={8} fill="currentColor" />
-            <span className="text-xs font-semibold uppercase tracking-wide">Offline</span>
-          </div>
-          <p className="mt-2 text-3xl font-bold text-[#2E2E2E]">{totalUsers - onlineCount}</p>
+          <p className="mt-2 text-3xl font-bold text-[#2E2E2E]">
+            {loading ? '—' : users.filter(u => u.account_type === 'super_admin').length}
+          </p>
         </div>
       </div>
 
@@ -92,19 +109,19 @@ export default function SuperAdminDashboard() {
       <div className="mb-6 max-w-3xl">
         <h2 className="mb-3 text-sm font-semibold text-slate-500">By Role</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {ROLE_CARDS.map(({ role, icon: Icon, iconClass }) => {
-            const count = SAMPLE_USERS.filter((u) => u.role === role).length
+          {ROLE_CARDS.map(({ type, label, icon: Icon, iconClass }) => {
+            const count = users.filter((u) => u.account_type === type).length
             return (
               <div
-                key={role}
+                key={type}
                 className="flex items-center gap-3 rounded-xl border border-[#D9D9D9] bg-white px-3 py-3 shadow-sm"
               >
                 <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
                   <Icon size={16} />
                 </span>
                 <div>
-                  <p className="text-lg font-bold leading-none text-[#2E2E2E]">{count}</p>
-                  <p className="text-xs text-slate-500">{role}</p>
+                  <p className="text-lg font-bold leading-none text-[#2E2E2E]">{loading ? '—' : count}</p>
+                  <p className="text-xs text-slate-500">{label}</p>
                 </div>
               </div>
             )
@@ -116,8 +133,14 @@ export default function SuperAdminDashboard() {
       <div className="mb-6 max-w-3xl overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-[#D9D9D9] px-5 py-4">
           <div className="flex items-center gap-2">
-            <Circle size={8} fill="currentColor" className="text-emerald-500" />
-            <h2 className="font-semibold text-[#2E2E2E]">Recently Active</h2>
+            <h2 className="font-semibold text-[#2E2E2E]">Newest Accounts</h2>
+            <button
+              onClick={load}
+              title="Refresh"
+              className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            >
+              <RefreshCw size={14} />
+            </button>
           </div>
           <button
             onClick={goToManageUsers}
@@ -129,17 +152,23 @@ export default function SuperAdminDashboard() {
         </div>
 
         <ul>
-          {recentlyActive.map((u) => (
+          {loading && (
+            <li className="px-5 py-6 text-center text-sm text-slate-400">Loading accounts…</li>
+          )}
+          {!loading && newest.length === 0 && (
+            <li className="px-5 py-6 text-center text-sm text-slate-400">No accounts yet.</li>
+          )}
+          {!loading && newest.map((u) => (
             <li
-              key={u.email}
+              key={u.id}
               className="flex items-center justify-between border-b border-slate-100 px-5 py-3 text-sm last:border-0"
             >
               <div>
-                <p className="font-medium text-[#2E2E2E]">{u.name}</p>
-                <p className="text-xs text-slate-500">{u.email}</p>
+                <p className="font-medium text-[#2E2E2E]">{u.full_name || u.email || 'No name set'}</p>
+                {u.full_name && <p className="text-xs text-slate-500">{u.email}</p>}
               </div>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                {u.role}
+                {TYPE_LABELS[u.account_type] || u.account_type || '—'}
               </span>
             </li>
           ))}

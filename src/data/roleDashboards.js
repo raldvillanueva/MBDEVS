@@ -14,11 +14,11 @@ export const ROLE_DASHBOARDS = {
     dashboardTitle: 'Super Admin Dashboard',
     badgeClass: 'bg-blue-500 text-white',
     branches: [
-      { steps: ['Manage Users', 'Create/Disable Users'] },
-      { steps: ['View Records', 'view reports'] },
-      { steps: ['View Audit Logs', 'Export reports'] },
-      { steps: ['Manage Admins', 'Create Admin'] },
-      { steps: ['System Settings', 'Configure System'] },
+      { steps: [{ label: 'Manage Users', to: '/super-admin/manage-users' }, 'Create/Disable Users'] },
+      { steps: [{ label: 'View Records', to: '/super-admin/records' }, 'view reports'] },
+      { steps: [{ label: 'View Audit Logs', to: '/super-admin/audit-logs' }, 'Export reports'] },
+      { steps: [{ label: 'Manage Admins', to: '/super-admin/manage-admins' }, 'Create Admin'] },
+      { steps: [{ label: 'System Settings', to: '/super-admin/settings' }, 'Configure System'] },
     ],
   },
 
@@ -28,9 +28,9 @@ export const ROLE_DASHBOARDS = {
     badgeClass: 'bg-amber-500 text-[#2E2E2E]',
     branches: [
       { steps: ['Manage Users', 'Create Encoder/Viewer'] },
-      { steps: ['view reports', 'Edit reports', 'Delete Records'] },
-      { steps: ['Disable users', 'Delete Records (Limited)', 'Export records'] },
-      { steps: ['approve records', 'Export records'] },
+      { steps: [{ label: 'view reports', to: '/summary' }, 'Edit reports', 'Delete Records'] },
+      { steps: [{ label: 'Manage records', to: '/field-orders' }, 'Delete Records', 'Export records'] },
+      { steps: [{ label: 'approve records', to: '/deletion-requests' }, 'Export records'] },
     ],
   },
 
@@ -38,10 +38,11 @@ export const ROLE_DASHBOARDS = {
     label: 'Supervisor',
     dashboardTitle: 'Supervisor Dashboard',
     badgeClass: 'bg-emerald-600 text-white',
+    note: 'Supervisor can add, edit, archive and approve \u2014 everything except permanently deleting a record, which stays with Admin.',
     branches: [
-      { steps: ['Approve Records', 'Edit users record (limited)'] },
-      { steps: ['view reports', 'View Audit Logs'] },
-      { steps: ['Export reports'] },
+      { steps: [{ label: 'Approve Records', to: '/deletion-requests' }, 'Edit users record (limited)'] },
+      { steps: [{ label: 'view reports', to: '/summary' }, { label: 'View Audit Logs', to: '/reports' }] },
+      { steps: [{ label: 'Export reports', to: '/field-orders' }] },
     ],
   },
 
