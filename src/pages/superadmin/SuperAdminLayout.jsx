@@ -1,9 +1,13 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, FileText, ShieldAlert, Settings, ArrowLeft } from 'lucide-react'
+import { LayoutDashboard, FileText, ShieldAlert, Settings, ArrowLeft, Users, LogOut } from 'lucide-react'
 import logo from '../../assets/mb-logo.jpg'
+import { useAuth } from '../../lib/AuthContext'
+import { useSector } from '../../lib/SectorContext'
+import { supabase } from '../../lib/supabase'
 
 const NAV_ITEMS = [
   { to: '/super-admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/super-admin/manage-users', icon: Users, label: 'Manage Users' },
   { to: '/super-admin/records', icon: FileText, label: 'View Records' },
   { to: '/super-admin/audit-logs', icon: ShieldAlert, label: 'Audit Logs' },
   { to: '/super-admin/settings', icon: Settings, label: 'System Settings' },
@@ -16,6 +20,14 @@ const NAV_ITEMS = [
 // standalone Super Admin section.
 export default function SuperAdminLayout({ children }) {
   const navigate = useNavigate()
+  const { profile, session } = useAuth()
+  const { clearSector } = useSector()
+
+  async function handleSignOut() {
+    clearSector()
+    await supabase.auth.signOut()
+    navigate('/', { replace: true })
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F4F4F4]">
@@ -60,13 +72,32 @@ export default function SuperAdminLayout({ children }) {
         </nav>
 
         <div className="border-t border-[#444] px-5 py-4">
-          <button
-            onClick={() => navigate('/role-select')}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-gray-400 transition-colors hover:bg-[#3C3C3C] hover:text-white"
+          <p
+            className="truncate text-xs text-gray-300"
+            title={profile?.full_name || session?.user?.email}
           >
-            <ArrowLeft size={14} />
-            Back to role selector (testing only)
+            {profile?.full_name || session?.user?.email}
+          </p>
+          {profile?.full_name && (
+            <p className="truncate text-[11px] text-gray-500">{session?.user?.email}</p>
+          )}
+
+          <button
+            onClick={() => navigate('/sectors')}
+            className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#3C3C3C] hover:text-white"
+          >
+            <ArrowLeft size={16} />
+            Field order app
           </button>
+
+          <button
+            onClick={handleSignOut}
+            className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#3C3C3C] hover:text-white"
+          >
+            <LogOut size={16} />
+            Sign Out
+          </button>
+
           <p className="mt-3 text-[11px] text-gray-500">
             MB Development Corporation
           </p>

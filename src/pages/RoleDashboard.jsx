@@ -7,7 +7,8 @@ export default function RoleDashboard({ role }) {
   const navigate = useNavigate()
   const config = ROLE_DASHBOARDS[role]
 
-  if (!config) return <Navigate to="/role-select" replace />
+  // An account type with no dashboard defined belongs in the ordinary app.
+  if (!config) return <Navigate to="/sectors" replace />
 
   function handleItemClick(branch) {
     const step = branch.steps[0]
@@ -30,7 +31,7 @@ export default function RoleDashboard({ role }) {
           <div>
             <h1 className="text-2xl font-bold text-[#2E2E2E]">{config.dashboardTitle}</h1>
             <p className="mt-1 text-sm text-slate-500">
-              Landing page for the "{config.label}" branch of the role flowchart.
+              Everything you can do, in one place.
             </p>
           </div>
           <span
@@ -48,7 +49,7 @@ export default function RoleDashboard({ role }) {
         )}
 
         <div className="flex max-w-md flex-col gap-3">
-          {config.branches.map((branch, i) => {
+          {config.branches.map((branch) => {
             const step = branch.steps[0]
             const label = typeof step === 'object' ? step.label : step
             const isReal = typeof step === 'object' && !!step.to
@@ -56,7 +57,7 @@ export default function RoleDashboard({ role }) {
               <button
                 key={label}
                 onClick={() => handleItemClick(branch)}
-                title={isReal ? `Goes to the real ${step.to} page` : 'Not built yet'}
+                title={isReal ? label : 'Not built yet'}
                 className={`flex items-center justify-between rounded-xl border px-5 py-4 text-left text-sm font-semibold
                   border-[#D89B00] bg-[#FFF6E5] text-[#2E2E2E] transition hover:bg-[#FCE9BE]
                   ${isReal ? 'ring-1 ring-emerald-400' : ''}

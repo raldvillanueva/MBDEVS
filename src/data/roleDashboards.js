@@ -27,7 +27,7 @@ export const ROLE_DASHBOARDS = {
     dashboardTitle: 'Admin Dashboard',
     badgeClass: 'bg-amber-500 text-[#2E2E2E]',
     branches: [
-      { steps: ['Manage Users', 'Create Encoder/Viewer'] },
+      { steps: [{ label: 'Manage Users', to: '/manage-users' }, 'Create Encoder/Viewer'] },
       { steps: [{ label: 'view reports', to: '/summary' }, 'Edit reports', 'Delete Records'] },
       { steps: [{ label: 'Manage records', to: '/field-orders' }, 'Delete Records', 'Export records'] },
       { steps: [{ label: 'approve records', to: '/deletion-requests' }, 'Export records'] },
@@ -53,7 +53,6 @@ export const ROLE_DASHBOARDS = {
     label: 'Encoder',
     dashboardTitle: 'Encoder Dashboard',
     badgeClass: 'bg-purple-600 text-white',
-    note: 'This role\u2019s functionality already exists in the app. These boxes link to the real pages — since there\u2019s no logged-in session yet, they\u2019ll bounce you to the login screen. That\u2019s expected.',
     branches: [
       { steps: [{ label: 'Encode Data', to: '/sectors' }] },
       { steps: [{ label: 'Edit own records', to: '/field-orders' }] },
@@ -68,7 +67,6 @@ export const ROLE_DASHBOARDS = {
     label: 'Viewer',
     dashboardTitle: 'Viewer Dashboard',
     badgeClass: 'bg-slate-500 text-white',
-    note: 'This role\u2019s functionality already exists in the app as the read-only ("staff") mode. These boxes link to the real pages — since there\u2019s no logged-in session yet, they\u2019ll bounce you to the login screen. That\u2019s expected.',
     branches: [
       { steps: [{ label: 'view records/reports', to: '/field-orders' }] },
       { steps: [{ label: 'view reports/records (limited)', to: '/summary' }] },

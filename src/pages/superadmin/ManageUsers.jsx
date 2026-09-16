@@ -28,7 +28,15 @@ function tintFor(accountType) {
 }
 
 export default function ManageUsers() {
-  const { session } = useAuth()
+  const { session, accountType } = useAuth()
+
+  // An Admin manages their own Encoder/Viewer team, per the role flowchart.
+  // Promoting anyone to Admin or above stays with Super Admin, so an Admin
+  // cannot mint a peer or a superior.
+  const isSuperAdmin = accountType === 'super_admin'
+  const assignable = isSuperAdmin
+    ? ACCOUNT_TYPES
+    : ACCOUNT_TYPES.filter(t => t.value === 'encoder' || t.value === 'viewer')
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -100,7 +108,9 @@ export default function ManageUsers() {
         <div>
           <h1 className="text-2xl font-bold text-[#2E2E2E]">Manage Users</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Every account in the system, and what each one is allowed to do.
+            {isSuperAdmin
+              ? 'Every account in the system, and what each one is allowed to do.'
+              : 'Your Encoder and Viewer team. Admin and above are managed by a Super Admin.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -202,6 +212,11 @@ export default function ManageUsers() {
 
             {!loading && filtered.map(u => {
               const isSelf = u.id === session?.user?.id
+              // An Admin can only retarget accounts at or below their own
+              // level; a Super Admin row is never editable from here.
+              const outOfReach =
+                !isSuperAdmin &&
+                !['encoder', 'viewer'].includes(u.account_type)
               return (
                 <tr key={u.id} className="border-b border-slate-100 last:border-0">
                   <td className="px-5 py-3 font-medium text-[#2E2E2E]">
@@ -221,14 +236,26 @@ export default function ManageUsers() {
                   <td className="px-5 py-3">
                     <select
                       value={u.account_type || ''}
-                      disabled={savingId === u.id || isSelf}
+                      disabled={savingId === u.id || isSelf || outOfReach}
                       onChange={e => changeAccountType(u, e.target.value)}
                       // Demoting yourself would strip the very access needed to
                       // undo it, so your own row is locked.
-                      title={isSelf ? 'You cannot change your own account type' : 'Change this account type'}
+                      title={
+                        isSelf
+                          ? 'You cannot change your own account type'
+                          : outOfReach
+                            ? 'Only a Super Admin can change this account'
+                            : 'Change this account type'
+                      }
                       className="rounded-lg border border-[#D9D9D9] bg-white px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[#D89B00] disabled:bg-slate-100 disabled:text-slate-400"
                     >
-                      {ACCOUNT_TYPES.map(t => (
+                      {/* The current value has to be listed even when it is
+                          not assignable, or the select would show the wrong
+                          account type back to the user. */}
+                      {(assignable.some(t => t.value === u.account_type)
+                        ? assignable
+                        : [...assignable, ACCOUNT_TYPES.find(t => t.value === u.account_type)].filter(Boolean)
+                      ).map(t => (
                         <option key={t.value} value={t.value}>{t.label}</option>
                       ))}
                     </select>

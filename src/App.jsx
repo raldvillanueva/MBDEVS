@@ -15,6 +15,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import SuperAdminRoute from './components/SuperAdminRoute'
 import RoleRoute from './components/RoleRoute'
+import ManageUsersRoute from './components/ManageUsersRoute'
 import HomeRedirect from './pages/HomeRedirect'
 import { AuthProvider } from './lib/AuthContext'
 import { SectorProvider } from './lib/SectorContext'
@@ -48,7 +49,10 @@ export default function App() {
             <Route path="/role-select" element={<RoleSelect />} />
             <Route path="/coming-soon" element={<ComingSoon />} />
             <Route path="/super-admin" element={<SuperAdminRoute><SuperAdminDashboard /></SuperAdminRoute>} />
-            <Route path="/super-admin/manage-users" element={<SuperAdminRoute><ManageUsers /></SuperAdminRoute>} />
+            {/* Shared: Super Admin runs every account, Admin runs their own
+                Encoder/Viewer team. Both paths render the same page. */}
+            <Route path="/super-admin/manage-users" element={<ManageUsersRoute><ManageUsers /></ManageUsersRoute>} />
+            <Route path="/manage-users" element={<ManageUsersRoute><ManageUsers /></ManageUsersRoute>} />
             <Route path="/super-admin/manage-admins" element={<SuperAdminRoute><ManageAdmins /></SuperAdminRoute>} />
             <Route path="/super-admin/records" element={<SuperAdminRoute><ViewRecords /></SuperAdminRoute>} />
             <Route path="/super-admin/audit-logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
