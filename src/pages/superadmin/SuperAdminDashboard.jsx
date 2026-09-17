@@ -17,7 +17,6 @@ import { supabase } from '../../lib/supabase'
 // made-up "3 online" is worse than no number at all.
 const ROLE_CARDS = [
   { type: 'admin', label: 'Admin', icon: ShieldCheck, iconClass: 'bg-amber-100 text-amber-700' },
-  { type: 'supervisor', label: 'Supervisor', icon: UserCheck2, iconClass: 'bg-emerald-100 text-emerald-700' },
   { type: 'encoder', label: 'Encoder', icon: ClipboardList, iconClass: 'bg-purple-100 text-purple-700' },
   { type: 'viewer', label: 'Viewer', icon: Eye, iconClass: 'bg-slate-200 text-slate-700' },
 ]
@@ -25,7 +24,6 @@ const ROLE_CARDS = [
 const TYPE_LABELS = {
   super_admin: 'Super Admin',
   admin: 'Admin',
-  supervisor: 'Supervisor',
   encoder: 'Encoder',
   viewer: 'Viewer',
 }

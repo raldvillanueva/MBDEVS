@@ -17,11 +17,10 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
 // account_type decides what the app shows; role is the coarse bucket RLS
 // reads. They are set together here so an account can never end up showing
-// supervisor pages while the database treats it as staff.
+// admin pages while the database treats it as staff.
 const ACCOUNT_TYPES: Record<string, 'admin' | 'staff'> = {
   super_admin: 'admin',
   admin: 'admin',
-  supervisor: 'admin',
   encoder: 'staff',
   viewer: 'staff',
 }
@@ -146,7 +145,7 @@ Deno.serve(async req => {
 
   if (profileError) {
     // The sign-in exists but carries the default permissions. Say so plainly
-    // rather than reporting success — a silently-encoder "supervisor" account
+    // rather than reporting success — a silently-encoder "admin" account
     // is worse than a clear error.
     return json({
       error:

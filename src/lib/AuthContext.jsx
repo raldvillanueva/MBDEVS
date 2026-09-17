@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
 
   const role = profile?.role || 'staff' // fail-closed: unknown/unfetched profile => least privilege
 
-  // Admin/Supervisor/Super Admin and Encoder/Viewer are all real accounts
+  // Admin/Super Admin and Encoder/Viewer are all real accounts
   // under the hood ('admin' or 'staff' respectively) — account_type just
   // says which of the two page variants within that bucket to show.
   // Falls back sensibly for profile rows created before this column existed.
@@ -55,8 +55,8 @@ export function AuthProvider({ children }) {
   // Capability flags, mirroring the SQL helpers in role_permissions_setup.sql
   // one for one. These only decide what the UI offers — the database enforces
   // the same rules, so hiding a button is a courtesy, not the control.
-  const canEncode = ['encoder', 'supervisor', 'admin', 'super_admin'].includes(accountType)
-  const canManage = ['supervisor', 'admin', 'super_admin'].includes(accountType)
+  const canEncode = ['encoder', 'admin', 'super_admin'].includes(accountType)
+  const canManage = ['admin', 'super_admin'].includes(accountType)
   const canDelete = ['admin', 'super_admin'].includes(accountType)
   const isSuperAdmin = accountType === 'super_admin'
 

@@ -148,7 +148,8 @@ export default function FieldOrders() {
   // whatever a Super Admin has set rather than a constant in this file.
   const { crewNames } = useSettings()
   const crewNameOptions = useMemo(() => ['All', ...crewNames], [crewNames])
-  // canManage covers Supervisor and up — everything except permanent delete.
+  // canManage covers Admin and up — everything except permanent delete,
+  // which is canDelete.
   const isAdmin = canManage || role === 'admin'
   const [showDeletionRequest, setShowDeletionRequest] = useState(false)
   const [records, setRecords] = useState([])

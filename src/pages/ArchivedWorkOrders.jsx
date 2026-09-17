@@ -11,7 +11,8 @@ export default function ArchivedWorkOrders() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
   const { role, session, profile, canManage } = useAuth()
-  // Restoring from the archive is reversible, so Supervisor keeps it.
+  // Restoring from the archive is reversible, so it sits on canManage
+  // rather than on the stricter canDelete.
   const isAdmin = canManage || role === 'admin'
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)

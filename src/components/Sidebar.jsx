@@ -14,7 +14,6 @@ const SECTOR_NAMES = { rizal: 'Rizal', manila: 'Manila', pasig: 'Pasig', balinta
 const ACCOUNT_TYPE_LABELS = {
   super_admin: 'Super Admin',
   admin: 'Admin',
-  supervisor: 'Supervisor',
   encoder: 'Encoder',
   viewer: 'Viewer',
 }
@@ -22,7 +21,6 @@ const ACCOUNT_TYPE_LABELS = {
 const ACCOUNT_TYPE_BADGES = {
   super_admin: 'bg-blue-500 text-white',
   admin: 'bg-amber-500 text-[#2E2E2E]',
-  supervisor: 'bg-emerald-600 text-white',
   encoder: 'bg-purple-600 text-white',
   viewer: 'bg-slate-500 text-white',
 }
@@ -99,7 +97,6 @@ export default function Sidebar() {
   const NAV_BY_ACCOUNT_TYPE = {
     super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
     admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
-    supervisor:  [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
     encoder:     [DASHBOARD, FIELD_ORDERS, PENDING, REPORTS],
     viewer:      [DASHBOARD, FIELD_ORDERS, ARCHIVED],
   }

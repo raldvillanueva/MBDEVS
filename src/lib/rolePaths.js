@@ -9,7 +9,6 @@
 export const ROLE_HOME = {
   super_admin: '/sectors',
   admin: '/sectors',
-  supervisor: '/sectors',
   encoder: '/sectors',
   viewer: '/sectors',
 }

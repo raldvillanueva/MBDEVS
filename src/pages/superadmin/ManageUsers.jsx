@@ -8,12 +8,11 @@ import { logAudit, AUDIT_ACTIONS } from '../../lib/auditLog'
 
 // account_type is what the app reads; role is the coarse bucket RLS reads.
 // They are set together so the two can never drift — an account_type of
-// 'supervisor' sitting on role 'staff' would show supervisor pages while the
-// database refused every action on them.
+// 'admin' sitting on role 'staff' would show admin pages while the database
+// refused every action on them.
 const ACCOUNT_TYPES = [
   { value: 'super_admin', label: 'Super Admin', role: 'admin', tint: 'bg-blue-100 text-blue-700' },
   { value: 'admin', label: 'Admin', role: 'admin', tint: 'bg-amber-100 text-amber-800' },
-  { value: 'supervisor', label: 'Supervisor', role: 'admin', tint: 'bg-emerald-100 text-emerald-700' },
   { value: 'encoder', label: 'Encoder', role: 'staff', tint: 'bg-purple-100 text-purple-700' },
   { value: 'viewer', label: 'Viewer', role: 'staff', tint: 'bg-slate-100 text-slate-600' },
 ]

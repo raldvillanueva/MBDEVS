@@ -2,7 +2,6 @@ import { useState } from 'react'
 import {
   X,
   ShieldCheck,
-  Users,
   ClipboardList,
   Eye,
   ChevronLeft,
@@ -24,13 +23,6 @@ const ROLE_OPTIONS = [
     icon: ShieldCheck,
     description: 'Full access to records, reports, and their own Encoder/Viewer team.',
     badgeClass: 'bg-amber-100 text-amber-700',
-  },
-  {
-    value: 'supervisor',
-    label: 'Supervisor',
-    icon: Users,
-    description: 'Approves records, edits limited user data, exports reports.',
-    badgeClass: 'bg-emerald-100 text-emerald-700',
   },
   {
     value: 'encoder',

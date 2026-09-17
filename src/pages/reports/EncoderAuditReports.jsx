@@ -67,7 +67,7 @@ export default function EncoderAuditReports() {
     if (insertError) {
       setError('We could not submit this report. Please try again.')
     } else {
-      setNotice('Report submitted. Your supervisor/admin can now view it.')
+      setNotice('Report submitted. An Admin can now view it.')
       setPreview(null)
       await fetchHistory()
     }
@@ -86,7 +86,7 @@ export default function EncoderAuditReports() {
       {!isEncoder && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Report generation is limited to Encoding accounts. If you need a copy of the latest
-          report, ask your supervisor or admin.
+          report, ask an Admin.
         </div>
       )}
 

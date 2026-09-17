@@ -7,7 +7,7 @@ import { overdueCriticalOf } from '../../lib/reportStats'
 
 const SECTOR_TABS = ['all', ...DATA_SECTORS]
 
-// Shared by every role that can review submitted reports (Admin, Supervisor,
+// Shared by every role that can review submitted reports (Admin,
 // Super Admin — all `role = 'admin'` underneath, see audit_reports_setup.sql).
 // `extraSummary`, if given, renders above the table (e.g. Super Admin's
 // cross-sector rollup) so each page can add its own emphasis on top of the
