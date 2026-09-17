@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   Users,
   ArrowUpRight,
-  ShieldPlus,
   ShieldCheck,
   UserCheck2,
   ClipboardList,
@@ -60,9 +59,6 @@ export default function SuperAdminDashboard() {
     navigate('/super-admin/manage-users')
   }
 
-  function goToManageAdmins() {
-    navigate('/super-admin/manage-admins')
-  }
 
   return (
     <SuperAdminLayout>
@@ -175,14 +171,6 @@ export default function SuperAdminDashboard() {
         </ul>
       </div>
 
-      {/* Manage Admins — separate quick action */}
-      <button
-        onClick={goToManageAdmins}
-        className="flex max-w-3xl items-center gap-2 rounded-xl border border-[#D89B00] bg-[#FFF6E5] px-5 py-4 text-sm font-semibold text-[#2E2E2E] transition hover:bg-[#FCE9BE]"
-      >
-        <ShieldPlus size={18} className="text-[#D89B00]" />
-        Manage Admins
-      </button>
     </SuperAdminLayout>
   )
 }

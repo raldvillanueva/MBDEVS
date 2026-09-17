@@ -23,7 +23,6 @@ import { SectorProvider } from './lib/SectorContext'
 // The Super Admin section: account management and system-wide views.
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard'
 import ManageUsers from './pages/superadmin/ManageUsers'
-import ManageAdmins from './pages/superadmin/ManageAdmins'
 import ViewRecords from './pages/superadmin/ViewRecords'
 import AuditLogs from './pages/superadmin/AuditLogs'
 import SystemSettings from './pages/superadmin/SystemSettings'
@@ -49,7 +48,9 @@ export default function App() {
                 Encoder/Viewer team. Both paths render the same page. */}
             <Route path="/super-admin/manage-users" element={<ManageUsersRoute><ManageUsers /></ManageUsersRoute>} />
             <Route path="/manage-users" element={<ManageUsersRoute><ManageUsers /></ManageUsersRoute>} />
-            <Route path="/super-admin/manage-admins" element={<SuperAdminRoute><ManageAdmins /></SuperAdminRoute>} />
+            {/* Manage Admins is gone: Manage Users creates and retargets every
+                account type, so a second page for one of them was redundant. */}
+            <Route path="/super-admin/manage-admins" element={<Navigate to="/manage-users" replace />} />
             <Route path="/super-admin/records" element={<SuperAdminRoute><ViewRecords /></SuperAdminRoute>} />
             <Route path="/super-admin/audit-logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
             <Route path="/super-admin/settings" element={<SuperAdminRoute><SystemSettings /></SuperAdminRoute>} />
