@@ -112,11 +112,15 @@ export default function PendingRecords() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
   const poTable = pendingOrdersTable(sector)
-  const { role, canManage } = useAuth()
+  const { role, canEncode, canManage } = useAuth()
   // Crew names come from System Settings, not a constant in this file.
   const { crewNames } = useSettings()
   // Removing from Pending and bulk actions are review decisions.
   const isAdmin = canManage || role === 'admin'
+  // Pending is the Encoder's own workspace: they put records here and they
+  // correct them here. Only moving a record on to Field Orders, or dropping
+  // it, is a review decision — those stay on isAdmin below.
+  const canEdit = canEncode || isAdmin
   const [pending, setPending] = useState([])
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState('STACK')
@@ -488,24 +492,24 @@ async function sendSelectedToFieldOrders() {
               </div>
               <div className="flex items-center gap-2">
                 {isAdmin && (
-                  <>
-                    <button
-                      onClick={saveToFieldOrders}
-                      disabled={savingToFO || saving}
-                      className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <CheckCircle size={13} />
-                      {savingToFO ? 'Saving…' : 'Send to Field Orders'}
-                    </button>
-                    <button
-                      onClick={updatePending}
-                      disabled={saving || savingToFO}
-                      className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors"
-                    >
-                      <Save size={13} />
-                      {saving ? 'Saving…' : 'Update'}
-                    </button>
-                  </>
+                  <button
+                    onClick={saveToFieldOrders}
+                    disabled={savingToFO || saving}
+                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    <CheckCircle size={13} />
+                    {savingToFO ? 'Saving…' : 'Send to Field Orders'}
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    onClick={updatePending}
+                    disabled={saving || savingToFO}
+                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    <Save size={13} />
+                    {saving ? 'Saving…' : 'Update'}
+                  </button>
                 )}
                 <button onClick={closeEdit} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                   <X size={18} />
@@ -524,10 +528,11 @@ async function sendSelectedToFieldOrders() {
                 <p>
                   Fields marked <span className="font-bold text-red-500">*</span> must be filled in
                   before this record is sent to Field Orders. Only <strong>Remarks</strong> is optional.
+                  {canEdit && !isAdmin && ' Save your changes with Update — a Supervisor or Admin sends the record on to Field Orders.'}
                 </p>
               </div>
 
-              <fieldset disabled={!isAdmin} className="space-y-6 border-0 p-0 m-0 min-w-0">
+              <fieldset disabled={!canEdit} className="space-y-6 border-0 p-0 m-0 min-w-0">
 
               <PS title="Main Information">
                 <PF label="Field Order No.">
