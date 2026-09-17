@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck, Users } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck } from 'lucide-react'
 import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
@@ -93,15 +93,12 @@ export default function Sidebar() {
   const ARCHIVED = { to: '/archived-work-orders', icon: Archive, label: 'Archived Work Orders' }
   const REPORTS = { to: '/reports', icon: FileText, label: 'Audit Reports' }
   const DELETIONS = { to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }
-  const MANAGE_USERS = { to: '/manage-users', icon: Users, label: 'Manage Users' }
 
-  // Manage Users is account admin, not field order work, so it lives in the
-  // Super Admin section — the link below reaches it. An Admin has no Super
-  // Admin section, so for them this sidebar is the only way in and the tab
-  // stays.
+  // Managing accounts is Super Admin work, reached from the Super Admin
+  // section rather than from here. No sector sidebar carries it.
   const NAV_BY_ACCOUNT_TYPE = {
     super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
-    admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS, MANAGE_USERS],
+    admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
     supervisor:  [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
     encoder:     [DASHBOARD, FIELD_ORDERS, PENDING, REPORTS],
     viewer:      [DASHBOARD, FIELD_ORDERS, ARCHIVED],

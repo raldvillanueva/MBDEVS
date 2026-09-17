@@ -84,12 +84,11 @@ Deno.serve(async req => {
     .eq('id', caller.user.id)
     .maybeSingle()
 
-  const callerType = callerProfile?.account_type
-  const isSuperAdmin = callerType === 'super_admin'
-  const isAdmin = callerType === 'admin'
-
-  if (!isSuperAdmin && !isAdmin) {
-    return json({ error: 'Only an Admin or Super Admin can create accounts' }, 403, origin)
+  // Creating accounts is Super Admin work. This has to hold here and not
+  // only in the UI: the browser guard decides what is shown, this decides
+  // what is allowed, and anyone can send this request by hand.
+  if (callerProfile?.account_type !== 'super_admin') {
+    return json({ error: 'Only a Super Admin can create accounts' }, 403, origin)
   }
 
   let body: Record<string, string>
@@ -112,13 +111,6 @@ Deno.serve(async req => {
   }
   if (!(accountType in ACCOUNT_TYPES)) {
     return json({ error: `account_type must be one of ${Object.keys(ACCOUNT_TYPES).join(', ')}` }, 400, origin)
-  }
-
-  // An Admin builds their own Encoder/Viewer team; minting a peer or a
-  // superior stays with Super Admin. Enforced here and not only in the UI,
-  // because the request body is whatever the client chose to send.
-  if (isAdmin && !['encoder', 'viewer'].includes(accountType)) {
-    return json({ error: 'An Admin can only create Encoder or Viewer accounts' }, 403, origin)
   }
 
   // email_confirm: true — an admin creating an account on someone's behalf has

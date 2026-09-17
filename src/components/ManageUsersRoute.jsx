@@ -3,9 +3,10 @@ import { useAuth } from '../lib/AuthContext'
 import { pathForAccountType } from '../lib/rolePaths'
 
 /**
- * Manage Users is shared: a Super Admin runs every account, an Admin runs
- * their own Encoder/Viewer team. Which of the two you are is decided inside
- * the page — this only settles whether you get in at all.
+ * Managing accounts is Super Admin work. This is not only a UI decision:
+ * profiles_update is gated on is_super_admin(), so an Admin reaching the
+ * page would have been refused by the database on every change anyway.
+ * Refusing at the door is clearer than letting them in to fail.
  */
 export default function ManageUsersRoute({ children }) {
   const { session, accountType, loading } = useAuth()
@@ -20,6 +21,7 @@ export default function ManageUsersRoute({ children }) {
 
   if (!session) return <Navigate to="/" replace />
 
-  const allowed = accountType === 'super_admin' || accountType === 'admin'
-  return allowed ? children : <Navigate to={pathForAccountType(accountType)} replace />
+  return accountType === 'super_admin'
+    ? children
+    : <Navigate to={pathForAccountType(accountType)} replace />
 }
