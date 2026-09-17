@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck, Users } from 'lucide-react'
 import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
@@ -80,24 +80,36 @@ export default function Sidebar() {
     return () => supabase.removeChannel(channel)
   }, [role])
 
-  // Full record-management nav, shared by every sector that has real data
-  // entry (Rizal, Manila, Pasig, Balintawak). Each of those sectors reads
-  // from its OWN tables — see src/lib/sectorTables.js.
-  // Viewer accounts aren't part of the Audit Reports feature yet (only
-  // Encoder submits, only Supervisor/Admin/Super Admin review), so the tab
-  // stays hidden for them rather than opening onto an empty page.
-  const canSeeReports = accountType !== 'viewer'
+  // Each account sees the tabs for work it can actually do. A tab that
+  // opens onto a page where every action is refused is worse than no tab.
+  //
+  //   Encoder  encodes and submits reports; archiving and approving are
+  //            review decisions, so those tabs stay off.
+  //   Viewer   reads. No Pending (cannot insert), no Audit Reports
+  //            (nothing to submit), no approvals.
+  const DASHBOARD = { to: '/summary', icon: LayoutDashboard, label: 'Dashboard' }
+  const FIELD_ORDERS = { to: '/field-orders', icon: ClipboardList, label: 'Field Orders' }
+  const PENDING = { to: '/pending-records', icon: Clock, label: 'Pending Records', badge: pendingCount }
+  const ARCHIVED = { to: '/archived-work-orders', icon: Archive, label: 'Archived Work Orders' }
+  const REPORTS = { to: '/reports', icon: FileText, label: 'Audit Reports' }
+  const DELETIONS = { to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }
+  const MANAGE_USERS = { to: '/manage-users', icon: Users, label: 'Manage Users' }
 
-  const fullNav = [
-    { to: '/summary', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/field-orders', icon: ClipboardList, label: 'Field Orders' },
-    { to: '/pending-records', icon: Clock, label: 'Pending Records', badge: pendingCount },
-    { to: '/archived-work-orders', icon: Archive, label: 'Archived Work Orders' },
-    ...(canSeeReports ? [{ to: '/reports', icon: FileText, label: 'Audit Reports' }] : []),
-    ...(role === 'admin'
-      ? [{ to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }]
-      : []),
-  ]
+  const NAV_BY_ACCOUNT_TYPE = {
+    super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS, MANAGE_USERS],
+    admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS, MANAGE_USERS],
+    supervisor:  [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
+    encoder:     [DASHBOARD, FIELD_ORDERS, PENDING, REPORTS],
+    viewer:      [DASHBOARD, FIELD_ORDERS, ARCHIVED],
+  }
+
+  // An account with no type yet falls back to what role allows, so a
+  // half-migrated profile is not left staring at an empty sidebar.
+  const fullNav =
+    NAV_BY_ACCOUNT_TYPE[accountType] ||
+    (role === 'admin'
+      ? [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS]
+      : [DASHBOARD, FIELD_ORDERS, PENDING, REPORTS])
 
   // MBDEVCO is a read-only rollup across all sectors: Dashboard (+ Audit
   // Reports for reviewer accounts) only, no data-entry/record tabs.
@@ -110,8 +122,8 @@ export default function Sidebar() {
     ['rizal', 'manila', 'pasig', 'balintawak'].includes(sector) ? fullNav
     : sector === 'mbdevco'
       ? [
-          { to: '/summary', icon: LayoutDashboard, label: 'Dashboard' },
-          ...(canSeeReports ? [{ to: '/reports', icon: FileText, label: 'Audit Reports' }] : []),
+          DASHBOARD,
+          ...(accountType === 'viewer' ? [] : [REPORTS]),
         ]
     : []
 

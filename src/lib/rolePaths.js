@@ -2,12 +2,16 @@
 // the role guards and the sidebar cannot disagree about where an account
 // should land.
 
+// Every account works in the app itself and picks a sector first. What each
+// one may do is expressed by the tabs the sidebar offers, not by sending
+// them somewhere different — a separate landing page per role was one more
+// screen between someone and their work.
 export const ROLE_HOME = {
-  super_admin: '/super-admin',
-  admin: '/admin',
-  supervisor: '/supervisor',
-  encoder: '/encoder',
-  viewer: '/viewer',
+  super_admin: '/sectors',
+  admin: '/sectors',
+  supervisor: '/sectors',
+  encoder: '/sectors',
+  viewer: '/sectors',
 }
 
 // An account whose type we do not recognise still has to go somewhere.
@@ -19,8 +23,3 @@ export function pathForAccountType(accountType) {
   return ROLE_HOME[accountType] || FALLBACK_HOME
 }
 
-// The role dashboards are keyed with a hyphen in roleDashboards.js, while
-// account_type uses an underscore (it is a Postgres value).
-export function dashboardKeyFor(accountType) {
-  return accountType === 'super_admin' ? 'super-admin' : accountType
-}

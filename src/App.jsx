@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Sectors from './pages/Sectors'
 import SectorPlaceholder from './pages/SectorPlaceholder'
@@ -14,19 +14,13 @@ import Login from './pages/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import SuperAdminRoute from './components/SuperAdminRoute'
-import RoleRoute from './components/RoleRoute'
 import ManageUsersRoute from './components/ManageUsersRoute'
+import EncodeRoute from './components/EncodeRoute'
 import HomeRedirect from './pages/HomeRedirect'
 import { AuthProvider } from './lib/AuthContext'
 import { SectorProvider } from './lib/SectorContext'
 
-// Role landing pages — final production paths, but NOT wired to an auth
-// guard yet since no accounts are tied to these roles. Encoder and Viewer
-// link into the real, already-built pages below; the other three roles
-// show "coming soon" placeholders until those features are built.
-import RoleSelect from './pages/RoleSelect'
-import RoleDashboard from './pages/RoleDashboard'
-import ComingSoon from './pages/ComingSoon'
+// The Super Admin section: account management and system-wide views.
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard'
 import ManageUsers from './pages/superadmin/ManageUsers'
 import ManageAdmins from './pages/superadmin/ManageAdmins'
@@ -42,12 +36,14 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Login />} />
 
-            {/* Role landing pages. Each is gated to the account type that
-                owns it; Super Admin may view any of them. Login sends
-                everyone to /home, which forwards by account type. */}
+            {/* Login lands here; it waits for the profile, then forwards. */}
             <Route path="/home" element={<HomeRedirect />} />
-            <Route path="/role-select" element={<RoleSelect />} />
-            <Route path="/coming-soon" element={<ComingSoon />} />
+            {/* The per-role landing pages are retired: every account works
+                in the app itself, and the sidebar offers only the tabs that
+                account can use. These paths still resolve so old links and
+                bookmarks do not dead-end. */}
+            <Route path="/role-select" element={<Navigate to="/sectors" replace />} />
+            <Route path="/coming-soon" element={<Navigate to="/sectors" replace />} />
             <Route path="/super-admin" element={<SuperAdminRoute><SuperAdminDashboard /></SuperAdminRoute>} />
             {/* Shared: Super Admin runs every account, Admin runs their own
                 Encoder/Viewer team. Both paths render the same page. */}
@@ -57,10 +53,10 @@ export default function App() {
             <Route path="/super-admin/records" element={<SuperAdminRoute><ViewRecords /></SuperAdminRoute>} />
             <Route path="/super-admin/audit-logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
             <Route path="/super-admin/settings" element={<SuperAdminRoute><SystemSettings /></SuperAdminRoute>} />
-            <Route path="/admin" element={<RoleRoute allow="admin"><RoleDashboard role="admin" /></RoleRoute>} />
-            <Route path="/supervisor" element={<RoleRoute allow="supervisor"><RoleDashboard role="supervisor" /></RoleRoute>} />
-            <Route path="/encoder" element={<RoleRoute allow="encoder"><RoleDashboard role="encoder" /></RoleRoute>} />
-            <Route path="/viewer" element={<RoleRoute allow="viewer"><RoleDashboard role="viewer" /></RoleRoute>} />
+            <Route path="/admin" element={<Navigate to="/sectors" replace />} />
+            <Route path="/supervisor" element={<Navigate to="/sectors" replace />} />
+            <Route path="/encoder" element={<Navigate to="/sectors" replace />} />
+            <Route path="/viewer" element={<Navigate to="/sectors" replace />} />
             <Route
               path="/"
               element={
@@ -75,8 +71,8 @@ export default function App() {
               <Route path="summary" element={<Dashboard />} />
               <Route path="reports" element={<AuditReports />} />
               <Route path="field-orders" element={<FieldOrders />} />
-              <Route path="field-orders/add" element={<AdminRoute><AddRecord /></AdminRoute>} />
-              <Route path="field-orders/edit/:id" element={<AdminRoute><EditRecord /></AdminRoute>} />
+              <Route path="field-orders/add" element={<EncodeRoute><AddRecord /></EncodeRoute>} />
+              <Route path="field-orders/edit/:id" element={<EncodeRoute><EditRecord /></EncodeRoute>} />
               <Route path="pending-records" element={<PendingRecords />} />
               <Route path="archived-work-orders" element={<ArchivedWorkOrders />} />
               <Route path="deletion-requests" element={<AdminRoute><DeletionRequests /></AdminRoute>} />
