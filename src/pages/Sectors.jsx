@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { Building2, MapPin } from 'lucide-react'
 import { useSector } from '../lib/SectorContext'
+import { useAuth } from '../lib/AuthContext'
+import { supabase } from '../lib/supabase'
 import logo from '../assets/mb-logo.jpg'
 
 const SECTORS = [
@@ -26,15 +28,24 @@ function SectorBox({ label, onClick, icon: Icon, wide }) {
 
 export default function Sectors() {
   const navigate = useNavigate()
-  const { setSector } = useSector()
+  const { setSector, clearSector } = useSector()
+  const { profile, session } = useAuth()
 
   function selectSector(key, to) {
     setSector(key)
     navigate(to)
   }
 
+  async function handleSignOut() {
+    clearSector()
+    await supabase.auth.signOut()
+    navigate('/', { replace: true })
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-10">
+    // Full screen rather than h-full: this page is no longer inside the app
+    // layout, so there is no sized parent to fill.
+    <div className="flex min-h-screen flex-col items-center justify-center gap-10 bg-[#F4F4F4] px-4 py-10">
       <div className="flex flex-col items-center">
         <img src={logo} alt="MB Development" className="w-16 h-16 rounded-xl object-cover shadow-lg mb-3" />
         <h1 className="text-2xl font-bold text-[#2E2E2E]">Select a Sector</h1>
@@ -49,6 +60,16 @@ export default function Sectors() {
       </div>
 
       <SectorBox label="MBDEVCO" icon={Building2} onClick={() => selectSector('mbdevco', '/summary')} wide />
+
+      {/* Without the sidebar there is no other control on this page, so
+          signing out has to be reachable from here. */}
+      <div className="flex items-center gap-3 text-xs text-slate-400">
+        <span>{profile?.full_name || session?.user?.email}</span>
+        <span aria-hidden>·</span>
+        <button onClick={handleSignOut} className="font-medium text-slate-500 hover:text-[#D89B00] hover:underline">
+          Sign Out
+        </button>
+      </div>
     </div>
   )
 }

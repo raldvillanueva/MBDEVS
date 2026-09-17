@@ -6,7 +6,9 @@ export default function Layout() {
   const { sector } = useSector()
   const location = useLocation()
 
-  if (!sector && !location.pathname.startsWith('/sectors')) {
+  // The sector picker lives outside Layout, so nothing here has to make an
+  // exception for it: no sector means there is nothing to show.
+  if (!sector) {
     return <Navigate to="/sectors" replace />
   }
 
@@ -15,8 +17,7 @@ export default function Layout() {
   if (
     sector === 'mbdevco' &&
     location.pathname !== '/summary' &&
-    location.pathname !== '/reports' &&
-    !location.pathname.startsWith('/sectors')
+    location.pathname !== '/reports'
   ) {
     return <Navigate to="/summary" replace />
   }

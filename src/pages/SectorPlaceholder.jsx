@@ -14,7 +14,7 @@ export default function SectorPlaceholder() {
   const name = NAMES[sector] || sector
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F4F4F4] px-4 text-center">
       <Construction size={40} className="text-slate-300" />
       <h1 className="text-xl font-bold text-slate-700">{name}</h1>
       <p className="text-slate-500 text-sm max-w-sm">

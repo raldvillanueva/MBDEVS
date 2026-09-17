@@ -60,6 +60,13 @@ export default function App() {
             <Route path="/supervisor" element={<Navigate to="/sectors" replace />} />
             <Route path="/encoder" element={<Navigate to="/sectors" replace />} />
             <Route path="/viewer" element={<Navigate to="/sectors" replace />} />
+            {/* Choosing a sector happens outside Layout on purpose: Layout
+                renders the sidebar for the current sector, and drawing that
+                around the picker shows the app chrome for a sector that has
+                not been chosen yet. */}
+            <Route path="/sectors" element={<ProtectedRoute><Sectors /></ProtectedRoute>} />
+            <Route path="/sectors/:sector" element={<ProtectedRoute><SectorPlaceholder /></ProtectedRoute>} />
+
             <Route
               path="/"
               element={
@@ -69,8 +76,6 @@ export default function App() {
               }
             >
 
-              <Route path="sectors" element={<Sectors />} />
-              <Route path="sectors/:sector" element={<SectorPlaceholder />} />
               <Route path="summary" element={<Dashboard />} />
               <Route path="reports" element={<AuditReports />} />
               <Route path="field-orders" element={<FieldOrders />} />
