@@ -104,6 +104,17 @@ function friendlySaveError(error) {
   if (message.includes('not-null') || message.includes('null value')) {
     return 'Please complete all required information before saving.'
   }
+  if (message.includes('permission') || message.includes('row-level') || error?.code === '42501') {
+    return 'Your account does not have permission to do that.'
+  }
+  // A missing function is a setup problem, not something the user typed
+  // wrong, so say so rather than sending them back to check the form.
+  if (message.includes('promote_pending_order') || message.includes('could not find the function')) {
+    return 'Sending to Field Orders is not set up on the database yet. Ask your administrator to run promote_pending_setup.sql.'
+  }
+  if (message.includes('no longer exists')) {
+    return 'That pending record no longer exists. Refresh the page and try again.'
+  }
 
   return 'We could not save your changes. Please check the information and try again.'
 }
@@ -234,10 +245,22 @@ export default function PendingRecords() {
     setMissing([])
     setSavingToFO(true)
     setSaveError('')
-    const payload = savePayload()
-    const { error } = await supabase.from(foTable).insert([payload])
+
+    // Save first: promote_pending_order copies the row as it is stored, so
+    // anything typed and not yet saved would be dropped on the way over.
+    const { error: saveErr } = await supabase.from(poTable).update(savePayload()).eq('id', editRow.id)
+    if (saveErr) { setSaveError(friendlySaveError(saveErr)); setSavingToFO(false); return }
+
+    // The insert and the delete have to be one transaction, or a failed
+    // delete leaves the record in Pending as well as Field Orders and it
+    // gets sent twice. The function does both, and is also the only route
+    // an Encoder has into field_orders — fo_insert stays closed to them.
+    const { error } = await supabase.rpc('promote_pending_order', {
+      p_sector: sector,
+      p_pending_id: String(editRow.id),
+    })
     if (error) { setSaveError(friendlySaveError(error)); setSavingToFO(false); return }
-    await supabase.from(poTable).delete().eq('id', editRow.id)
+
     setSavingToFO(false)
     fetchPending()
     closeEdit()
@@ -491,7 +514,7 @@ async function sendSelectedToFieldOrders() {
                 <h2 className="font-mono font-bold text-slate-800 text-lg">{editRow.field_order_no || `ID #${editRow.id}`}</h2>
               </div>
               <div className="flex items-center gap-2">
-                {isAdmin && (
+                {canEdit && (
                   <button
                     onClick={saveToFieldOrders}
                     disabled={savingToFO || saving}
@@ -528,7 +551,6 @@ async function sendSelectedToFieldOrders() {
                 <p>
                   Fields marked <span className="font-bold text-red-500">*</span> must be filled in
                   before this record is sent to Field Orders. Only <strong>Remarks</strong> is optional.
-                  {canEdit && !isAdmin && ' Save your changes with Update — a Supervisor or Admin sends the record on to Field Orders.'}
                 </p>
               </div>
 
