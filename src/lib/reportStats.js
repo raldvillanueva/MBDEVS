@@ -33,7 +33,10 @@ export function inDateRange(rows, from, to) {
   })
 }
 
-export function computeStats(list) {
+// The two overdue day counts are a System Settings value, so they arrive from
+// the caller. The defaults match what the app used before they were editable,
+// which keeps callers that don't care about them working unchanged.
+export function computeStats(list, { warningDays = 10, criticalDays = 21 } = {}) {
   const status = row => row.status_crew?.toUpperCase() || ''
   const action = row => row.fo_action?.toUpperCase() || ''
 
@@ -44,8 +47,11 @@ export function computeStats(list) {
     cancelled: list.filter(r => status(r).includes('CANCEL')).length,
     totalBilled: list.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0),
 
-    overdue10: list.filter(r => !r.archived_at && isOverdueBy(r, 10)).length,
-    overdue21: list.filter(r => !r.archived_at && isOverdueBy(r, 21)).length,
+    overdueWarning: list.filter(r => !r.archived_at && isOverdueBy(r, warningDays)).length,
+    overdueCritical: list.filter(r => !r.archived_at && isOverdueBy(r, criticalDays)).length,
+    // Saved with the report so a snapshot can label itself with the days that
+    // were in force when it was taken, not whatever they are now.
+    thresholds: { warningDays, criticalDays },
     batched: list.filter(r => r.for_batch?.toUpperCase().includes('ALREADY')).length,
 
     replacement: list.filter(r => action(r) === 'REPLACE FO').length,
@@ -53,6 +59,21 @@ export function computeStats(list) {
     energize: list.filter(r => action(r) === 'ENERGIZED FO').length,
     others: list.filter(r => action(r) === 'OTHERS').length,
   }
+}
+
+// Reports saved before the thresholds became editable stored the counts as
+// overdue10/overdue21 and carried no thresholds at all. These readers keep
+// those older rows rendering correctly alongside new ones.
+export function overdueWarningOf(stats) {
+  return stats?.overdueWarning ?? stats?.overdue10 ?? 0
+}
+
+export function overdueCriticalOf(stats) {
+  return stats?.overdueCritical ?? stats?.overdue21 ?? 0
+}
+
+export function thresholdsOf(stats) {
+  return { warningDays: 10, criticalDays: 21, ...(stats?.thresholds || {}) }
 }
 
 // Fetch one sector's field_orders rows, tagged with the sector they came

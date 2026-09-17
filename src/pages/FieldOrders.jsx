@@ -9,13 +9,13 @@ import RequestDeletionModal from '../components/RequestDeletionModal'
 import { useAuth } from '../lib/AuthContext'
 import { displayAgingDays, isOverdue } from '../lib/aging'
 import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
+import { useSettings } from '../lib/SettingsContext'
 
 const PAGE_SIZE = 50
 
 const STATUS_OPTIONS = ['All', 'RE-ASSIGN','FOR ASSIGN', 'ASSIGNED', 'CANCEL', 'CANCEL-EMC', 'FC CANCEL', 'FIELD COMPLETED', 'REVISITED FIELD COM.', 'REVISITED CANCEL']
 const TYPE_OF_METER_OPTIONS = ['All', '12S', '12S ID METER', '1S', '1S EMC L-G', '25S', '2S EMC L-G', '2S EMC L-L', '2S EMX', '2S ID', '2S ID METER', '2S ID METER/ERC', '2S PLAIN METER', '9S', 'EMX', 'ERC 2S PLAIN METER', 'FOR REPLACE', 'KLOAD', 'RETURNED']
 const JOB_DESCRIPTION_OPTIONS = ['All', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX', 'RETIRE', 'RETIRE-EMC', 'RETIRE-EMC-WIRE']
-const CREW_NAME_OPTIONS = ['All', 'A. TOMADA', 'B. VERDARERO', 'C. BENIGNO', 'D. FABOL', 'E. VILLAREAL', 'J. BITAGO', 'J. J. SERRANO']
 const FO_TYPE_OPTIONS = ['All', 'CANCEL', 'CANCEL-EMC', 'CUT SERVICE ENTRANCE', 'ENERGIZED', 'REMOVE', 'REMOVE-EMC', 'REMOVE-EMC-WIRE', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX']
 const BILLED_AMOUNT_OPTIONS = ['All', '0', '172.45', '253.43', '344.9', '383.22', '574.83', '766.44', '958.05', '1013.71', '1689.61']
 const BATCH_OPTIONS = ['All', 'ALREADY BATCH', 'FOR BATCH', 'MISSING METER', 'OTHERS PENDING']
@@ -144,6 +144,10 @@ export default function FieldOrders() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
   const { role, session, profile, canEncode, canManage, canDelete } = useAuth()
+  // Crew names are a System Settings value, so the filter list follows
+  // whatever a Super Admin has set rather than a constant in this file.
+  const { crewNames } = useSettings()
+  const crewNameOptions = useMemo(() => ['All', ...crewNames], [crewNames])
   // canManage covers Supervisor and up — everything except permanent delete.
   const isAdmin = canManage || role === 'admin'
   const [showDeletionRequest, setShowDeletionRequest] = useState(false)
@@ -598,7 +602,7 @@ useEffect(() => {
     date_executed:  { type: 'date',                   value: dateExecutedFilter,  set: setDateExecutedFilter,  isActive: () => !!dateExecutedFilter },
     type_of_meter:  { options: TYPE_OF_METER_OPTIONS, value: typeOfMeterFilter,   set: setTypeOfMeterFilter,   isActive: () => typeOfMeterFilter !== 'All' },
     job_description:{ options: JOB_DESCRIPTION_OPTIONS,value: jobDescriptionFilter,set: setJobDescriptionFilter,isActive: () => jobDescriptionFilter !== 'All' },
-    crew_name:      { options: CREW_NAME_OPTIONS,     value: crewNameFilter,      set: setCrewNameFilter,      isActive: () => crewNameFilter !== 'All' },
+    crew_name:      { options: crewNameOptions,       value: crewNameFilter,      set: setCrewNameFilter,      isActive: () => crewNameFilter !== 'All' },
     fo_type:        { options: FO_TYPE_OPTIONS,       value: foTypeFilter,        set: setFoTypeFilter,        isActive: () => foTypeFilter !== 'All' },
     billed_amount:  { options: BILLED_AMOUNT_OPTIONS, value: billedAmountFilter,  set: setBilledAmountFilter,  isActive: () => billedAmountFilter !== 'All', formatLabel: o => o === 'All' ? 'All' : `₱${o}` },
     for_batch:      { options: BATCH_OPTIONS,         value: batchFilter,         set: setBatchFilter,         isActive: () => batchFilter !== 'All' },

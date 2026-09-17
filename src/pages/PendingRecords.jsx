@@ -4,11 +4,11 @@ import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
 import { X, Save, CheckCircle, Search, Info } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import { useSettings } from '../lib/SettingsContext'
 
 const STATUS_CREW_OPTIONS = ['FOR ASSIGN', 'ASSIGNED', 'REASSIGN','CANCEL', 'CANCEL-EMC', 'FC CANCEL', 'FIELD COMPLETED', 'REVISITED FIELD COM.', 'REVISITED CANCEL']
 const TYPE_OF_METER_OPTIONS = ['12S', '12S ID METER', '1S', '1S EMC L-G', '25S', '2S EMC L-G', '2S EMC L-L', '2S EMX', '2S ID', '2S ID METER', '2S ID METER/ERC', '2S PLAIN METER', '9S', 'EMX', 'ERC 2S PLAIN METER', 'FOR REPLACE', 'KLOAD', 'RETURNED']
 const JOB_DESCRIPTION_OPTIONS = ['REPLACE', 'REPLACE-EMC', 'REPLACE-EMX', 'RETIRE', 'RETIRE-EMC', 'RETIRE-EMC-WIRE']
-const CREW_NAME_OPTIONS = ['A. TOMADA', 'B. VERDARERO', 'C. BENIGNO', 'D. FABOL', 'E. VILLAREAL', 'J. BITAGO', 'J. J. SERRANO']
 const FO_TYPE_OPTIONS = ['CANCEL', 'CANCEL-EMC', 'CUT SERVICE ENTRANCE', 'ENERGIZED', 'REMOVE', 'REMOVE-EMC', 'REMOVE-EMC-WIRE', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX']
 const FO_ACTION_OPTIONS = ['Replace FO', 'Energized FO', 'Retirement FO', 'Others']
 const BILLED_AMOUNT_OPTIONS = ['0', '172.45', '253.43', '344.9', '383.22', '574.83', '766.44', '958.05', '1013.71', '1689.61']
@@ -113,6 +113,8 @@ export default function PendingRecords() {
   const foTable = fieldOrdersTable(sector)
   const poTable = pendingOrdersTable(sector)
   const { role, canManage } = useAuth()
+  // Crew names come from System Settings, not a constant in this file.
+  const { crewNames } = useSettings()
   // Removing from Pending and bulk actions are review decisions.
   const isAdmin = canManage || role === 'admin'
   const [pending, setPending] = useState([])
@@ -567,7 +569,7 @@ async function sendSelectedToFieldOrders() {
                 <PF label="Crew Name">
                   <select value={editForm.crew_name} onChange={e => sf('crew_name', e.target.value)} className={cls('crew_name')}>
                     <option value="">— Select —</option>
-                    {CREW_NAME_OPTIONS.map(option => <option key={option}>{option}</option>)}
+                    {crewNames.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Location" span2>

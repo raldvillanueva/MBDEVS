@@ -5,9 +5,11 @@ import { useAuth } from '../../lib/AuthContext'
 import { useSector } from '../../lib/SectorContext'
 import { DATA_SECTORS, SECTOR_LABELS, isDataSector } from '../../lib/sectorTables'
 import { YEAR_START, TODAY, inDateRange, computeStats, fetchSectorRows } from '../../lib/reportStats'
+import { useSettings } from '../../lib/SettingsContext'
 import AuditReportSnapshot from '../../components/reports/AuditReportSnapshot'
 
 export default function EncoderAuditReports() {
+  const { warningDays, criticalDays } = useSettings()
   const { session, profile, accountType } = useAuth()
   const { sector } = useSector()
 
@@ -46,7 +48,7 @@ export default function EncoderAuditReports() {
     const sectorsToLoad = sector === 'mbdevco' ? DATA_SECTORS : isDataSector(sector) ? [sector] : []
     const perSector = await Promise.all(sectorsToLoad.map(fetchSectorRows))
     const rows = inDateRange(perSector.flat(), dateFrom, dateTo)
-    setPreview({ stats: computeStats(rows), sector, dateFrom, dateTo })
+    setPreview({ stats: computeStats(rows, { warningDays, criticalDays }), sector, dateFrom, dateTo })
     setGenerating(false)
   }
 

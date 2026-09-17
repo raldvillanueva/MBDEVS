@@ -7,6 +7,7 @@ import {
 import { useSector } from '../lib/SectorContext'
 import { DATA_SECTORS, SECTOR_LABELS, isDataSector } from '../lib/sectorTables'
 import { YEAR_START, TODAY, inDateRange, computeStats, fetchSectorRows } from '../lib/reportStats'
+import { useSettings } from '../lib/SettingsContext'
 
 function Section({ title, children }) {
   return (
@@ -94,6 +95,10 @@ export default function Dashboard() {
   const [dateTo, setDateTo] = useState(TODAY)
   const navigate = useNavigate()
   const { sector } = useSector()
+  // The two overdue tiles read their day counts from System Settings, so
+  // changing them there changes what the Dashboard reports.
+  const { warningDays, criticalDays } = useSettings()
+  const days = useMemo(() => ({ warningDays, criticalDays }), [warningDays, criticalDays])
   // MBDEVCO sees a read-only rollup: no links out to the record pages.
   const isSummaryOnly = sector === 'mbdevco'
   const [summarySector, setSummarySector] = useState('all')
@@ -132,7 +137,7 @@ export default function Dashboard() {
     [sectorRows, dateFrom, dateTo],
   )
 
-  const stats = useMemo(() => computeStats(filtered), [filtered])
+  const stats = useMemo(() => computeStats(filtered, days), [filtered, days])
 
   // Per-sector figures for the breakdown table. Date-filtered like everything
   // else, but never sector-filtered, so each sector is always listed — a sector
@@ -143,7 +148,7 @@ export default function Dashboard() {
       .filter(option => option.key !== 'all')
       .map(option => ({
         ...option,
-        stats: computeStats(dated.filter(row => rowSector(row) === option.key)),
+        stats: computeStats(dated.filter(row => rowSector(row) === option.key), days),
       }))
   }, [rows, dateFrom, dateTo])
 
@@ -276,15 +281,15 @@ export default function Dashboard() {
       <Section title="Needs attention">
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
           <StatCard
-            label="Overdue (>10 days)"
-            value={stats.overdue10}
+            label={`Overdue (>${days.warningDays} days)`}
+            value={stats.overdueWarning}
             icon={Clock}
             tint="bg-amber-50 text-amber-600"
             sub="Meter not yet returned"
           />
           <StatCard
-            label="Overdue (>21 days)"
-            value={stats.overdue21}
+            label={`Overdue (>${days.criticalDays} days)`}
+            value={stats.overdueCritical}
             icon={AlertTriangle}
             tint="bg-red-50 text-red-600"
             sub="Meter not yet returned"
@@ -314,7 +319,7 @@ export default function Dashboard() {
                 <th className="px-4 py-2.5 text-right font-medium">Assigned</th>
                 <th className="px-4 py-2.5 text-right font-medium">Field Complete</th>
                 <th className="px-4 py-2.5 text-right font-medium">Cancelled</th>
-                <th className="px-4 py-2.5 text-right font-medium">Overdue (&gt;21)</th>
+                <th className="px-4 py-2.5 text-right font-medium">Overdue (&gt;{days.criticalDays})</th>
                 <th className="px-4 py-2.5 text-right font-medium">Total Billed</th>
               </tr>
             </thead>
@@ -345,8 +350,8 @@ export default function Dashboard() {
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.assigned}</td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.fieldComplete}</td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.cancelled}</td>
-                        <td className={`px-4 py-2.5 text-right tabular-nums ${entry.stats.overdue21 > 0 ? 'font-semibold text-red-600' : 'text-slate-600'}`}>
-                          {entry.stats.overdue21}
+                        <td className={`px-4 py-2.5 text-right tabular-nums ${entry.stats.overdueCritical > 0 ? 'font-semibold text-red-600' : 'text-slate-600'}`}>
+                          {entry.stats.overdueCritical}
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">
                           {`₱${entry.stats.totalBilled.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}

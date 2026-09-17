@@ -3,9 +3,13 @@ import { Save, RefreshCw, AlertTriangle, Plus, X, Users, Clock, Info } from 'luc
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import { useSettings } from '../../lib/SettingsContext'
 
 export default function SystemSettings() {
   const { session } = useAuth()
+  // Saving refreshes the app-wide copy, so the crew dropdown and the overdue
+  // tiles change on the next render rather than after a reload.
+  const { reload: reloadAppSettings } = useSettings()
   const [crewNames, setCrewNames] = useState([])
   const [warningDays, setWarningDays] = useState(10)
   const [criticalDays, setCriticalDays] = useState(21)
@@ -64,31 +68,29 @@ export default function SystemSettings() {
 
     setSaving(true)
 
-    const rows = [
-      { key: 'crew_names', value: crewNames },
-      { key: 'overdue_warning_days', value: warningDays },
-      { key: 'overdue_critical_days', value: criticalDays },
-    ]
+    const stamp = { updated_at: new Date().toISOString(), updated_by: session?.user?.id }
 
-    for (const row of rows) {
-      const { error: err } = await supabase
-        .from('app_settings')
-        .update({ value: row.value, updated_at: new Date().toISOString(), updated_by: session?.user?.id })
-        .eq('key', row.key)
+    // Upsert rather than update: an update against a key the seed never
+    // created would report success while changing nothing.
+    const { error: err } = await supabase.from('app_settings').upsert([
+      { key: 'crew_names', label: 'Crew names', value: crewNames, ...stamp },
+      { key: 'overdue_warning_days', label: 'Overdue warning (days)', value: warningDays, ...stamp },
+      { key: 'overdue_critical_days', label: 'Overdue critical (days)', value: criticalDays, ...stamp },
+    ], { onConflict: 'key' })
 
-      if (err) {
-        setSaving(false)
-        setError(
-          err.message.includes('policy')
-            ? 'Only a Super Admin can change system settings.'
-            : err.message,
-        )
-        return
-      }
+    if (err) {
+      setSaving(false)
+      setError(
+        err.message.includes('policy') || err.message.includes('row-level')
+          ? 'Only a Super Admin can change system settings.'
+          : err.message,
+      )
+      return
     }
 
+    await reloadAppSettings()
     setSaving(false)
-    setNotice('Settings saved. Everyone sees the change when they next load a page.')
+    setNotice('Settings saved. Everyone else sees the change when they next load a page.')
   }
 
   return (

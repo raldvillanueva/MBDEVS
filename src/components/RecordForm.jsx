@@ -7,6 +7,7 @@ import { Save, X } from 'lucide-react'
 import { addPendingOrders } from '../lib/pendingStorage'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
+import { useSettings } from '../lib/SettingsContext'
  
 const EMPTY_FORM = {
   // Main Info
@@ -91,6 +92,7 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   const foTable = fieldOrdersTable(sector)
   const poTable = pendingOrdersTable(sector)
   const { accountType, canEncode, canManage } = useAuth()
+  const { crewNames } = useSettings()
   // A Viewer has no business on this form at all. An Encoder does: they
   // add to Pending, and a reviewer moves it on to Field Orders.
   const isStaff = accountType === 'viewer' || !canEncode
@@ -545,9 +547,16 @@ label="FO Action"
                   return { ...prev, crew_name: crew, status_crew: newStatus }
                 })
               }}
+              // A datalist rather than a select: the configured crews are
+              // offered as you type, but a one-off name can still be entered
+              // without a Super Admin having to add it to Settings first.
+              list="crew-name-options"
               className={`${inputClass} ${fieldErrors.crew_name ? '!border-red-500 !bg-red-200' : ''}`}
               placeholder="e.g. J. BITAGO"
             />
+            <datalist id="crew-name-options">
+              {crewNames.map(name => <option key={name} value={name} />)}
+            </datalist>
           </Field>
 
           <Field label="Location" >

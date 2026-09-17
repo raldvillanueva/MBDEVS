@@ -3,6 +3,7 @@ import { Search, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { SECTOR_LABELS, DATA_SECTORS } from '../../lib/sectorTables'
 import AuditReportSnapshot from './AuditReportSnapshot'
+import { overdueCriticalOf } from '../../lib/reportStats'
 
 const SECTOR_TABS = ['all', ...DATA_SECTORS]
 
@@ -103,8 +104,8 @@ export default function SubmittedReportsList({ extraSummary, rowHighlight }) {
                   <td className="px-4 py-3 text-slate-600">{report.generated_by_name || '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{report.date_from || '…'} – {report.date_to || '…'}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700">{report.stats?.total ?? '—'}</td>
-                  <td className={`px-4 py-3 text-right tabular-nums ${report.stats?.overdue21 > 0 ? 'font-semibold text-red-600' : 'text-slate-600'}`}>
-                    {report.stats?.overdue21 ?? 0}
+                  <td className={`px-4 py-3 text-right tabular-nums ${overdueCriticalOf(report.stats) > 0 ? 'font-semibold text-red-600' : 'text-slate-600'}`}>
+                    {overdueCriticalOf(report.stats)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700">
                     ₱{(report.stats?.totalBilled || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}

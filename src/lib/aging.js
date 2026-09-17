@@ -1,4 +1,15 @@
+// The default until System Settings loads, and the fallback if it cannot be
+// read at all.
 const OVERDUE_THRESHOLD_DAYS = 21
+
+// isOverdue() is called from module-level column definitions, where a React
+// hook cannot reach, so the configured value is pushed in here once by
+// SettingsProvider instead of being passed down through every call site.
+let overdueThresholdDays = OVERDUE_THRESHOLD_DAYS
+
+export function setOverdueThreshold(days) {
+  if (Number(days) > 0) overdueThresholdDays = Number(days)
+}
 
 // date_executed comes from Postgres as "YYYY-MM-DD". Parse it as a UTC
 // calendar date and compare against "today" also expressed in UTC
@@ -35,7 +46,7 @@ export function isOverdueBy(row, thresholdDays) {
 }
 
 export function isOverdue(row) {
-  return isOverdueBy(row, OVERDUE_THRESHOLD_DAYS)
+  return isOverdueBy(row, overdueThresholdDays)
 }
 
 export { OVERDUE_THRESHOLD_DAYS }

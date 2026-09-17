@@ -3,6 +3,7 @@ import {
   PackageCheck, Layers, AlertTriangle,
 } from 'lucide-react'
 import { SECTOR_LABELS } from '../../lib/sectorTables'
+import { overdueWarningOf, overdueCriticalOf, thresholdsOf } from '../../lib/reportStats'
 
 function StatCard({ label, value, icon: Icon, tint, sub, wide }) {
   return (
@@ -63,6 +64,10 @@ function money(n) {
 // Needs attention / By FO Action sections, since a report is a snapshot of
 // exactly that. `meta` carries who/when/what-sector, shown above the figures.
 export default function AuditReportSnapshot({ stats, meta }) {
+  // A snapshot is a record of a moment, so it labels itself with the day
+  // counts that were in force then — not the ones set today.
+  const days = thresholdsOf(stats)
+
   return (
     <div className="space-y-4">
       {meta && (
@@ -90,8 +95,8 @@ export default function AuditReportSnapshot({ stats, meta }) {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard label="Overdue (>10 days)" value={stats.overdue10} icon={Clock} tint="bg-amber-50 text-amber-600" sub="Meter not yet returned" />
-        <StatCard label="Overdue (>21 days)" value={stats.overdue21} icon={AlertTriangle} tint="bg-red-50 text-red-600" sub="Meter not yet returned" />
+        <StatCard label={`Overdue (>${days.warningDays} days)`} value={overdueWarningOf(stats)} icon={Clock} tint="bg-amber-50 text-amber-600" sub="Meter not yet returned" />
+        <StatCard label={`Overdue (>${days.criticalDays} days)`} value={overdueCriticalOf(stats)} icon={AlertTriangle} tint="bg-red-50 text-red-600" sub="Meter not yet returned" />
         <StatCard label="Already Batched" value={stats.batched} icon={Layers} tint="bg-teal-50 text-teal-600" sub="Counted as returned" />
       </div>
 

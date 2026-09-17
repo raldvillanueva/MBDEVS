@@ -19,6 +19,7 @@ import EncodeRoute from './components/EncodeRoute'
 import HomeRedirect from './pages/HomeRedirect'
 import { AuthProvider } from './lib/AuthContext'
 import { SectorProvider } from './lib/SectorContext'
+import { SettingsProvider } from './lib/SettingsContext'
 
 // The Super Admin section: account management and system-wide views.
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard'
@@ -30,6 +31,7 @@ import SystemSettings from './pages/superadmin/SystemSettings'
 export default function App() {
   return (
     <AuthProvider>
+      <SettingsProvider>
       <SectorProvider>
         <BrowserRouter>
           <Routes>
@@ -81,6 +83,7 @@ export default function App() {
           </Routes>
         </BrowserRouter>
       </SectorProvider>
+      </SettingsProvider>
     </AuthProvider>
   )
 }

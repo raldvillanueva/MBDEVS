@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
 import SubmittedReportsList from '../../components/reports/SubmittedReportsList'
+import { overdueCriticalOf } from '../../lib/reportStats'
 
 export default function SupervisorAuditReports() {
   return (
@@ -21,7 +22,7 @@ export default function SupervisorAuditReports() {
         <p>Reports highlighted below have field orders overdue by more than 21 days — worth a closer look before sign-off.</p>
       </div>
 
-      <SubmittedReportsList rowHighlight={report => (report.stats?.overdue21 || 0) > 0} />
+      <SubmittedReportsList rowHighlight={report => overdueCriticalOf(report.stats) > 0} />
     </div>
   )
 }
