@@ -142,7 +142,7 @@ const SCROLL_COLS = COLS.slice(FROZEN_COL_COUNT)
 export default function FieldOrders() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
-  const { role, canManage, canDelete } = useAuth()
+  const { role, canEncode, canManage, canDelete } = useAuth()
   // canManage covers Supervisor and up — everything except permanent delete.
   const isAdmin = canManage || role === 'admin'
   const [showDeletionRequest, setShowDeletionRequest] = useState(false)
@@ -587,8 +587,9 @@ useEffect(() => {
         </div>
         <div className="flex items-center gap-3">
 
-  {isAdmin && (
+  {canEncode && (
     <>
+  {isAdmin && (
   <button
     onClick={() => setShowImport(true)}
     className="flex items-center gap-2 border border-slate-200 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -596,6 +597,7 @@ useEffect(() => {
     <Upload size={15} />
     Import
   </button>
+  )}
 
   <input
     type="number"

@@ -9,6 +9,24 @@ import { pendingOrdersTable, isDataSector } from '../lib/sectorTables'
 
 const SECTOR_NAMES = { rizal: 'Rizal', manila: 'Manila', pasig: 'Pasig', balintawak: 'Balintawak', mbdevco: 'MBDEVCO' }
 
+// What the person actually is. `role` is only the coarse admin/staff
+// bucket RLS reads, so showing it labelled every Encoder a "STAFF".
+const ACCOUNT_TYPE_LABELS = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  supervisor: 'Supervisor',
+  encoder: 'Encoder',
+  viewer: 'Viewer',
+}
+
+const ACCOUNT_TYPE_BADGES = {
+  super_admin: 'bg-blue-500 text-white',
+  admin: 'bg-amber-500 text-[#2E2E2E]',
+  supervisor: 'bg-emerald-600 text-white',
+  encoder: 'bg-purple-600 text-white',
+  viewer: 'bg-slate-500 text-white',
+}
+
 export default function Sidebar() {
   const { role, profile, session, accountType } = useAuth()
   const { sector, clearSector } = useSector()
@@ -104,7 +122,7 @@ export default function Sidebar() {
       <div className="h-2 bg-[#D89B00]" />
 
       {/* View-Only Indicator (staff only) */}
-      {role === 'staff' && (
+      {accountType === 'viewer' && (
         <div className="flex items-center justify-center gap-2 bg-amber-500 px-3 py-2 text-xs font-bold uppercase tracking-wide text-[#2E2E2E]">
           <Eye size={14} />
           View-Only Mode
@@ -199,10 +217,10 @@ export default function Sidebar() {
 
         <span
           className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-            role === 'admin' ? 'bg-blue-500 text-white' : 'bg-amber-500 text-[#2E2E2E]'
+            ACCOUNT_TYPE_BADGES[accountType] || 'bg-slate-500 text-white'
           }`}
         >
-          {role}
+          {ACCOUNT_TYPE_LABELS[accountType] || accountType || role}
         </span>
 
         <button

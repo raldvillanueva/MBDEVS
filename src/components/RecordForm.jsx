@@ -90,8 +90,10 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
   const poTable = pendingOrdersTable(sector)
-  const { role } = useAuth()
-  const isStaff = role === 'staff'
+  const { accountType, canEncode, canManage } = useAuth()
+  // A Viewer has no business on this form at all. An Encoder does: they
+  // add to Pending, and a reviewer moves it on to Field Orders.
+  const isStaff = accountType === 'viewer' || !canEncode
   const fastFONoRef = useRef(null)
   const autoSubmitLock = useRef(false)
   const [form, setForm] = useState(initialData || EMPTY_FORM)
@@ -856,6 +858,7 @@ label="FO Action"
 
 
 
+  {canManage && (
   <button
     type="submit"
     disabled={saving}
@@ -883,6 +886,7 @@ label="FO Action"
 : `Save Record (${saveRepeat}/${repeatCount})`
 }
   </button>
+  )}
 
 
 </div>
