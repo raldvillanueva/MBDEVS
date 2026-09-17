@@ -8,6 +8,7 @@ import ImportModal from '../components/ImportModal'
 import RequestDeletionModal from '../components/RequestDeletionModal'
 import { useAuth } from '../lib/AuthContext'
 import { displayAgingDays, isOverdue } from '../lib/aging'
+import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
 
 const PAGE_SIZE = 50
 
@@ -142,7 +143,7 @@ const SCROLL_COLS = COLS.slice(FROZEN_COL_COUNT)
 export default function FieldOrders() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
-  const { role, canEncode, canManage, canDelete } = useAuth()
+  const { role, session, profile, canEncode, canManage, canDelete } = useAuth()
   // canManage covers Supervisor and up — everything except permanent delete.
   const isAdmin = canManage || role === 'admin'
   const [showDeletionRequest, setShowDeletionRequest] = useState(false)
@@ -206,6 +207,12 @@ function deleteSelected() {
       } else {
         await supabase.from(foTable).delete().in('id', selectedRows)
       }
+      logAudit({
+        session, profile, sector,
+        action: AUDIT_ACTIONS.RECORD_DELETED,
+        targetLabel: selectAllPages ? 'All filtered records' : (records.find(r => r.id === selectedRows[0])?.field_order_no || null),
+        details: { count },
+      })
       setSelectedRows([])
       setSelectAllPages(false)
       fetchRecords()
@@ -241,6 +248,12 @@ function archiveSelected() {
       } else {
         await supabase.from(foTable).update({ archived_at: new Date().toISOString() }).in('id', selectedRows)
       }
+      logAudit({
+        session, profile, sector,
+        action: AUDIT_ACTIONS.RECORD_ARCHIVED,
+        targetLabel: selectAllPages ? 'All filtered records' : (records.find(r => r.id === selectedRows[0])?.field_order_no || null),
+        details: { count },
+      })
       setSelectedRows([])
       setSelectAllPages(false)
       fetchRecords()
@@ -468,7 +481,16 @@ useEffect(() => {
 
   async function handleDelete(id) {
     const { error } = await supabase.from(foTable).delete().eq('id', id)
-    if (!error) { setDeleteTarget(null); fetchRecords() }
+    if (!error) {
+      logAudit({
+        session, profile, sector,
+        action: AUDIT_ACTIONS.RECORD_DELETED,
+        targetLabel: deleteTarget?.field_order_no || id,
+        targetId: id,
+      })
+      setDeleteTarget(null)
+      fetchRecords()
+    }
   }
 
   async function archiveRecord() {
@@ -483,6 +505,12 @@ useEffect(() => {
       setSaveError('We could not archive this work order. Please try again.')
       return
     }
+    logAudit({
+      session, profile, sector,
+      action: AUDIT_ACTIONS.RECORD_ARCHIVED,
+      targetLabel: editRow.field_order_no,
+      targetId: editRow.id,
+    })
     closeEdit()
     fetchRecords()
   }

@@ -154,7 +154,7 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
       }
 
       setStep('done')
-      onCreated?.()
+      onCreated?.(result)
     } catch {
       setSubmitting(false)
       setError('Could not reach the server. Check your connection and retry.')
@@ -224,8 +224,8 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
             <div className="mb-4 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-800">
               <Info size={16} className="shrink-0" />
               <span>
-                Placeholder form only — nothing is saved yet. Once the database is
-                connected, this will create a real sign-in in Supabase.
+                This creates a real sign-in straight away — no confirmation email to
+                wait for. Write the password down before you submit; it is not shown again.
               </span>
             </div>
 

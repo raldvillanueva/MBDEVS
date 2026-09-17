@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, X as XIcon, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { fieldOrdersTable } from '../lib/sectorTables'
+import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
 import { useAuth } from '../lib/AuthContext'
 
 const STATUS_TABS = ['pending', 'approved', 'rejected', 'all']
 
 export default function DeletionRequests() {
-  const { session } = useAuth()
+  const { session, profile } = useAuth()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('pending')
@@ -50,6 +51,14 @@ export default function DeletionRequests() {
       status: 'approved', resolved_at: new Date().toISOString(), resolved_by: session.user.id,
     }).eq('id', request.id)
     if (updateError) setError('The record was deleted, but the request could not be marked approved.')
+    else logAudit({
+      session, profile,
+      sector: request.sector,
+      action: AUDIT_ACTIONS.DELETION_APPROVED,
+      targetLabel: request.field_order_no,
+      targetId: request.field_order_id,
+      details: { reason: request.reason },
+    })
     await fetchRequests()
     setActingId(null)
     setConfirm(null)
@@ -62,6 +71,14 @@ export default function DeletionRequests() {
       status: 'rejected', resolved_at: new Date().toISOString(), resolved_by: session.user.id,
     }).eq('id', request.id)
     if (updateError) setError('We could not reject this request. Please try again.')
+    else logAudit({
+      session, profile,
+      sector: request.sector,
+      action: AUDIT_ACTIONS.DELETION_REJECTED,
+      targetLabel: request.field_order_no,
+      targetId: request.field_order_id,
+      details: { reason: request.reason },
+    })
     await fetchRequests()
     setActingId(null)
   }

@@ -4,6 +4,7 @@ import CreateAccountModal from '../../components/CreateAccountModal'
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import { logAudit, AUDIT_ACTIONS } from '../../lib/auditLog'
 
 // account_type is what the app reads; role is the coarse bucket RLS reads.
 // They are set together so the two can never drift — an account_type of
@@ -28,7 +29,7 @@ function tintFor(accountType) {
 }
 
 export default function ManageUsers() {
-  const { session, accountType } = useAuth()
+  const { session, profile, accountType } = useAuth()
 
   // An Admin manages their own Encoder/Viewer team, per the role flowchart.
   // Promoting anyone to Admin or above stays with Super Admin, so an Admin
@@ -85,6 +86,14 @@ export default function ManageUsers() {
       )
       return
     }
+
+    logAudit({
+      session, profile,
+      action: AUDIT_ACTIONS.ACCOUNT_ROLE_CHANGED,
+      targetLabel: user.email || user.full_name,
+      targetId: user.id,
+      details: { from: user.account_type, to: spec.value },
+    })
 
     setNotice(`${user.email || user.full_name || 'Account'} is now ${spec.label}.`)
     load()
@@ -270,7 +279,16 @@ export default function ManageUsers() {
       <CreateAccountModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreated={load}
+        onCreated={created => {
+          logAudit({
+            session, profile,
+            action: AUDIT_ACTIONS.ACCOUNT_CREATED,
+            targetLabel: created?.email,
+            targetId: created?.user_id,
+            details: { account_type: created?.account_type },
+          })
+          load()
+        }}
       />
     </SuperAdminLayout>
   )

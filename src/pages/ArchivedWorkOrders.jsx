@@ -5,11 +5,12 @@ import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
 import { useAuth } from '../lib/AuthContext'
+import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
 
 export default function ArchivedWorkOrders() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
-  const { role, canManage } = useAuth()
+  const { role, session, profile, canManage } = useAuth()
   // Restoring from the archive is reversible, so Supervisor keeps it.
   const isAdmin = canManage || role === 'admin'
   const [records, setRecords] = useState([])
@@ -59,6 +60,12 @@ export default function ArchivedWorkOrders() {
       setRestoringId(null)
       return
     }
+    logAudit({
+      session, profile, sector,
+      action: AUDIT_ACTIONS.RECORD_RESTORED,
+      targetLabel: records.find(r => r.id === id)?.field_order_no || id,
+      targetId: id,
+    })
     await fetchRecords()
     setRestoringId(null)
   }
@@ -95,6 +102,13 @@ async function restoreSelected() {
     setBulkRestoring(false)
     return
   }
+
+  logAudit({
+    session, profile, sector,
+    action: AUDIT_ACTIONS.RECORD_RESTORED,
+    targetLabel: records.find(r => r.id === selectedRows[0])?.field_order_no || null,
+    details: { count: selectedRows.length },
+  })
 
   setSelectedRows([])
   await fetchRecords()
