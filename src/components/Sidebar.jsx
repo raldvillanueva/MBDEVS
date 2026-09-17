@@ -95,8 +95,12 @@ export default function Sidebar() {
   const DELETIONS = { to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }
   const MANAGE_USERS = { to: '/manage-users', icon: Users, label: 'Manage Users' }
 
+  // Manage Users is account admin, not field order work, so it lives in the
+  // Super Admin section — the link below reaches it. An Admin has no Super
+  // Admin section, so for them this sidebar is the only way in and the tab
+  // stays.
   const NAV_BY_ACCOUNT_TYPE = {
-    super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS, MANAGE_USERS],
+    super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
     admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS, MANAGE_USERS],
     supervisor:  [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
     encoder:     [DASHBOARD, FIELD_ORDERS, PENDING, REPORTS],
