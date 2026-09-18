@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Users, Search, RefreshCw, AlertTriangle, Info, UserPlus, KeyRound } from 'lucide-react'
+import { Users, Search, RefreshCw, AlertTriangle, Info, UserPlus, KeyRound, Pencil } from 'lucide-react'
 import CreateAccountModal from '../../components/CreateAccountModal'
 import ResetPasswordModal from '../../components/ResetPasswordModal'
+import EditAccountModal from '../../components/EditAccountModal'
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
@@ -44,6 +45,7 @@ export default function ManageUsers() {
   const [filter, setFilter] = useState('All')
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -205,7 +207,7 @@ export default function ManageUsers() {
               <th className="px-5 py-3 font-semibold">Name</th>
               <th className="px-5 py-3 font-semibold">Current</th>
               <th className="px-5 py-3 font-semibold">Change to</th>
-              <th className="px-5 py-3 font-semibold">Password</th>
+              <th className="px-5 py-3 font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -263,14 +265,24 @@ export default function ManageUsers() {
                     </select>
                   </td>
                   <td className="px-5 py-3">
-                    <button
-                      onClick={() => setResetTarget(u)}
-                      className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
-                      title={`Set a new password for ${u.username || u.email}`}
-                    >
-                      <KeyRound size={13} />
-                      Reset
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setEditTarget(u)}
+                        className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                        title={`Edit ${u.username || u.email}`}
+                      >
+                        <Pencil size={13} />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setResetTarget(u)}
+                        className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                        title={`Set a new password for ${u.username || u.email}`}
+                      >
+                        <KeyRound size={13} />
+                        Reset
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -278,6 +290,26 @@ export default function ManageUsers() {
           </tbody>
         </table>
       </div>
+
+      {editTarget && (
+        <EditAccountModal
+          user={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={(user, changes) => {
+            logAudit({
+              session, profile,
+              action: AUDIT_ACTIONS.ACCOUNT_UPDATED,
+              targetLabel: user.username || user.email,
+              targetId: user.id,
+              // The fields that changed, not the values — an audit entry
+              // is not a place to keep a second copy of personal details.
+              details: { fields: Object.keys(changes) },
+            })
+            setNotice(`${changes.username || user.username || user.email} updated.`)
+            load()
+          }}
+        />
+      )}
 
       {resetTarget && (
         <ResetPasswordModal

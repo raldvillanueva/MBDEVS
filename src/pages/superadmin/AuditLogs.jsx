@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search, RefreshCw, AlertTriangle, Trash2, Archive, ArchiveRestore, CheckCircle2, XCircle, UserPlus, ShieldCheck, KeyRound } from 'lucide-react'
+import { Search, RefreshCw, AlertTriangle, Trash2, Archive, ArchiveRestore, CheckCircle2, XCircle, UserPlus, ShieldCheck, KeyRound, Pencil } from 'lucide-react'
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { AUDIT_ACTION_LABELS } from '../../lib/auditLog'
@@ -18,6 +18,7 @@ const ACTION_STYLE = {
   'account.created': { icon: UserPlus, tint: 'bg-blue-100 text-blue-700' },
   'account.role_changed': { icon: ShieldCheck, tint: 'bg-purple-100 text-purple-700' },
   'account.password_reset': { icon: KeyRound, tint: 'bg-amber-100 text-amber-800' },
+  'account.updated': { icon: Pencil, tint: 'bg-slate-100 text-slate-600' },
 }
 
 const FILTERS = [

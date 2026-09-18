@@ -10,9 +10,9 @@
 //   Authorization: Bearer <the caller's access token>
 //   { username, email, password, full_name, account_type }
 //
-// PATCH /functions/v1/admin-users    set a new password
+// PATCH /functions/v1/admin-users    edit an existing account
 //   Authorization: Bearer <the caller's access token>
-//   { user_id, password }
+//   { user_id, username?, full_name?, email?, password? }
 //
 // There is no "read the password" here, and there cannot be: Supabase
 // stores a bcrypt hash, so the original is not recoverable by anyone —
@@ -106,27 +106,87 @@ Deno.serve(async req => {
     return json({ error: 'Bad request' }, 400, origin)
   }
 
-  // ---- PATCH: set a new password on an existing account ----
+  // Username uniqueness, shared by create and edit. exceptId lets an account
+  // keep its own username when something else about it is being changed.
+  async function usernameTaken(name: string, exceptId?: string) {
+    let q = admin.from('profiles').select('id').ilike('username', name)
+    if (exceptId) q = q.neq('id', exceptId)
+    const { data } = await q.maybeSingle()
+    return !!data
+  }
+
+  // ---- PATCH: edit an existing account ----
+  //
+  // Every field is optional: the client sends only what changed. A field
+  // that is absent is left alone, which is not the same as a field sent
+  // empty — that would blank it.
   if (req.method === 'PATCH') {
     const userId = (body.user_id ?? '').trim()
-    const newPassword = body.password ?? ''
 
     if (!userId) {
       return json({ error: 'user_id is required' }, 400, origin)
     }
-    if (newPassword.length < 8) {
-      return json({ error: 'Password must be at least 8 characters' }, 400, origin)
+
+    const patch: Record<string, string | null> = {}
+
+    if (typeof body.username === 'string') {
+      const next = body.username.trim()
+      // Mirrors profiles_username_format. Checked here as well so a clash
+      // comes back as a sentence rather than a database error.
+      if (!/^[^@\s]{3,32}$/.test(next)) {
+        return json({ error: 'Username must be 3-32 characters, with no spaces or @' }, 400, origin)
+      }
+      if (await usernameTaken(next, userId)) {
+        return json({ error: `Username ${next} is already taken` }, 409, origin)
+      }
+      patch.username = next
     }
 
-    const { error: resetError } = await admin.auth.admin.updateUserById(userId, {
-      password: newPassword,
-    })
-
-    if (resetError) {
-      return json({ error: resetError.message }, 400, origin)
+    if (typeof body.full_name === 'string') {
+      patch.full_name = body.full_name.trim() || null
     }
 
-    return json({ user_id: userId, reset: true }, 200, origin)
+    // The email lives in two places: auth.users, which is where a reset link
+    // or a one-time code would be sent, and profiles, which is what the app
+    // reads. They move together or the account ends up with two different
+    // addresses and no sign of which one is real.
+    if (typeof body.email === 'string' && body.email.trim()) {
+      const nextEmail = body.email.trim().toLowerCase()
+      const { error: emailError } = await admin.auth.admin.updateUserById(userId, {
+        email: nextEmail,
+        email_confirm: true,
+      })
+      if (emailError) {
+        const taken = /already|registered|duplicate/i.test(emailError.message)
+        return json(
+          { error: taken ? 'Another account already uses that email' : emailError.message },
+          taken ? 409 : 400,
+          origin,
+        )
+      }
+      patch.email = nextEmail
+    }
+
+    if (typeof body.password === 'string' && body.password) {
+      if (body.password.length < 8) {
+        return json({ error: 'Password must be at least 8 characters' }, 400, origin)
+      }
+      const { error: passwordError } = await admin.auth.admin.updateUserById(userId, {
+        password: body.password,
+      })
+      if (passwordError) {
+        return json({ error: passwordError.message }, 400, origin)
+      }
+    }
+
+    if (Object.keys(patch).length > 0) {
+      const { error: patchError } = await admin.from('profiles').update(patch).eq('id', userId)
+      if (patchError) {
+        return json({ error: patchError.message }, 400, origin)
+      }
+    }
+
+    return json({ user_id: userId, updated: true }, 200, origin)
   }
 
   // ---- POST: create a new account ----
@@ -148,13 +208,7 @@ Deno.serve(async req => {
 
   // Rejected before the sign-in is created, so a clash does not leave an
   // orphaned auth user with no profile behind it.
-  const { data: clash } = await admin
-    .from('profiles')
-    .select('id')
-    .ilike('username', username)
-    .maybeSingle()
-
-  if (clash) {
+  if (await usernameTaken(username)) {
     return json({ error: `Username ${username} is already taken` }, 409, origin)
   }
   if (password.length < 8) {

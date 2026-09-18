@@ -12,6 +12,7 @@ export const AUDIT_ACTIONS = {
   ACCOUNT_CREATED: 'account.created',
   ACCOUNT_ROLE_CHANGED: 'account.role_changed',
   ACCOUNT_PASSWORD_RESET: 'account.password_reset',
+  ACCOUNT_UPDATED: 'account.updated',
 }
 
 export const AUDIT_ACTION_LABELS = {
@@ -23,6 +24,7 @@ export const AUDIT_ACTION_LABELS = {
   'account.created': 'Created account',
   'account.role_changed': 'Changed account role',
   'account.password_reset': 'Reset password',
+  'account.updated': 'Edited account',
 }
 
 /**
