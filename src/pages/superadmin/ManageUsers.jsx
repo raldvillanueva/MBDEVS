@@ -48,7 +48,7 @@ export default function ManageUsers() {
     setError('')
     const { data, error: err } = await supabase
       .from('profiles')
-      .select('id, email, full_name, role, account_type, created_at')
+      .select('id, username, email, full_name, role, account_type, created_at')
       .order('account_type', { ascending: true })
 
     if (err) setError(err.message)
@@ -86,12 +86,12 @@ export default function ManageUsers() {
     logAudit({
       session, profile,
       action: AUDIT_ACTIONS.ACCOUNT_ROLE_CHANGED,
-      targetLabel: user.email || user.full_name,
+      targetLabel: user.username || user.email || user.full_name,
       targetId: user.id,
       details: { from: user.account_type, to: spec.value },
     })
 
-    setNotice(`${user.email || user.full_name || 'Account'} is now ${spec.label}.`)
+    setNotice(`${user.username || user.email || 'Account'} is now ${spec.label}.`)
     load()
   }
 
@@ -101,6 +101,7 @@ export default function ManageUsers() {
       const matchesFilter = filter === 'All' || u.account_type === filter
       const matchesSearch =
         !q ||
+        u.username?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
         u.full_name?.toLowerCase().includes(q)
       return matchesFilter && matchesSearch
@@ -137,9 +138,9 @@ export default function ManageUsers() {
       <div className="mb-4 flex max-w-4xl items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
         <Info size={16} className="mt-0.5 shrink-0" />
         <p>
-          New accounts can sign in immediately with the email and password you set — there is no
-          confirmation email to wait for. Change what an account is allowed to do with the dropdown
-          on its row.
+          New accounts sign in with the username and password you set — there is no confirmation
+          email to wait for. The email address is kept for password resets and one-time codes,
+          not for signing in. Change what an account is allowed to do with the dropdown on its row.
         </p>
       </div>
 
@@ -176,7 +177,7 @@ export default function ManageUsers() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name or email"
+              placeholder="Search by username, name or email"
               className="w-full text-sm outline-none placeholder:text-slate-400"
             />
           </div>
@@ -198,8 +199,8 @@ export default function ManageUsers() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#D9D9D9] text-xs uppercase tracking-wide text-slate-500">
+              <th className="px-5 py-3 font-semibold">Username</th>
               <th className="px-5 py-3 font-semibold">Name</th>
-              <th className="px-5 py-3 font-semibold">Email</th>
               <th className="px-5 py-3 font-semibold">Current</th>
               <th className="px-5 py-3 font-semibold">Change to</th>
             </tr>
@@ -217,6 +218,9 @@ export default function ManageUsers() {
               const isSelf = u.id === session?.user?.id
               return (
                 <tr key={u.id} className="border-b border-slate-100 last:border-0">
+                  <td className="px-5 py-3 font-mono text-sm text-[#2E2E2E]">
+                    {u.username || <span className="font-sans text-slate-400">Not set</span>}
+                  </td>
                   <td className="px-5 py-3 font-medium text-[#2E2E2E]">
                     {u.full_name || <span className="text-slate-400">No name set</span>}
                     {isSelf && (
@@ -225,7 +229,6 @@ export default function ManageUsers() {
                       </span>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-slate-500">{u.email || '—'}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tintFor(u.account_type)}`}>
                       {labelFor(u.account_type)}

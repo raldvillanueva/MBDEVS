@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   X,
   ShieldCheck,
@@ -41,6 +41,7 @@ const ROLE_OPTIONS = [
 ]
 
 const initialForm = {
+  username: '',
   fullName: '',
   email: '',
   password: '',
@@ -58,11 +59,26 @@ function generatePassword() {
 
 export default function CreateAccountModal({ open, onClose, onCreated }) {
   const [step, setStep] = useState('role') // 'role' | 'details' | 'done'
+  const [suggesting, setSuggesting] = useState(false)
   const [role, setRole] = useState(null)
   const [form, setForm] = useState(initialForm)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Suggest the next free MB#### once a role is chosen, but leave it
+  // editable — an account may need to match an existing employee ID.
+  useEffect(() => {
+    if (!open || step !== 'details') return
+    let cancelled = false
+    setSuggesting(true)
+    supabase.rpc('next_username').then(({ data }) => {
+      if (cancelled) return
+      if (data) setForm(f => (f.username ? f : { ...f, username: data }))
+      setSuggesting(false)
+    })
+    return () => { cancelled = true }
+  }, [open, step])
 
   if (!open) return null
 
@@ -92,6 +108,10 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
     e.preventDefault()
     setError('')
 
+    if (!form.username.trim()) {
+      setError('Please set a username — this is what they type to sign in.')
+      return
+    }
     if (!form.fullName.trim() || !form.email.trim() || !form.password) {
       setError('Please fill in name, email, and a password.')
       return
@@ -129,6 +149,7 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
+            username: form.username.trim(),
             email: form.email.trim(),
             password: form.password,
             full_name: form.fullName.trim(),
@@ -238,6 +259,23 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
+                  Username (used to sign in)
+                </label>
+                <input
+                  type="text"
+                  value={form.username}
+                  onChange={(e) => updateField('username', e.target.value)}
+                  placeholder={suggesting ? 'Finding the next number…' : 'MB0001'}
+                  autoCapitalize="none"
+                  className="w-full rounded-lg border border-[#D9D9D9] px-3 py-2 font-mono text-sm outline-none focus:border-[#D89B00] focus:ring-1 focus:ring-[#D89B00]"
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  Suggested for you — change it if this person has their own employee ID.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-600">
                   Full Name
                 </label>
                 <input
@@ -251,7 +289,7 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
 
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600">
-                  Email (used to sign in)
+                  Email
                 </label>
                 <input
                   type="email"
@@ -260,6 +298,9 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
                   placeholder="name@mbdevs.com"
                   className="w-full rounded-lg border border-[#D9D9D9] px-3 py-2 text-sm outline-none focus:border-[#D89B00] focus:ring-1 focus:ring-[#D89B00]"
                 />
+                <p className="mt-1 text-xs text-slate-400">
+                  Not used to sign in — kept for password resets and one-time codes.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -377,8 +418,9 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
             <CheckCircle2 size={40} className="text-emerald-500" />
             <p className="font-semibold text-[#2E2E2E]">Account created</p>
             <p className="max-w-sm text-sm text-slate-500">
-              <strong>{form.fullName || form.email}</strong> can sign in now as a{' '}
-              {activeRole?.label.toLowerCase()}, using the email and password you set.
+              <strong>{form.fullName || form.username}</strong> can sign in now as a{' '}
+              {activeRole?.label.toLowerCase()}, using the username{' '}
+              <strong className="font-mono">{form.username}</strong> and the password you set.
               They appear in the list below straight away.
             </p>
             <button

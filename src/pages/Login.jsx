@@ -6,7 +6,7 @@ import logo from "../assets/mb-logo.jpg";
 
 export default function Login(){
 
-    const [email,setEmail] = useState("");
+    const [identifier,setIdentifier] = useState("");
     const [password,setPassword] = useState("");
     const [loading,setLoading] = useState(false);
     const [error,setError] = useState("");
@@ -20,20 +20,51 @@ export default function Login(){
         setError("");
         setLoading(true);
 
-        const { error: authError } = await supabase.auth.signInWithPassword({
-            email,
-            password
-        });
+        // Sign-in goes through auth-login rather than straight to Supabase:
+        // a username has to be turned into an email first, and doing that
+        // lookup in the browser would expose every account's address.
+        try {
 
+            const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-login`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ identifier: identifier.trim(), password }),
+                },
+            );
 
-        if(authError){
+            const result = await response.json();
 
-            setError("Invalid email or password.");
+            if(!response.ok){
 
-        }else{
+                setError(result.error || "Incorrect username or password.");
+                setLoading(false);
+                return;
+
+            }
+
+            // The function returns tokens, not a session — this is what
+            // actually signs the browser in.
+            const { error: sessionError } = await supabase.auth.setSession({
+                access_token: result.access_token,
+                refresh_token: result.refresh_token,
+            });
+
+            if(sessionError){
+
+                setError("Could not start your session. Please try again.");
+                setLoading(false);
+                return;
+
+            }
 
             // /home forwards to this account's own dashboard once the profile loads.
             navigate("/home");
+
+        } catch {
+
+            setError("Could not reach the server. Check your connection and try again.");
 
         }
 
@@ -95,13 +126,17 @@ export default function Login(){
                         <div>
 
                             <label className="text-sm text-slate-600">
-                                Email
+                                Username
                             </label>
 
 
                             <input
 
-                            type="email"
+                            type="text"
+
+                            autoCapitalize="none"
+
+                            autoComplete="username"
 
                             className="
                             w-full mt-1 px-4 py-3
@@ -112,9 +147,9 @@ export default function Login(){
                             focus:ring-[#D89B00]
                             "
 
-                            placeholder="Enter your email"
+                            placeholder="e.g. MB0001"
 
-                            onChange={(e)=>setEmail(e.target.value)}
+                            onChange={(e)=>setIdentifier(e.target.value)}
 
                             />
 

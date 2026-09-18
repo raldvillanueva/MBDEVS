@@ -15,3 +15,10 @@ verify_jwt = false
 # for an endpoint that creates accounts.
 [functions.admin-users]
 verify_jwt = false
+
+# Nobody is signed in yet when this is called — verifying a JWT here would
+# make signing in impossible. It checks the password itself instead, and
+# answers every failure identically so it cannot be used to discover which
+# usernames exist.
+[functions.auth-login]
+verify_jwt = false

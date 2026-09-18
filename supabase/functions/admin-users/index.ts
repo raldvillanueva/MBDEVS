@@ -8,7 +8,7 @@
 //
 // POST /functions/v1/admin-users
 //   Authorization: Bearer <the caller's access token>
-//   { email, password, full_name, account_type }
+//   { username, email, password, full_name, account_type }
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -97,13 +97,32 @@ Deno.serve(async req => {
     return json({ error: 'Bad request' }, 400, origin)
   }
 
+  const username = (body.username ?? '').trim()
   const email = (body.email ?? '').trim().toLowerCase()
   const password = body.password ?? ''
   const fullName = (body.full_name ?? '').trim()
   const accountType = body.account_type ?? ''
 
-  if (!email || !password) {
-    return json({ error: 'Email and password are required' }, 400, origin)
+  if (!username || !email || !password) {
+    return json({ error: 'Username, email and password are required' }, 400, origin)
+  }
+
+  // Mirrors the profiles_username_format constraint. Checking here too
+  // turns a database error into a sentence the person can act on.
+  if (!/^[^@s]{3,32}$/.test(username)) {
+    return json({ error: 'Username must be 3-32 characters, with no spaces or @' }, 400, origin)
+  }
+
+  // Rejected before the sign-in is created, so a clash does not leave an
+  // orphaned auth user with no profile behind it.
+  const { data: clash } = await admin
+    .from('profiles')
+    .select('id')
+    .ilike('username', username)
+    .maybeSingle()
+
+  if (clash) {
+    return json({ error: `Username ${username} is already taken` }, 409, origin)
   }
   if (password.length < 8) {
     return json({ error: 'Password must be at least 8 characters' }, 400, origin)
@@ -137,6 +156,7 @@ Deno.serve(async req => {
     .from('profiles')
     .update({
       full_name: fullName || null,
+      username,
       email,
       account_type: accountType,
       role: ACCOUNT_TYPES[accountType],
@@ -157,6 +177,7 @@ Deno.serve(async req => {
 
   return json({
     user_id: created.user.id,
+    username,
     email,
     account_type: accountType,
   }, 201, origin)
