@@ -9,6 +9,15 @@
 // POST /functions/v1/admin-users
 //   Authorization: Bearer <the caller's access token>
 //   { username, email, password, full_name, account_type }
+//
+// PATCH /functions/v1/admin-users    set a new password
+//   Authorization: Bearer <the caller's access token>
+//   { user_id, password }
+//
+// There is no "read the password" here, and there cannot be: Supabase
+// stores a bcrypt hash, so the original is not recoverable by anyone —
+// which is the point. Setting a new one is how a forgotten password is
+// dealt with.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -58,7 +67,7 @@ Deno.serve(async req => {
     return new Response(null, { status: 204, headers: corsHeaders(origin) })
   }
 
-  if (req.method !== 'POST') {
+  if (req.method !== 'POST' && req.method !== 'PATCH') {
     return json({ error: 'Method not allowed' }, 405, origin)
   }
 
@@ -87,7 +96,7 @@ Deno.serve(async req => {
   // only in the UI: the browser guard decides what is shown, this decides
   // what is allowed, and anyone can send this request by hand.
   if (callerProfile?.account_type !== 'super_admin') {
-    return json({ error: 'Only a Super Admin can create accounts' }, 403, origin)
+    return json({ error: 'Only a Super Admin can manage accounts' }, 403, origin)
   }
 
   let body: Record<string, string>
@@ -97,6 +106,30 @@ Deno.serve(async req => {
     return json({ error: 'Bad request' }, 400, origin)
   }
 
+  // ---- PATCH: set a new password on an existing account ----
+  if (req.method === 'PATCH') {
+    const userId = (body.user_id ?? '').trim()
+    const newPassword = body.password ?? ''
+
+    if (!userId) {
+      return json({ error: 'user_id is required' }, 400, origin)
+    }
+    if (newPassword.length < 8) {
+      return json({ error: 'Password must be at least 8 characters' }, 400, origin)
+    }
+
+    const { error: resetError } = await admin.auth.admin.updateUserById(userId, {
+      password: newPassword,
+    })
+
+    if (resetError) {
+      return json({ error: resetError.message }, 400, origin)
+    }
+
+    return json({ user_id: userId, reset: true }, 200, origin)
+  }
+
+  // ---- POST: create a new account ----
   const username = (body.username ?? '').trim()
   const email = (body.email ?? '').trim().toLowerCase()
   const password = body.password ?? ''

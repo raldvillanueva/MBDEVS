@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Users, Search, RefreshCw, AlertTriangle, Info, UserPlus } from 'lucide-react'
+import { Users, Search, RefreshCw, AlertTriangle, Info, UserPlus, KeyRound } from 'lucide-react'
 import CreateAccountModal from '../../components/CreateAccountModal'
+import ResetPasswordModal from '../../components/ResetPasswordModal'
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
@@ -42,6 +43,7 @@ export default function ManageUsers() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
   const [createOpen, setCreateOpen] = useState(false)
+  const [resetTarget, setResetTarget] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -203,15 +205,16 @@ export default function ManageUsers() {
               <th className="px-5 py-3 font-semibold">Name</th>
               <th className="px-5 py-3 font-semibold">Current</th>
               <th className="px-5 py-3 font-semibold">Change to</th>
+              <th className="px-5 py-3 font-semibold">Password</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-slate-400">Loading accounts…</td></tr>
+              <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-slate-400">Loading accounts…</td></tr>
             )}
 
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={4} className="px-5 py-10 text-center text-sm text-slate-400">No accounts match that search.</td></tr>
+              <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-slate-400">No accounts match that search.</td></tr>
             )}
 
             {!loading && filtered.map(u => {
@@ -259,12 +262,37 @@ export default function ManageUsers() {
                       ))}
                     </select>
                   </td>
+                  <td className="px-5 py-3">
+                    <button
+                      onClick={() => setResetTarget(u)}
+                      className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                      title={`Set a new password for ${u.username || u.email}`}
+                    >
+                      <KeyRound size={13} />
+                      Reset
+                    </button>
+                  </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
       </div>
+
+      {resetTarget && (
+        <ResetPasswordModal
+          user={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onDone={user => {
+            logAudit({
+              session, profile,
+              action: AUDIT_ACTIONS.ACCOUNT_PASSWORD_RESET,
+              targetLabel: user.username || user.email,
+              targetId: user.id,
+            })
+          }}
+        />
+      )}
 
       <CreateAccountModal
         open={createOpen}

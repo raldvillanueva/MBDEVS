@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search, RefreshCw, AlertTriangle, Trash2, Archive, ArchiveRestore, CheckCircle2, XCircle, UserPlus, ShieldCheck } from 'lucide-react'
+import { Search, RefreshCw, AlertTriangle, Trash2, Archive, ArchiveRestore, CheckCircle2, XCircle, UserPlus, ShieldCheck, KeyRound } from 'lucide-react'
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { AUDIT_ACTION_LABELS } from '../../lib/auditLog'
@@ -17,6 +17,7 @@ const ACTION_STYLE = {
   'deletion.rejected': { icon: XCircle, tint: 'bg-slate-100 text-slate-600' },
   'account.created': { icon: UserPlus, tint: 'bg-blue-100 text-blue-700' },
   'account.role_changed': { icon: ShieldCheck, tint: 'bg-purple-100 text-purple-700' },
+  'account.password_reset': { icon: KeyRound, tint: 'bg-amber-100 text-amber-800' },
 }
 
 const FILTERS = [
@@ -25,6 +26,7 @@ const FILTERS = [
   { value: 'record.archived', label: 'Archives' },
   { value: 'account.created', label: 'New accounts' },
   { value: 'account.role_changed', label: 'Role changes' },
+  { value: 'account.password_reset', label: 'Password resets' },
 ]
 
 function when(iso) {

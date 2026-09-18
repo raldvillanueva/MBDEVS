@@ -11,6 +11,7 @@ export const AUDIT_ACTIONS = {
   DELETION_REJECTED: 'deletion.rejected',
   ACCOUNT_CREATED: 'account.created',
   ACCOUNT_ROLE_CHANGED: 'account.role_changed',
+  ACCOUNT_PASSWORD_RESET: 'account.password_reset',
 }
 
 export const AUDIT_ACTION_LABELS = {
@@ -21,6 +22,7 @@ export const AUDIT_ACTION_LABELS = {
   'deletion.rejected': 'Rejected deletion',
   'account.created': 'Created account',
   'account.role_changed': 'Changed account role',
+  'account.password_reset': 'Reset password',
 }
 
 /**
