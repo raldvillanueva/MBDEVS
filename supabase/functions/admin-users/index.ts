@@ -48,7 +48,10 @@ function corsHeaders(origin: string | null) {
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Headers': 'authorization, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    // PATCH has to be listed or the browser's preflight rejects the edit and
+    // reset calls before they are ever sent, which surfaces as a connection
+    // failure rather than anything server-side.
+    'Access-Control-Allow-Methods': 'POST, PATCH, OPTIONS',
     'Vary': 'Origin',
   }
 }
