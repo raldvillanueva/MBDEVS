@@ -154,6 +154,7 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
             password: form.password,
             full_name: form.fullName.trim(),
             account_type: role,
+            sector: form.sector,
           }),
         },
       )
@@ -422,6 +423,9 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
               {activeRole?.label.toLowerCase()}, using the username{' '}
               <strong className="font-mono">{form.username}</strong> and the password you set.
               They appear in the list below straight away.
+              {form.sector && (
+                <> They'll only be able to use the <strong>{SECTOR_LABELS[form.sector]}</strong> sector.</>
+              )}
             </p>
             <button
               onClick={handleClose}

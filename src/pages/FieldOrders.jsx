@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
-import { Plus, Search, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive } from 'lucide-react'
+import { Plus, Search, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive, Send } from 'lucide-react'
 import ImportModal from '../components/ImportModal'
 import RequestDeletionModal from '../components/RequestDeletionModal'
+import RequestEditModal from '../components/RequestEditModal'
 import { useAuth } from '../lib/AuthContext'
 import { displayAgingDays, isOverdue } from '../lib/aging'
 import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
@@ -151,7 +152,12 @@ export default function FieldOrders() {
   // canManage covers Admin and up — everything except permanent delete,
   // which is canDelete.
   const isAdmin = canManage || role === 'admin'
+  // Only an Encoder goes through the request flow — Viewer cannot edit at
+  // all, and Admin/Super Admin can still save directly, same as before.
+  const canRequestEdit = canEncode && !isAdmin
   const [showDeletionRequest, setShowDeletionRequest] = useState(false)
+  const [showEditRequest, setShowEditRequest] = useState(false)
+  const [pendingChanges, setPendingChanges] = useState(null)
   const [records, setRecords] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -424,6 +430,39 @@ useEffect(() => {
   }, [editRow])
 
   function sf(field, value) { setEditForm(prev => ({ ...prev, [field]: value })) }
+
+  // What actually changed between the record as loaded and the draft an
+  // Encoder has been typing into — this, not the whole form, is what goes
+  // into the request, so a reviewer sees exactly what they're approving.
+  // The baseline is built the same way openEdit built editForm (including
+  // the FIELD COMPL. status normalization) so that alone never reads as
+  // a change nobody actually made.
+  function computeChanges() {
+    const baseline = { ...EMPTY_FORM }
+    for (const k of Object.keys(EMPTY_FORM)) baseline[k] = editRow[k] ?? EMPTY_FORM[k]
+    if (baseline.status_crew?.toUpperCase().includes('FIELD')) baseline.status_crew = 'FIELD COMPL.'
+
+    const changes = {}
+    for (const key of Object.keys(EMPTY_FORM)) {
+      const oldValue = baseline[key]
+      const newValue = editForm[key] ?? EMPTY_FORM[key]
+      if (String(oldValue ?? '') !== String(newValue ?? '')) {
+        changes[key] = { old: oldValue, new: newValue }
+      }
+    }
+    return changes
+  }
+
+  function openRequestEdit() {
+    const changes = computeChanges()
+    if (Object.keys(changes).length === 0) {
+      setSaveError('Change a field before requesting an edit.')
+      return
+    }
+    setSaveError('')
+    setPendingChanges(changes)
+    setShowEditRequest(true)
+  }
 
   async function handleSave() {
 
@@ -1082,6 +1121,18 @@ Add Record
                     </button>
                   </>
                 )}
+                {/* Field Orders feeds another system on a daily automatic
+                    pull, so an Encoder's changes go to an Admin/Super Admin
+                    for review instead of writing straight to the table. */}
+                {canRequestEdit && (
+                  <button
+                    onClick={openRequestEdit}
+                    className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Send size={14} />
+                    Request Edit
+                  </button>
+                )}
                 <button onClick={closeEdit} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
                   <X size={18} />
                 </button>
@@ -1095,7 +1146,7 @@ Add Record
             {/* Drawer Body */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-6">
 
-              <fieldset disabled={!isAdmin} className="space-y-6 border-0 p-0 m-0 min-w-0">
+              <fieldset disabled={!isAdmin && !canRequestEdit} className="space-y-6 border-0 p-0 m-0 min-w-0">
 
               <PS title="Main Information">
                 <PF label="Field Order No.">
@@ -1344,6 +1395,15 @@ Add Record
           record={editRow}
           onClose={() => setShowDeletionRequest(false)}
           onSubmitted={() => { setShowDeletionRequest(false); closeEdit() }}
+        />
+      )}
+
+      {showEditRequest && editRow && pendingChanges && (
+        <RequestEditModal
+          record={editRow}
+          changes={pendingChanges}
+          onClose={() => setShowEditRequest(false)}
+          onSubmitted={() => { setShowEditRequest(false); setPendingChanges(null); closeEdit() }}
         />
       )}
 

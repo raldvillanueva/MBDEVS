@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck, Pencil } from 'lucide-react'
 import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
@@ -31,6 +31,7 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const [pendingCount, setPendingCount] = useState(0)
   const [deletionCount, setDeletionCount] = useState(0)
+  const [editRequestCount, setEditRequestCount] = useState(0)
   const [signingOut, setSigningOut] = useState(false)
 
   async function handleSignOut() {
@@ -78,6 +79,23 @@ export default function Sidebar() {
     return () => supabase.removeChannel(channel)
   }, [role])
 
+  useEffect(() => {
+    if (role !== 'admin') { setEditRequestCount(0); return }
+    async function fetchEditRequestCount() {
+      const { count } = await supabase
+        .from('edit_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      setEditRequestCount(count || 0)
+    }
+    fetchEditRequestCount()
+    const channel = supabase
+      .channel('sidebar_edit_request_count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'edit_requests' }, fetchEditRequestCount)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [role])
+
   // Each account sees the tabs for work it can actually do. A tab that
   // opens onto a page where every action is refused is worse than no tab.
   //
@@ -91,12 +109,13 @@ export default function Sidebar() {
   const ARCHIVED = { to: '/archived-work-orders', icon: Archive, label: 'Archived Work Orders' }
   const REPORTS = { to: '/reports', icon: FileText, label: 'Audit Reports' }
   const DELETIONS = { to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }
+  const EDIT_REQUESTS = { to: '/edit-requests', icon: Pencil, label: 'Edit Requests', badge: editRequestCount }
 
   // Managing accounts is Super Admin work, reached from the Super Admin
   // section rather than from here. No sector sidebar carries it.
   const NAV_BY_ACCOUNT_TYPE = {
-    super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
-    admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS],
+    super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, EDIT_REQUESTS, DELETIONS],
+    admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, EDIT_REQUESTS, DELETIONS],
     encoder:     [DASHBOARD, FIELD_ORDERS, PENDING, REPORTS],
     viewer:      [DASHBOARD, FIELD_ORDERS, ARCHIVED],
   }
@@ -106,7 +125,7 @@ export default function Sidebar() {
   const fullNav =
     NAV_BY_ACCOUNT_TYPE[accountType] ||
     (role === 'admin'
-      ? [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, DELETIONS]
+      ? [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, EDIT_REQUESTS, DELETIONS]
       : [DASHBOARD, FIELD_ORDERS, PENDING, REPORTS])
 
   // MBDEVCO is a read-only rollup across all sectors: Dashboard (+ Audit

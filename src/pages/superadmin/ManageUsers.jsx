@@ -7,6 +7,7 @@ import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { logAudit, AUDIT_ACTIONS } from '../../lib/auditLog'
+import { SECTOR_LABELS } from '../../lib/sectorTables'
 
 // account_type is what the app reads; role is the coarse bucket RLS reads.
 // They are set together so the two can never drift — an account_type of
@@ -52,7 +53,7 @@ export default function ManageUsers() {
     setError('')
     const { data, error: err } = await supabase
       .from('profiles')
-      .select('id, username, email, full_name, role, account_type, created_at')
+      .select('id, username, email, full_name, role, account_type, sector, created_at')
       .order('account_type', { ascending: true })
 
     if (err) setError(err.message)
@@ -206,17 +207,18 @@ export default function ManageUsers() {
               <th className="px-5 py-3 font-semibold">Username</th>
               <th className="px-5 py-3 font-semibold">Name</th>
               <th className="px-5 py-3 font-semibold">Current</th>
+              <th className="px-5 py-3 font-semibold">Sector</th>
               <th className="px-5 py-3 font-semibold">Change to</th>
               <th className="px-5 py-3 font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-slate-400">Loading accounts…</td></tr>
+              <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">Loading accounts…</td></tr>
             )}
 
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-slate-400">No accounts match that search.</td></tr>
+              <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">No accounts match that search.</td></tr>
             )}
 
             {!loading && filtered.map(u => {
@@ -238,6 +240,15 @@ export default function ManageUsers() {
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tintFor(u.account_type)}`}>
                       {labelFor(u.account_type)}
                     </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    {u.sector ? (
+                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        {SECTOR_LABELS[u.sector] || u.sector}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">All sectors</span>
+                    )}
                   </td>
                   <td className="px-5 py-3">
                     <select
@@ -335,7 +346,7 @@ export default function ManageUsers() {
             action: AUDIT_ACTIONS.ACCOUNT_CREATED,
             targetLabel: created?.email,
             targetId: created?.user_id,
-            details: { account_type: created?.account_type },
+            details: { account_type: created?.account_type, sector: created?.sector || null },
           })
           load()
         }}

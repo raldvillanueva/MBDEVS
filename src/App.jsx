@@ -9,6 +9,7 @@ import ArchivedWorkOrders from './pages/ArchivedWorkOrders'
 import AddRecord from './pages/AddRecord'
 import EditRecord from './pages/EditRecord'
 import DeletionRequests from './pages/DeletionRequests'
+import EditRequests from './pages/EditRequests'
 import AuditReports from './pages/AuditReports'
 import Login from './pages/Login'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="pending-records" element={<PendingRecords />} />
               <Route path="archived-work-orders" element={<ArchivedWorkOrders />} />
               <Route path="deletion-requests" element={<AdminRoute><DeletionRequests /></AdminRoute>} />
+              <Route path="edit-requests" element={<AdminRoute><EditRequests /></AdminRoute>} />
             </Route>
           </Routes>
         </BrowserRouter>

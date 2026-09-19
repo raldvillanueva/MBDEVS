@@ -1,14 +1,25 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { useSector } from '../lib/SectorContext'
+import { useAuth } from '../lib/AuthContext'
 
 export default function Layout() {
   const { sector } = useSector()
+  const { profile } = useAuth()
   const location = useLocation()
 
   // The sector picker lives outside Layout, so nothing here has to make an
   // exception for it: no sector means there is nothing to show.
   if (!sector) {
+    return <Navigate to="/sectors" replace />
+  }
+
+  // An account restricted to one sector can still end up with a different
+  // one in sessionStorage — an old tab left open after its assignment
+  // changed, a bookmark, or someone typing the URL by hand. The picker only
+  // offering the right box is a courtesy; this is what actually stops it,
+  // checked on every route under here rather than once at sign-in.
+  if (profile?.sector && sector !== profile.sector && sector !== 'mbdevco') {
     return <Navigate to="/sectors" replace />
   }
 

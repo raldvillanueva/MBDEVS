@@ -403,7 +403,7 @@ function deletePendingRecord(id) {
 
   return (
     
-    <form onSubmit={(e) => handleSubmit(e, "supabase")}>
+    <form onSubmit={(e) => handleSubmit(e, recordId ? "supabase" : "pending")}>
       
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
 
@@ -867,7 +867,12 @@ label="FO Action"
 
 
 
-  {canManage && (
+  {/* New field orders always go to Pending — Encoders' work needs a
+      reviewer, and an Admin adding fresh data gets the same check
+      everyone else does. Direct save is only for an already-approved
+      record being edited (recordId set) — that update reaches
+      field_orders straight away, same as before. */}
+  {canManage && recordId && (
   <button
     type="submit"
     disabled={saving}
@@ -890,9 +895,7 @@ label="FO Action"
     <Save size={15} />
     {saving
 ? 'Saving...'
-: recordId
-? 'Update Record'
-: `Save Record (${saveRepeat}/${repeatCount})`
+: 'Update Record'
 }
   </button>
   )}

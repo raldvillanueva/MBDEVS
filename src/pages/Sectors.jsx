@@ -31,6 +31,13 @@ export default function Sectors() {
   const { setSector, clearSector } = useSector()
   const { profile, session } = useAuth()
 
+  // Unset (or unrecognized) means unrestricted — the account can still
+  // pick from every sector, same as before this field existed.
+  const assignedSector = profile?.sector
+  const visibleSectors = assignedSector
+    ? SECTORS.filter(s => s.key === assignedSector)
+    : SECTORS
+
   function selectSector(key, to) {
     setSector(key)
     navigate(to)
@@ -50,11 +57,15 @@ export default function Sectors() {
         <img src={logo} alt="MB Development" className="w-16 h-16 rounded-xl object-cover shadow-lg mb-3" />
         <h1 className="text-2xl font-bold text-[#2E2E2E]">Select a Sector</h1>
         <div className="w-12 h-1 bg-[#D89B00] rounded-full mt-2 mb-2" />
-        <p className="text-slate-500 text-sm">Choose a sector to view its field order data</p>
+        <p className="text-slate-500 text-sm">
+          {assignedSector
+            ? 'Your account is set up for one sector'
+            : 'Choose a sector to view its field order data'}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-        {SECTORS.map(s => (
+        {visibleSectors.map(s => (
           <SectorBox key={s.key} label={s.label} icon={s.icon} onClick={() => selectSector(s.key, s.to)} />
         ))}
       </div>

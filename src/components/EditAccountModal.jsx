@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { X, Pencil, AlertTriangle, Info } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { SECTOR_LABELS, DATA_SECTORS } from '../lib/sectorTables'
 
 export default function EditAccountModal({ user, onClose, onSaved }) {
   const [username, setUsername] = useState(user?.username || '')
   const [fullName, setFullName] = useState(user?.full_name || '')
   const [email, setEmail] = useState(user?.email || '')
+  const [sector, setSector] = useState(user?.sector || '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -19,6 +21,7 @@ export default function EditAccountModal({ user, onClose, onSaved }) {
   if (username.trim() !== (user.username || '')) changes.username = username.trim()
   if (fullName.trim() !== (user.full_name || '')) changes.full_name = fullName.trim()
   if (email.trim().toLowerCase() !== (user.email || '').toLowerCase()) changes.email = email.trim()
+  if (sector !== (user.sector || '')) changes.sector = sector
 
   const changedCount = Object.keys(changes).length
   const usernameChanged = 'username' in changes
@@ -143,6 +146,25 @@ export default function EditAccountModal({ user, onClose, onSaved }) {
               />
               <p className="mt-1 text-xs text-slate-400">
                 Not used to sign in — kept for password resets and one-time codes.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">
+                Assigned Sector <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <select
+                value={sector}
+                onChange={e => { setSector(e.target.value); setError('') }}
+                className={`${inputClass} bg-white`}
+              >
+                <option value="">No specific sector — can use all of them</option>
+                {DATA_SECTORS.map(s => (
+                  <option key={s} value={s}>{SECTOR_LABELS[s]}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-400">
+                Restricts sign-in to one sector's data. MBDEVCO stays reachable either way.
               </p>
             </div>
           </div>

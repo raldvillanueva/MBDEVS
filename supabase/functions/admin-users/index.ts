@@ -8,11 +8,15 @@
 //
 // POST /functions/v1/admin-users
 //   Authorization: Bearer <the caller's access token>
-//   { username, email, password, full_name, account_type }
+//   { username, email, password, full_name, account_type, sector? }
 //
 // PATCH /functions/v1/admin-users    edit an existing account
 //   Authorization: Bearer <the caller's access token>
-//   { user_id, username?, full_name?, email?, password? }
+//   { user_id, username?, full_name?, email?, password?, sector? }
+//
+// sector restricts the account to one sector ('rizal' | 'manila' |
+// 'pasig' | 'balintawak'). Omitted or '' means unrestricted — every
+// sector stays open, same as before this field existed.
 //
 // There is no "read the password" here, and there cannot be: Supabase
 // stores a bcrypt hash, so the original is not recoverable by anyone —
@@ -33,6 +37,11 @@ const ACCOUNT_TYPES: Record<string, 'admin' | 'staff'> = {
   encoder: 'staff',
   viewer: 'staff',
 }
+
+// Mirrors DATA_SECTORS in src/lib/sectorTables.js. mbdevco is deliberately
+// left out — it's the rollup every account can already reach, not
+// something an account is restricted into.
+const VALID_SECTORS = new Set(['rizal', 'manila', 'pasig', 'balintawak'])
 
 // The browser calls this directly, so it needs CORS. Only the app's own
 // origin is allowed — this endpoint creates accounts, and any page on the
@@ -182,6 +191,17 @@ Deno.serve(async req => {
       }
     }
 
+    // '' clears the restriction back to "every sector" — that's a real,
+    // intentional change, so it still has to go in patch, not be treated
+    // as absent.
+    if (typeof body.sector === 'string') {
+      const next = body.sector.trim()
+      if (next && !VALID_SECTORS.has(next)) {
+        return json({ error: `sector must be one of ${[...VALID_SECTORS].join(', ')}, or empty` }, 400, origin)
+      }
+      patch.sector = next || null
+    }
+
     if (Object.keys(patch).length > 0) {
       const { error: patchError } = await admin.from('profiles').update(patch).eq('id', userId)
       if (patchError) {
@@ -198,9 +218,13 @@ Deno.serve(async req => {
   const password = body.password ?? ''
   const fullName = (body.full_name ?? '').trim()
   const accountType = body.account_type ?? ''
+  const sector = (body.sector ?? '').trim() || null
 
   if (!username || !email || !password) {
     return json({ error: 'Username, email and password are required' }, 400, origin)
+  }
+  if (sector && !VALID_SECTORS.has(sector)) {
+    return json({ error: `sector must be one of ${[...VALID_SECTORS].join(', ')}, or empty` }, 400, origin)
   }
 
   // Mirrors the profiles_username_format constraint. Checking here too
@@ -250,6 +274,7 @@ Deno.serve(async req => {
       email,
       account_type: accountType,
       role: ACCOUNT_TYPES[accountType],
+      sector,
     })
     .eq('id', created.user.id)
 
@@ -270,5 +295,6 @@ Deno.serve(async req => {
     username,
     email,
     account_type: accountType,
+    sector,
   }, 201, origin)
 })
