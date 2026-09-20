@@ -16,10 +16,15 @@ export default function Layout() {
 
   // An account restricted to one sector can still end up with a different
   // one in sessionStorage — an old tab left open after its assignment
-  // changed, a bookmark, or someone typing the URL by hand. The picker only
-  // offering the right box is a courtesy; this is what actually stops it,
-  // checked on every route under here rather than once at sign-in.
-  if (profile?.sector && sector !== profile.sector && sector !== 'mbdevco') {
+  // changed, a bookmark, or someone typing the URL by hand. Sectors.jsx
+  // sending them straight through is a convenience; this is what actually
+  // stops it, checked on every route under here rather than once at
+  // sign-in.
+  //
+  // MBDEVCO is not an exception. It rolls up every sector, so leaving it
+  // open to a restricted account would show them totals for the sectors
+  // they were kept out of.
+  if (profile?.sector && sector !== profile.sector) {
     return <Navigate to="/sectors" replace />
   }
 

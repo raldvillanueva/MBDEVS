@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, MapPin } from 'lucide-react'
 import { useSector } from '../lib/SectorContext'
@@ -34,9 +35,23 @@ export default function Sectors() {
   // Unset (or unrecognized) means unrestricted — the account can still
   // pick from every sector, same as before this field existed.
   const assignedSector = profile?.sector
-  const visibleSectors = assignedSector
-    ? SECTORS.filter(s => s.key === assignedSector)
-    : SECTORS
+  const isAssigned = SECTORS.some(s => s.key === assignedSector)
+
+  // A restricted account has nothing to choose. Showing it a picker with
+  // a single box, and making it click that box every time it signs in,
+  // is a question with one answer — so answer it and move on.
+  //
+  // replace: true keeps this out of the history, or Back from the
+  // dashboard would land here and bounce straight forward again.
+  useEffect(() => {
+    if (isAssigned) {
+      setSector(assignedSector)
+      navigate('/summary', { replace: true })
+    }
+  }, [isAssigned, assignedSector, setSector, navigate])
+
+  // Render nothing rather than a flash of the picker on the way past.
+  if (isAssigned) return null
 
   function selectSector(key, to) {
     setSector(key)
@@ -57,15 +72,11 @@ export default function Sectors() {
         <img src={logo} alt="MB Development" className="w-16 h-16 rounded-xl object-cover shadow-lg mb-3" />
         <h1 className="text-2xl font-bold text-[#2E2E2E]">Select a Sector</h1>
         <div className="w-12 h-1 bg-[#D89B00] rounded-full mt-2 mb-2" />
-        <p className="text-slate-500 text-sm">
-          {assignedSector
-            ? 'Your account is set up for one sector'
-            : 'Choose a sector to view its field order data'}
-        </p>
+        <p className="text-slate-500 text-sm">Choose a sector to view its field order data</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-        {visibleSectors.map(s => (
+        {SECTORS.map(s => (
           <SectorBox key={s.key} label={s.label} icon={s.icon} onClick={() => selectSector(s.key, s.to)} />
         ))}
       </div>
