@@ -179,6 +179,37 @@ Deno.serve(async req => {
       patch.email = nextEmail
     }
 
+    // 'active' | 'deactivated' | 'archived'. The two timestamps are derived
+    // here rather than sent, so the client cannot post an archived account
+    // that is somehow still able to sign in.
+    if (typeof body.status === 'string') {
+      const status = body.status
+      if (!['active', 'deactivated', 'archived'].includes(status)) {
+        return json({ error: 'status must be active, deactivated or archived' }, 400, origin)
+      }
+
+      // Nobody may switch themselves off. Doing so would take away the very
+      // access needed to undo it, and a system with no reachable Super Admin
+      // needs a database console to recover.
+      if (userId === caller.user.id) {
+        return json({ error: 'You cannot deactivate or archive your own account' }, 400, origin)
+      }
+
+      const now = new Date().toISOString()
+      patch.deactivated_at = status === 'active' ? null : now
+      patch.archived_at = status === 'archived' ? now : null
+
+      // Also ban at the auth layer. The login function already refuses a
+      // deactivated account, but that is one check in one code path; this
+      // stops the sign-in itself, so a future route in cannot miss it.
+      const { error: banError } = await admin.auth.admin.updateUserById(userId, {
+        ban_duration: status === 'active' ? 'none' : '876000h',
+      })
+      if (banError) {
+        return json({ error: banError.message }, 400, origin)
+      }
+    }
+
     if (typeof body.password === 'string' && body.password) {
       if (body.password.length < 8) {
         return json({ error: 'Password must be at least 8 characters' }, 400, origin)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search, RefreshCw, AlertTriangle, Trash2, Archive, ArchiveRestore, CheckCircle2, XCircle, UserPlus, ShieldCheck, KeyRound, Pencil } from 'lucide-react'
+import { Search, RefreshCw, AlertTriangle, Trash2, Archive, ArchiveRestore, CheckCircle2, XCircle, UserPlus, ShieldCheck, KeyRound, Pencil, UserX, UserCheck } from 'lucide-react'
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { AUDIT_ACTION_LABELS } from '../../lib/auditLog'
@@ -21,6 +21,9 @@ const ACTION_STYLE = {
   'account.role_changed': { icon: ShieldCheck, tint: 'bg-purple-100 text-purple-700' },
   'account.password_reset': { icon: KeyRound, tint: 'bg-amber-100 text-amber-800' },
   'account.updated': { icon: Pencil, tint: 'bg-slate-100 text-slate-600' },
+  'account.deactivated': { icon: UserX, tint: 'bg-amber-100 text-amber-800' },
+  'account.archived': { icon: Archive, tint: 'bg-red-100 text-red-700' },
+  'account.reactivated': { icon: UserCheck, tint: 'bg-emerald-100 text-emerald-700' },
 }
 
 const FILTERS = [
@@ -31,6 +34,7 @@ const FILTERS = [
   { value: 'account.created', label: 'New accounts' },
   { value: 'account.role_changed', label: 'Role changes' },
   { value: 'account.password_reset', label: 'Password resets' },
+  { value: 'account.deactivated', label: 'Deactivations' },
 ]
 
 function when(iso) {

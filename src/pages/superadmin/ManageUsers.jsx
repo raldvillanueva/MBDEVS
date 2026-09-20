@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Users, Search, RefreshCw, AlertTriangle, Info, UserPlus, KeyRound, Pencil } from 'lucide-react'
+import { Users, Search, RefreshCw, AlertTriangle, Info, UserPlus, KeyRound, Pencil, UserX, UserCheck, Archive, ArchiveRestore } from 'lucide-react'
 import CreateAccountModal from '../../components/CreateAccountModal'
 import ResetPasswordModal from '../../components/ResetPasswordModal'
 import EditAccountModal from '../../components/EditAccountModal'
@@ -47,13 +47,16 @@ export default function ManageUsers() {
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
+  const [confirm, setConfirm] = useState(null)
+  // Archived accounts are out of the way, not gone — this is how to look.
+  const [showArchived, setShowArchived] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     const { data, error: err } = await supabase
       .from('profiles')
-      .select('id, username, email, full_name, role, account_type, sector, created_at')
+      .select('id, username, email, full_name, role, account_type, sector, deactivated_at, archived_at, created_at')
       .order('account_type', { ascending: true })
 
     if (err) setError(err.message)
@@ -100,18 +103,71 @@ export default function ManageUsers() {
     load()
   }
 
+  // active | deactivated | archived. Both timestamps are worked out
+  // server-side from this one word, so the two can never disagree.
+  async function changeStatus(user, status) {
+    setSavingId(user.id)
+    setError('')
+    setNotice('')
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData?.session?.access_token
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ user_id: user.id, status }),
+        },
+      )
+      const result = await response.json()
+      setSavingId(null)
+
+      if (!response.ok) {
+        setError(result.error || 'Could not change that account.')
+        return
+      }
+
+      logAudit({
+        session, profile,
+        action:
+          status === 'archived' ? AUDIT_ACTIONS.ACCOUNT_ARCHIVED
+          : status === 'deactivated' ? AUDIT_ACTIONS.ACCOUNT_DEACTIVATED
+          : AUDIT_ACTIONS.ACCOUNT_REACTIVATED,
+        targetLabel: user.username || user.email,
+        targetId: user.id,
+      })
+
+      setNotice(
+        status === 'archived' ? `${user.username || user.email} archived.`
+        : status === 'deactivated' ? `${user.username || user.email} can no longer sign in.`
+        : `${user.username || user.email} can sign in again.`,
+      )
+      load()
+    } catch {
+      setSavingId(null)
+      setError('Could not reach the server. Check your connection and retry.')
+    }
+  }
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return users.filter(u => {
       const matchesFilter = filter === 'All' || u.account_type === filter
+      const matchesArchived = showArchived ? !!u.archived_at : !u.archived_at
       const matchesSearch =
         !q ||
         u.username?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
         u.full_name?.toLowerCase().includes(q)
-      return matchesFilter && matchesSearch
+      return matchesFilter && matchesArchived && matchesSearch
     })
-  }, [users, search, filter])
+  }, [users, search, filter, showArchived])
 
   return (
     <SuperAdminLayout>
@@ -167,9 +223,9 @@ export default function ManageUsers() {
           <div className="flex items-center gap-2">
             <Users size={18} className="text-[#D89B00]" />
             <h2 className="font-semibold text-[#2E2E2E]">
-              All Users
+              {showArchived ? 'Archived Accounts' : 'All Users'}
               <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-                {users.length}
+                {filtered.length}
               </span>
             </h2>
           </div>
@@ -198,6 +254,15 @@ export default function ManageUsers() {
                 {f === 'All' ? 'All' : labelFor(f)}
               </button>
             ))}
+            <button
+              onClick={() => setShowArchived(v => !v)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                showArchived ? 'bg-slate-700 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              <Archive size={12} />
+              {showArchived ? 'Viewing archived' : 'Archived'}
+            </button>
           </div>
         </div>
 
@@ -230,6 +295,11 @@ export default function ManageUsers() {
                   </td>
                   <td className="px-5 py-3 font-medium text-[#2E2E2E]">
                     {u.full_name || <span className="text-slate-400">No name set</span>}
+                    {u.deactivated_at && !u.archived_at && (
+                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800">
+                        Deactivated
+                      </span>
+                    )}
                     {isSelf && (
                       <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-500">
                         You
@@ -293,6 +363,67 @@ export default function ManageUsers() {
                         <KeyRound size={13} />
                         Reset
                       </button>
+
+                      {/* Deactivate first, then archive. Archiving straight
+                          from active would let a single click both cut
+                          someone off and hide that it happened. */}
+                      {!u.deactivated_at && (
+                        <button
+                          onClick={() => setConfirm({
+                            title: "Deactivate this account?",
+                            message: `${u.username || u.email} will not be able to sign in. Nothing is deleted, and you can turn it back on at any time.`,
+                            confirmLabel: "Deactivate",
+                            onConfirm: () => changeStatus(u, "deactivated"),
+                          })}
+                          disabled={savingId === u.id || isSelf}
+                          className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-40"
+                          title={isSelf ? "You cannot deactivate your own account" : "Stop this account signing in"}
+                        >
+                          <UserX size={13} />
+                          Deactivate
+                        </button>
+                      )}
+
+                      {u.deactivated_at && (
+                        <button
+                          onClick={() => changeStatus(u, "active")}
+                          disabled={savingId === u.id}
+                          className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-40"
+                          title="Let this account sign in again"
+                        >
+                          <UserCheck size={13} />
+                          Reactivate
+                        </button>
+                      )}
+
+                      {u.deactivated_at && !u.archived_at && (
+                        <button
+                          onClick={() => setConfirm({
+                            title: "Archive this account?",
+                            message: `${u.username || u.email} moves out of the main list. Their history in the audit log and on past records is kept, and you can restore them from the Archived view.`,
+                            confirmLabel: "Archive",
+                            onConfirm: () => changeStatus(u, "archived"),
+                          })}
+                          disabled={savingId === u.id}
+                          className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                          title="Move this account out of the main list"
+                        >
+                          <Archive size={13} />
+                          Archive
+                        </button>
+                      )}
+
+                      {u.archived_at && (
+                        <button
+                          onClick={() => changeStatus(u, "deactivated")}
+                          disabled={savingId === u.id}
+                          className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                          title="Bring this account back to the main list, still deactivated"
+                        >
+                          <ArchiveRestore size={13} />
+                          Unarchive
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -301,6 +432,29 @@ export default function ManageUsers() {
           </tbody>
         </table>
       </div>
+
+      {confirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-[#2E2E2E]">{confirm.title}</h3>
+            <p className="mt-2 text-sm text-slate-500">{confirm.message}</p>
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => setConfirm(null)}
+                className="flex-1 rounded-lg border border-[#D9D9D9] px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { const run = confirm.onConfirm; setConfirm(null); run() }}
+                className="flex-1 rounded-lg bg-[#D89B00] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#C58A00]"
+              >
+                {confirm.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editTarget && (
         <EditAccountModal

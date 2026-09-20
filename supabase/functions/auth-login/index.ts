@@ -70,24 +70,39 @@ Deno.serve(async req => {
     return json({ error: REJECTED }, 401, origin)
   }
 
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
   let email = identifier
 
   // An '@' means they typed an email, which Supabase takes as-is. Anything
   // else is a username and has to be looked up. Reading profiles for a
   // caller who is not signed in yet needs the service role, since RLS
   // would otherwise hide every row.
-  if (!identifier.includes('@')) {
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('email')
-      .ilike('username', identifier)
-      .maybeSingle()
+  const lookup = identifier.includes('@')
+    ? admin.from('profiles').select('email, deactivated_at').ilike('email', identifier)
+    : admin.from('profiles').select('email, deactivated_at').ilike('username', identifier)
 
+  const { data: profile } = await lookup.maybeSingle()
+
+  if (!identifier.includes('@')) {
     if (!profile?.email) {
       return json({ error: REJECTED }, 401, origin)
     }
     email = profile.email
+  }
+
+  // A deactivated or archived account keeps its password and its history;
+  // what it loses is the ability to sign in. Checked before the password
+  // so a disabled account cannot be told whether its password was right.
+  //
+  // Said plainly rather than hidden behind REJECTED: someone whose access
+  // was withdrawn needs to know to go and ask, not to keep retyping a
+  // password that is perfectly correct.
+  if (profile?.deactivated_at) {
+    return json(
+      { error: 'This account has been deactivated. Ask a Super Admin to restore it.' },
+      403,
+      origin,
+    )
   }
 
   // Sign in with the anon key, exactly as the browser would. The service

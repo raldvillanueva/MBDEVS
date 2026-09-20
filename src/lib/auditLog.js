@@ -15,6 +15,9 @@ export const AUDIT_ACTIONS = {
   ACCOUNT_ROLE_CHANGED: 'account.role_changed',
   ACCOUNT_PASSWORD_RESET: 'account.password_reset',
   ACCOUNT_UPDATED: 'account.updated',
+  ACCOUNT_DEACTIVATED: 'account.deactivated',
+  ACCOUNT_ARCHIVED: 'account.archived',
+  ACCOUNT_REACTIVATED: 'account.reactivated',
 }
 
 export const AUDIT_ACTION_LABELS = {
@@ -29,6 +32,9 @@ export const AUDIT_ACTION_LABELS = {
   'account.role_changed': 'Changed account role',
   'account.password_reset': 'Reset password',
   'account.updated': 'Edited account',
+  'account.deactivated': 'Deactivated account',
+  'account.archived': 'Archived account',
+  'account.reactivated': 'Reactivated account',
 }
 
 /**
