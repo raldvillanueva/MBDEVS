@@ -5,6 +5,7 @@ import { fieldOrdersTable } from '../lib/sectorTables'
 import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
 import { useAuth } from '../lib/AuthContext'
 import { labelFor, displayValue } from '../lib/fieldLabels'
+import EditRequestDetailModal from '../components/EditRequestDetailModal'
 
 const STATUS_TABS = ['pending', 'approved', 'rejected', 'all']
 
@@ -27,6 +28,7 @@ export default function EditRequests() {
   const [error, setError] = useState('')
   const [actingId, setActingId] = useState(null)
   const [confirm, setConfirm] = useState(null)
+  const [viewing, setViewing] = useState(null)
 
   const fetchRequests = useCallback(async () => {
     setLoading(true)
@@ -101,7 +103,7 @@ export default function EditRequests() {
     <div className="flex h-[calc(100vh-64px)] flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Edit Requests</h1>
-        <p className="mt-0.5 text-sm text-slate-500">Review staff-submitted requests to change field orders.</p>
+        <p className="mt-0.5 text-sm text-slate-500">Review staff-submitted requests to change field orders. Click a row to see every change.</p>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
@@ -155,7 +157,11 @@ export default function EditRequests() {
             ) : requests.map(request => {
               const changedFields = Object.keys(request.changes || {})
               return (
-                <tr key={request.id} className="border-t border-slate-100 hover:bg-slate-50 align-top">
+                <tr
+                  key={request.id}
+                  onClick={() => setViewing(request)}
+                  className="cursor-pointer border-t border-slate-100 align-top hover:bg-slate-50"
+                >
                   <td className="px-4 py-3 font-mono text-blue-600">{request.field_order_no || '—'}</td>
                   <td className="px-4 py-3">{request.requested_by_name || '—'}</td>
                   <td className="px-4 py-3 max-w-[260px]">
@@ -191,7 +197,7 @@ export default function EditRequests() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {request.status === 'pending' && (
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => setConfirm({
                             message: `Apply ${changedFields.length} change${changedFields.length === 1 ? '' : 's'} to field order ${request.field_order_no || request.field_order_id}?`,
@@ -218,6 +224,23 @@ export default function EditRequests() {
           </tbody>
         </table>
       </div>
+
+      {viewing && (
+        <EditRequestDetailModal
+          request={viewing}
+          acting={actingId === viewing.id}
+          onClose={() => setViewing(null)}
+          onApprove={request => {
+            const count = Object.keys(request.changes || {}).length
+            setViewing(null)
+            setConfirm({
+              message: `Apply ${count} change${count === 1 ? '' : 's'} to field order ${request.field_order_no || request.field_order_id}?`,
+              onConfirm: () => approve(request),
+            })
+          }}
+          onReject={request => { setViewing(null); reject(request) }}
+        />
+      )}
 
       {confirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]">
