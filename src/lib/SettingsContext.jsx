@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase'
-import { setOverdueThreshold } from './aging'
+import { setOverdueThreshold, setWarningThreshold } from './aging'
 
 // What the app used before these values were editable. They stay here as the
 // fallback so a missing app_settings table — or a failed fetch — degrades to
@@ -36,9 +36,10 @@ export function SettingsProvider({ children }) {
       criticalDays: Number(byKey.overdue_critical_days) || SETTINGS_DEFAULTS.criticalDays,
     }
 
-    // The red "overdue" styling in the Field Orders table is decided outside
-    // React, so the threshold has to be handed to aging.js directly.
+    // The Field Orders table decides its aging and due-date colours outside
+    // React, so both thresholds have to be handed to aging.js directly.
     setOverdueThreshold(next.criticalDays)
+    setWarningThreshold(next.warningDays)
 
     setSettings(next)
     setLoading(false)

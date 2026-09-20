@@ -8,7 +8,7 @@ import ImportModal from '../components/ImportModal'
 import RequestDeletionModal from '../components/RequestDeletionModal'
 import RequestEditModal from '../components/RequestEditModal'
 import { useAuth } from '../lib/AuthContext'
-import { displayAgingDays, isOverdue } from '../lib/aging'
+import { displayAgingDays, agingLevel, dueDaysLeft, dueLevel } from '../lib/aging'
 import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
 import { useSettings } from '../lib/SettingsContext'
 
@@ -120,10 +120,26 @@ const COLS = [
   { label: 'AGING',               key: 'aging',                 w: 70,  render: r => {
       const days = displayAgingDays(r)
       if (days == null) return '—'
-      return <span className={isOverdue(r) ? 'text-red-600 font-bold' : ''}>{days}</span>
+      // Yellow from the warning threshold, red past the overdue one.
+      // A batched or returned meter is neither — it has come home.
+      const level = agingLevel(r)
+      const tint =
+        level === 'critical' ? 'text-red-600 font-bold'
+        : level === 'warning' ? 'text-amber-600 font-bold'
+        : ''
+      return <span className={tint}>{days}</span>
     }
   },
   { label: 'WITNESS DATE',        key: 'witness_date',          w: 115, render: r => r.witness_date || '—' },
+  { label: 'DUE DATE',            key: 'due_date',              w: 90,  render: r => {
+      // Days left on the witnessing clock, not a calendar date: it counts
+      // down from 21 so the number itself says how much time is left.
+      const left = dueDaysLeft(r)
+      if (left == null) return '—'
+      const tint = dueLevel(r) === 'ok' ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'
+      return <span className={tint}>{left}</span>
+    }
+  },
   { label: 'REMARKS',             key: 'remarks',               w: 200, render: r => r.remarks || '—' },
   { label: 'LOCATION',            key: 'location',              w: 260, render: r => r.location || '—' },
   { label: 'MFLT CHECKLIST',      key: 'mflt_checklist',        w: 110, render: r => r.mflt_checklist ? <span className="text-emerald-600 font-bold">✓</span> : '' },
@@ -593,6 +609,7 @@ useEffect(() => {
     { key: 'mdltr_no',              label: 'MDLTR No.' },
     { key: 'aging',                 label: 'Aging' },
     { key: 'witness_date',          label: 'Witness Date' },
+    { key: 'due_date',              label: 'Due Date (days left)' },
     { key: 'remarks',               label: 'Remarks' },
     { key: 'mflt_checklist',        label: 'MFLT Checklist' },
     { key: 'fo_type',               label: 'FO Type' },
@@ -623,7 +640,10 @@ useEffect(() => {
     }
 
     const header = EXPORT_FIELDS.map(f => f.label).join(',')
-    const rows = data.map(row => EXPORT_FIELDS.map(f => esc(row[f.key])).join(','))
+    // due_date is worked out from witness_date rather than stored, so it
+    // has no column to read — every other field comes straight off the row.
+    const cell = (row, key) => (key === 'due_date' ? dueDaysLeft(row) : row[key])
+    const rows = data.map(row => EXPORT_FIELDS.map(f => esc(cell(row, f.key))).join(','))
     const csv = '﻿' + [header, ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -927,7 +947,7 @@ Add Record
                 ) : (
                   records.map((row, idx) => {
                     const sel = editRow?.id === row.id
-                    const overdue = isOverdue(row)
+                    const overdue = agingLevel(row) === 'critical'
                     // Frozen section is tinted so it reads as its own block,
                     // distinct from the scrollable columns to its right.
                     const rowBg = sel ? '#eff6ff' : overdue ? '#fef2f2' : (hoverRowId === row.id ? '#e2e8f0' : '#f1f5f9')
@@ -1025,7 +1045,7 @@ Add Record
                 ) : (
                   records.map((row, idx) => {
                     const sel = editRow?.id === row.id
-                    const overdue = isOverdue(row)
+                    const overdue = agingLevel(row) === 'critical'
                     const rowBg = sel ? '#eff6ff' : overdue ? '#fef2f2' : (hoverRowId === row.id ? '#f8fafc' : '#ffffff')
                     return (
                       <tr
