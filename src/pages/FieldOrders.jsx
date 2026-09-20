@@ -14,6 +14,15 @@ import { useSettings } from '../lib/SettingsContext'
 
 const PAGE_SIZE = 50
 
+// Aging and Due Date are worked out in the browser, so there is no column
+// to sort on — they order by the date they are derived from instead.
+// Aging counts up as its date gets older, so it runs against date_executed;
+// Due Date counts down as its date gets older, so it runs with witness_date.
+const SORT_FIELDS = {
+  aging:    { column: 'date_executed', invert: true },
+  due_date: { column: 'witness_date',  invert: false },
+}
+
 const STATUS_OPTIONS = ['All', 'RE-ASSIGN','FOR ASSIGN', 'ASSIGNED', 'CANCEL', 'CANCEL-EMC', 'FC CANCEL', 'FIELD COMPLETED', 'REVISITED FIELD COM.', 'REVISITED CANCEL']
 const TYPE_OF_METER_OPTIONS = ['All', '12S', '12S ID METER', '1S', '1S EMC L-G', '25S', '2S EMC L-G', '2S EMC L-L', '2S EMX', '2S ID', '2S ID METER', '2S ID METER/ERC', '2S PLAIN METER', '9S', 'EMX', 'ERC 2S PLAIN METER', 'FOR REPLACE', 'KLOAD', 'RETURNED']
 const JOB_DESCRIPTION_OPTIONS = ['All', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX', 'RETIRE', 'RETIRE-EMC', 'RETIRE-EMC-WIRE']
@@ -183,6 +192,8 @@ export default function FieldOrders() {
   const [typeOfMeterFilter, setTypeOfMeterFilter] = useState('All')
   const [jobDescriptionFilter, setJobDescriptionFilter] = useState('All')
   const [crewNameFilter, setCrewNameFilter] = useState('All')
+  const [sortKey, setSortKey] = useState(null)
+  const [sortDir, setSortDir] = useState('asc')
   const [foTypeFilter, setFoTypeFilter] = useState('All')
   const [billedAmountFilter, setBilledAmountFilter] = useState('All')
   const [batchFilter, setBatchFilter] = useState('All')
@@ -311,9 +322,24 @@ prev.filter(x=>x!==id)
       .from(foTable)
       .select('*', { count: 'exact' })
       .is('archived_at', null)
-      .order('seq', { ascending: true, nullsFirst: true })
-      .order('created_at', { ascending: false })
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+    // Sorting happens here rather than over `records`: only one page is
+    // loaded at a time, so sorting what is on screen would reorder 50 rows
+    // out of 8,000 and call it sorted.
+    if (sortKey) {
+      const spec = SORT_FIELDS[sortKey] || { column: sortKey, invert: false }
+      const ascending = spec.invert ? sortDir === 'desc' : sortDir === 'asc'
+      q = q.order(spec.column, { ascending, nullsFirst: false })
+           // Rows sharing a value would otherwise come back in whatever
+           // order Postgres felt like, and could repeat or vanish across
+           // pages. id breaks the tie so paging stays stable.
+           .order('id', { ascending: true })
+    } else {
+      q = q.order('seq', { ascending: true, nullsFirst: true })
+           .order('created_at', { ascending: false })
+    }
+
+    q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
     if (search) {
       q = q.or(
@@ -337,7 +363,7 @@ prev.filter(x=>x!==id)
     const { data, count, error } = await q
     if (!error) { setRecords(data); setTotal(count) }
     setLoading(false)
-  }, [foTable, page, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter, dateAssignFilter, yearFilter, monthFilter])
+  }, [foTable, page, sortKey, sortDir, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter, dateAssignFilter, yearFilter, monthFilter])
 
 useEffect(() => { 
   fetchRecords() 
@@ -348,7 +374,7 @@ useEffect(() => {
   setPage(0)
   setSelectAllPages(false)
   setSelectedRows([])
-}, [search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter,  dateAssignFilter, yearFilter, monthFilter])
+}, [sortKey, sortDir, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter,  dateAssignFilter, yearFilter, monthFilter])
 
 
   const ROW_HEIGHT = 33
@@ -656,6 +682,17 @@ useEffect(() => {
     URL.revokeObjectURL(url)
   }
 
+  function toggleSort(key) {
+    if (sortKey !== key) { setSortKey(key); setSortDir('asc'); return }
+    if (sortDir === 'asc') { setSortDir('desc'); return }
+    setSortKey(null)
+  }
+
+  function sortArrow(key) {
+    if (sortKey !== key) return ''
+    return sortDir === 'asc' ? '▲' : '▼'
+  }
+
   const COL_FILTER_KEYS = {
     status_crew:    { options: STATUS_OPTIONS,        value: statusFilter,        set: setStatusFilter,        isActive: () => statusFilter !== 'All' },
     date_assign: { type: 'date', value: dateAssignFilter, set: setDateAssignFilter, isActive: () => !!dateAssignFilter,},
@@ -914,7 +951,16 @@ Add Record
                         className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap border-r border-slate-700 last:border-0"
                       >
                         <div className="flex items-center gap-1">
-                          <span className="flex-1 truncate">{col.label}</span>
+                          <button
+                            onClick={e => { e.stopPropagation(); toggleSort(col.key) }}
+                            className="flex min-w-0 flex-1 items-center gap-1 text-left transition-colors hover:text-white"
+                            title={`Sort by ${col.label}`}
+                          >
+                            <span className="truncate">{col.label}</span>
+                            <span className="shrink-0 text-blue-400" style={{ fontSize: 8, lineHeight: 1 }}>
+                              {sortArrow(col.key)}
+                            </span>
+                          </button>
                           {filterCfg && (
                             <button
                               data-filter-dropdown
@@ -1012,7 +1058,16 @@ Add Record
                         className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap border-r border-slate-700 last:border-0"
                       >
                         <div className="flex items-center gap-1">
-                          <span className="flex-1 truncate">{col.label}</span>
+                          <button
+                            onClick={e => { e.stopPropagation(); toggleSort(col.key) }}
+                            className="flex min-w-0 flex-1 items-center gap-1 text-left transition-colors hover:text-white"
+                            title={`Sort by ${col.label}`}
+                          >
+                            <span className="truncate">{col.label}</span>
+                            <span className="shrink-0 text-blue-400" style={{ fontSize: 8, lineHeight: 1 }}>
+                              {sortArrow(col.key)}
+                            </span>
+                          </button>
                           {filterCfg && (
                             <button
                               data-filter-dropdown
