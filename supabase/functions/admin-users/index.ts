@@ -15,7 +15,7 @@
 //   { user_id, username?, full_name?, email?, password?, sector? }
 //
 // sector restricts the account to one sector ('rizal' | 'manila' |
-// 'pasig' | 'balintawak'). Omitted or '' means unrestricted — every
+// 'pasig' | 'balintawak' | 'ami'). Omitted or '' means unrestricted — every
 // sector stays open, same as before this field existed.
 //
 // There is no "read the password" here, and there cannot be: Supabase
@@ -41,7 +41,7 @@ const ACCOUNT_TYPES: Record<string, 'admin' | 'staff'> = {
 // Mirrors DATA_SECTORS in src/lib/sectorTables.js. mbdevco is deliberately
 // left out — it's the rollup every account can already reach, not
 // something an account is restricted into.
-const VALID_SECTORS = new Set(['rizal', 'manila', 'pasig', 'balintawak'])
+const VALID_SECTORS = new Set(['rizal', 'manila', 'pasig', 'balintawak', 'ami'])
 
 // The browser calls this directly, so it needs CORS. Only the app's own
 // origin is allowed — this endpoint creates accounts, and any page on the

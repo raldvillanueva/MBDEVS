@@ -11,6 +11,7 @@ const SECTORS = [
   { label: 'Manila', key: 'manila', to: '/summary', icon: MapPin },
   { label: 'Pasig', key: 'pasig', to: '/summary', icon: MapPin },
   { label: 'Balintawak', key: 'balintawak', to: '/summary', icon: MapPin },
+  { label: 'AMI', key: 'ami', to: '/summary', icon: MapPin },
 ]
 
 function SectorBox({ label, onClick, icon: Icon, wide }) {

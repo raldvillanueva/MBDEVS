@@ -7,7 +7,7 @@
 // a permanent gap.
 //
 // GET /functions/v1/field-orders
-//     ?sector=      rizal | manila | pasig | balintawak
+//     ?sector=      rizal | manila | pasig | balintawak | ami
 //     &date_from=   YYYY-MM-DD   inclusive
 //     &date_to=     YYYY-MM-DD   inclusive
 //     &date_field=  which date the range applies to (default date_executed)
@@ -56,7 +56,7 @@ const SHARED_COLUMNS = [
   'updated_at',
 ]
 
-const VALID_SECTORS = ['rizal', 'manila', 'pasig', 'balintawak']
+const VALID_SECTORS = ['rizal', 'manila', 'pasig', 'balintawak', 'ami']
 
 // Crews record status in several wordings, so a caller asking for "completed"
 // should not have to know all of them. Each preset is a substring match:

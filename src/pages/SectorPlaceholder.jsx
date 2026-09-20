@@ -5,6 +5,7 @@ const NAMES = {
   manila: 'Manila',
   pasig: 'Pasig',
   balintawak: 'Balintawak',
+  ami: 'AMI',
   mbdevco: 'MBDEVCO',
 }
 

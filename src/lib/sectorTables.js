@@ -11,17 +11,19 @@ const SUFFIX = {
   manila: '_manila',
   pasig: '_pasig',
   balintawak: '_balintawak',
+  ami: '_ami',
 }
 
 // Sectors that actually store records. MBDEVCO is excluded: it is a read-only
 // rollup and owns no tables of its own.
-export const DATA_SECTORS = ['rizal', 'manila', 'pasig', 'balintawak']
+export const DATA_SECTORS = ['rizal', 'manila', 'pasig', 'balintawak', 'ami']
 
 export const SECTOR_LABELS = {
   rizal: 'Rizal',
   manila: 'Manila',
   pasig: 'Pasig',
   balintawak: 'Balintawak',
+  ami: 'AMI',
   mbdevco: 'MBDEVCO',
 }
 

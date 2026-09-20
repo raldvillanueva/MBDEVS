@@ -5,9 +5,11 @@ import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
 import { supabase } from '../lib/supabase'
-import { pendingOrdersTable, isDataSector } from '../lib/sectorTables'
+import { pendingOrdersTable, isDataSector, SECTOR_LABELS } from '../lib/sectorTables'
 
-const SECTOR_NAMES = { rizal: 'Rizal', manila: 'Manila', pasig: 'Pasig', balintawak: 'Balintawak', mbdevco: 'MBDEVCO' }
+// SECTOR_LABELS already names every sector; this only adds MBDEVCO, which
+// is not a data sector and so is not in that list.
+const SECTOR_NAMES = { ...SECTOR_LABELS, mbdevco: 'MBDEVCO' }
 
 // What the person actually is. `role` is only the coarse admin/staff
 // bucket RLS reads, so showing it labelled every Encoder a "STAFF".
@@ -136,7 +138,7 @@ export default function Sidebar() {
     accountType === 'super_admin' || (profile?.account_type == null && role === 'admin')
 
   const navItems =
-    ['rizal', 'manila', 'pasig', 'balintawak'].includes(sector) ? fullNav
+    isDataSector(sector) ? fullNav
     : sector === 'mbdevco'
       ? [
           DASHBOARD,

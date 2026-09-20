@@ -28,6 +28,7 @@ const SECTOR_BY_TABLE: Record<string, string> = {
   field_orders_manila: 'manila',
   field_orders_pasig: 'pasig',
   field_orders_balintawak: 'balintawak',
+  field_orders_ami: 'ami',
 }
 
 // EXACTLY what leaves this system. Commercial figures (billed_amount,
