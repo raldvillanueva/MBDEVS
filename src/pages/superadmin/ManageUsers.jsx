@@ -196,7 +196,7 @@ export default function ManageUsers() {
         </div>
       </div>
 
-      <div className="mb-4 flex max-w-4xl items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+      <div className="mb-4 flex max-w-6xl items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
         <Info size={16} className="mt-0.5 shrink-0" />
         <p>
           New accounts sign in with the username and password you set — there is no confirmation
@@ -206,19 +206,19 @@ export default function ManageUsers() {
       </div>
 
       {error && (
-        <div className="mb-4 flex max-w-4xl items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 flex max-w-6xl items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" />
           <p>{error}</p>
         </div>
       )}
 
       {notice && (
-        <div className="mb-4 max-w-4xl rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="mb-4 max-w-6xl rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {notice}
         </div>
       )}
 
-      <div className="max-w-4xl overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-sm">
+      <div className="max-w-6xl overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D9D9D9] px-5 py-4">
           <div className="flex items-center gap-2">
             <Users size={18} className="text-[#D89B00]" />
@@ -269,12 +269,12 @@ export default function ManageUsers() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-[#D9D9D9] text-xs uppercase tracking-wide text-slate-500">
-              <th className="px-5 py-3 font-semibold">Username</th>
-              <th className="px-5 py-3 font-semibold">Name</th>
-              <th className="px-5 py-3 font-semibold">Current</th>
-              <th className="px-5 py-3 font-semibold">Sector</th>
-              <th className="px-5 py-3 font-semibold">Change to</th>
-              <th className="px-5 py-3 font-semibold">Actions</th>
+              <th className="whitespace-nowrap px-5 py-3 font-semibold">Username</th>
+              <th className="whitespace-nowrap px-5 py-3 font-semibold">Name</th>
+              <th className="whitespace-nowrap px-5 py-3 font-semibold">Current</th>
+              <th className="whitespace-nowrap px-5 py-3 font-semibold">Sector</th>
+              <th className="whitespace-nowrap px-5 py-3 font-semibold">Change to</th>
+              <th className="whitespace-nowrap px-5 py-3 font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -290,7 +290,7 @@ export default function ManageUsers() {
               const isSelf = u.id === session?.user?.id
               return (
                 <tr key={u.id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-5 py-3 font-mono text-sm text-[#2E2E2E]">
+                  <td className="whitespace-nowrap px-5 py-3 font-mono text-sm text-[#2E2E2E]">
                     {u.username || <span className="font-sans text-slate-400">Not set</span>}
                   </td>
                   <td className="px-5 py-3 font-medium text-[#2E2E2E]">
@@ -317,7 +317,7 @@ export default function ManageUsers() {
                         {SECTOR_LABELS[u.sector] || u.sector}
                       </span>
                     ) : (
-                      <span className="text-xs text-slate-400">All sectors</span>
+                      <span className="whitespace-nowrap text-xs text-slate-400">All sectors</span>
                     )}
                   </td>
                   <td className="px-5 py-3">
@@ -346,22 +346,20 @@ export default function ManageUsers() {
                     </select>
                   </td>
                   <td className="px-5 py-3">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <button
                         onClick={() => setEditTarget(u)}
-                        className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                        className="flex items-center justify-center rounded-lg border border-[#D9D9D9] p-2 text-slate-600 transition hover:bg-slate-50"
                         title={`Edit ${u.username || u.email}`}
                       >
-                        <Pencil size={13} />
-                        Edit
+                        <Pencil size={15} />
                       </button>
                       <button
                         onClick={() => setResetTarget(u)}
-                        className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                        className="flex items-center justify-center rounded-lg border border-[#D9D9D9] p-2 text-slate-600 transition hover:bg-slate-50"
                         title={`Set a new password for ${u.username || u.email}`}
                       >
-                        <KeyRound size={13} />
-                        Reset
+                        <KeyRound size={15} />
                       </button>
 
                       {/* Deactivate first, then archive. Archiving straight
@@ -376,11 +374,10 @@ export default function ManageUsers() {
                             onConfirm: () => changeStatus(u, "deactivated"),
                           })}
                           disabled={savingId === u.id || isSelf}
-                          className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-50 disabled:opacity-40"
+                          className="flex items-center justify-center rounded-lg border border-[#D9D9D9] p-2 text-amber-700 transition hover:bg-amber-50 disabled:opacity-40"
                           title={isSelf ? "You cannot deactivate your own account" : "Stop this account signing in"}
                         >
-                          <UserX size={13} />
-                          Deactivate
+                          <UserX size={15} />
                         </button>
                       )}
 
@@ -388,11 +385,10 @@ export default function ManageUsers() {
                         <button
                           onClick={() => changeStatus(u, "active")}
                           disabled={savingId === u.id}
-                          className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-40"
+                          className="flex items-center justify-center rounded-lg border border-[#D9D9D9] p-2 text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-40"
                           title="Let this account sign in again"
                         >
-                          <UserCheck size={13} />
-                          Reactivate
+                          <UserCheck size={15} />
                         </button>
                       )}
 
@@ -405,11 +401,10 @@ export default function ManageUsers() {
                             onConfirm: () => changeStatus(u, "archived"),
                           })}
                           disabled={savingId === u.id}
-                          className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                          className="flex items-center justify-center rounded-lg border border-[#D9D9D9] p-2 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
                           title="Move this account out of the main list"
                         >
-                          <Archive size={13} />
-                          Archive
+                          <Archive size={15} />
                         </button>
                       )}
 
@@ -417,11 +412,10 @@ export default function ManageUsers() {
                         <button
                           onClick={() => changeStatus(u, "deactivated")}
                           disabled={savingId === u.id}
-                          className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                          className="flex items-center justify-center rounded-lg border border-[#D9D9D9] p-2 text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
                           title="Bring this account back to the main list, still deactivated"
                         >
-                          <ArchiveRestore size={13} />
-                          Unarchive
+                          <ArchiveRestore size={15} />
                         </button>
                       )}
                     </div>
