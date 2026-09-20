@@ -608,6 +608,12 @@ async function sendSelectedToFieldOrders() {
                     <span className="text-sm text-slate-600">Checked</span>
                   </label>
                 </PF>
+                <PF label="For Batch">
+                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={cls('for_batch')}>
+                    <option value="">— Select —</option>
+                    {BATCH_OPTIONS.map(option => <option key={option}>{option}</option>)}
+                  </select>
+                </PF>
               </PS>
 
               {showRemoveMeterSection && (
@@ -721,12 +727,6 @@ async function sendSelectedToFieldOrders() {
                   <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} className={cls('billed_amount')}>
                     <option value="">— Select —</option>
                     {BILLED_AMOUNT_OPTIONS.map(option => <option key={option}>{option}</option>)}
-                  </select>
-                </PF>
-                <PF label="For Batch">
-                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={cls('for_batch')}>
-                    <option value="">— Select —</option>
-                    {BATCH_OPTIONS.map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Date Returned">

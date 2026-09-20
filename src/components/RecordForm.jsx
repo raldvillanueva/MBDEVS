@@ -507,6 +507,15 @@ label="FO Action"
             </div>
           </Field>
 
+          {/* Sits beside For Check: both are the reviewer ticking off
+              where a record has got to, so they are read together. */}
+          <Field label="For Batch">
+            <select{...text('for_batch')}>
+              <option value="">— Select —</option>
+              <option value="ALREADY BATCH">ALREADY BATCH</option>
+            </select>
+          </Field>
+
           <Field label="Type of Meter">
             <select {...text('type_of_meter')} className={selectClass}>
               <option value="">— Select —</option>
@@ -745,13 +754,6 @@ label="FO Action"
                 setFieldErrors(prev=>({...prev, billed_amount:false}))}}
                 className={`${inputClass}${fieldErrors.billed_amount? '!border-red-500 !bg-red-200':''}`}
                 />
-          </Field>
-
-          <Field label="For Batch">
-            <select{...text('for_batch')}>
-              <option value="">— Select —</option>
-              <option value="ALREADY BATCH">ALREADY BATCH</option>
-            </select>
           </Field>
 
           <Field label="Date Returned">

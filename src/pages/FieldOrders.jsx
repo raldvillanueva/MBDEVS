@@ -1303,6 +1303,12 @@ Add Record
                     <span className="text-sm text-slate-600">Checked</span>
                   </label>
                 </PF>
+                <PF label="For Batch">
+                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={iCls}>
+                    <option value="">— Select —</option>
+                    {BATCH_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </PF>
               </PS>
 
               <PS title="Remove Meter">
@@ -1405,12 +1411,6 @@ Add Record
                   <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} className={iCls}>
                     <option value="">— Select —</option>
                     {BILLED_AMOUNT_OPTIONS.slice(1).map(option => <option key={option}>{option}</option>)}
-                  </select>
-                </PF>
-                <PF label="For Batch">
-                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={iCls}>
-                    <option value="">— Select —</option>
-                    {BATCH_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
                   </select>
                 </PF>
                 <PF label="Date Returned">
