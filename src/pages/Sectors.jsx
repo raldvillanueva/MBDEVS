@@ -14,16 +14,19 @@ const SECTORS = [
   { label: 'AMI', key: 'ami', to: '/summary', icon: MapPin },
 ]
 
+// A fixed width so every box matches whether it is on a full row or a
+// wrapped one. Slightly narrower than before, which is what lets five sit
+// on a single line instead of four with one underneath.
 function SectorBox({ label, onClick, icon: Icon, wide }) {
   return (
     <button
       onClick={onClick}
-      className={`group flex flex-col items-center justify-center gap-3 rounded-xl bg-white border border-slate-200 shadow-sm p-6 hover:border-[#D89B00] hover:shadow-md transition-all ${wide ? 'w-56' : 'w-44'}`}
+      className={`group flex flex-col items-center justify-center gap-2.5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-[#D89B00] hover:shadow-md ${wide ? 'w-52' : 'w-40'}`}
     >
-      <span className="rounded-full bg-[#D89B00]/10 p-4 text-[#D89B00] group-hover:bg-[#D89B00] group-hover:text-white transition-colors">
-        <Icon size={26} />
+      <span className="rounded-full bg-[#D89B00]/10 p-3.5 text-[#D89B00] transition-colors group-hover:bg-[#D89B00] group-hover:text-white">
+        <Icon size={24} />
       </span>
-      <span className="font-semibold text-slate-800 text-base">{label}</span>
+      <span className="text-base font-semibold text-slate-800">{label}</span>
     </button>
   )
 }
@@ -76,7 +79,11 @@ export default function Sectors() {
         <p className="text-slate-500 text-sm">Choose a sector to view its field order data</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+      {/* Wrapping flex rather than a fixed column count: the row fits as
+          many sectors as the screen allows and stays centred, so adding a
+          sixth needs no change here and none of them end up stranded
+          alone on a second line. */}
+      <div className="flex w-full max-w-5xl flex-wrap justify-center gap-4">
         {SECTORS.map(s => (
           <SectorBox key={s.key} label={s.label} icon={s.icon} onClick={() => selectSector(s.key, s.to)} />
         ))}
