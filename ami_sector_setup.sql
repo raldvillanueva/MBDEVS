@@ -135,7 +135,9 @@ declare
   v_cols    text;
   v_moved   int;
 begin
-  if not public.can_encode() then
+  -- is not true rather than not(...): it is false for NULL as well as for
+  -- false, so an anonymous caller is refused instead of waved through.
+  if auth.uid() is null or public.can_encode() is not true then
     raise exception 'You do not have permission to send records to Field Orders'
       using errcode = '42501';
   end if;
