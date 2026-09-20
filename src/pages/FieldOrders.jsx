@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
-import { Plus, Search, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive, Send } from 'lucide-react'
+import { Plus, Search, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive, Send, Info } from 'lucide-react'
 import ImportModal from '../components/ImportModal'
 import RequestDeletionModal from '../components/RequestDeletionModal'
 import RequestEditModal from '../components/RequestEditModal'
@@ -13,6 +13,12 @@ import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
 import { useSettings } from '../lib/SettingsContext'
 
 const PAGE_SIZE = 50
+
+// Once a record is in Field Orders it is the record of what happened, so
+// the direct edit only moves the three things that genuinely still change
+// afterwards. Anything else is a correction, and corrections go through
+// Request Edit where somebody reviews them.
+const FIELD_ORDER_EDITABLE = ['status_crew', 'for_check', 'for_batch']
 
 // Aging and Due Date are worked out in the browser, so there is no column
 // to sort on — they order by the date they are derived from instead.
@@ -180,6 +186,11 @@ export default function FieldOrders() {
   // Only an Encoder goes through the request flow — Viewer cannot edit at
   // all, and Admin/Super Admin can still save directly, same as before.
   const canRequestEdit = canEncode && !isAdmin
+
+  // Locking an Encoder out of these would leave Request Edit with nothing
+  // to propose, so the lock lands on the people whose edits save straight
+  // to the record.
+  const fieldLocked = key => isAdmin && !FIELD_ORDER_EDITABLE.includes(key)
   const [showDeletionRequest, setShowDeletionRequest] = useState(false)
   const [showEditRequest, setShowEditRequest] = useState(false)
   const [pendingChanges, setPendingChanges] = useState(null)
@@ -1221,17 +1232,30 @@ Add Record
             {/* Drawer Body */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-6">
 
+              {/* A greyed-out form with no explanation reads as broken, so
+                  say why it is locked and where a correction does go. */}
+              {isAdmin && (
+                <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                  <Info size={14} className="mt-0.5 shrink-0" />
+                  <p>
+                    This record is already in Field Orders, so only <strong>Status Crew</strong>,{' '}
+                    <strong>For Check</strong> and <strong>For Batch</strong> can still be changed here.
+                    Anything else has to come through an edit request.
+                  </p>
+                </div>
+              )}
+
               <fieldset disabled={!isAdmin && !canRequestEdit} className="space-y-6 border-0 p-0 m-0 min-w-0">
 
               <PS title="Main Information">
                 <PF label="Field Order No.">
-                  <input value={editForm.field_order_no} onChange={e => sf('field_order_no', e.target.value)} className={iCls} />
+                  <input value={editForm.field_order_no} onChange={e => sf('field_order_no', e.target.value)} disabled={fieldLocked('field_order_no')} className={iCls} />
                 </PF>
                 <PF label="Service ID Number">
-                  <input value={editForm.service_number} onChange={e => sf('service_number', e.target.value)} className={iCls} />
+                  <input value={editForm.service_number} onChange={e => sf('service_number', e.target.value)} disabled={fieldLocked('service_number')} className={iCls} />
                 </PF>
                 <PF label="Status Crew">
-                  <select value={editForm.status_crew} onChange={e => sf('status_crew', e.target.value)} className={iCls}>
+                  <select value={editForm.status_crew} onChange={e => sf('status_crew', e.target.value)} disabled={fieldLocked('status_crew')} className={iCls}>
                     <option value="">— Select —</option>
                     <option>FOR ASSIGN</option>
                     <option>ASSIGNED</option>
@@ -1245,19 +1269,19 @@ Add Record
                   </select>
                 </PF>
                 <PF label="Date Assign">
-                  <input type="date" value={editForm.date_assign} onChange={e => sf('date_assign', e.target.value)} className={iCls} />
+                  <input type="date" value={editForm.date_assign} onChange={e => sf('date_assign', e.target.value)} disabled={fieldLocked('date_assign')} className={iCls} />
                 </PF>
                 <PF label="Date Executed">
-                  <input type="date" value={editForm.date_executed} onChange={e => sf('date_executed', e.target.value)} className={iCls} />
+                  <input type="date" value={editForm.date_executed} onChange={e => sf('date_executed', e.target.value)} disabled={fieldLocked('date_executed')} className={iCls} />
                 </PF>
                 <PF label="Type of Meter">
-                  <select value={editForm.type_of_meter} onChange={e => sf('type_of_meter', e.target.value)} className={iCls}>
+                  <select value={editForm.type_of_meter} onChange={e => sf('type_of_meter', e.target.value)} disabled={fieldLocked('type_of_meter')} className={iCls}>
                     <option value="">— Select —</option>
                     {TYPE_OF_METER_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
                   </select>
                 </PF>
                 <PF label="Job Description">
-                  <select value={editForm.job_description} onChange={e => sf('job_description', e.target.value)} className={iCls}>
+                  <select value={editForm.job_description} onChange={e => sf('job_description', e.target.value)} disabled={fieldLocked('job_description')} className={iCls}>
                     <option value="">— Select —</option>
                     {JOB_DESCRIPTION_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
                   </select>
@@ -1295,16 +1319,16 @@ Add Record
   />
 </PF>
                 <PF label="Location" span2>
-                  <input value={editForm.location} onChange={e => sf('location', e.target.value)} className={iCls} />
+                  <input value={editForm.location} onChange={e => sf('location', e.target.value)} disabled={fieldLocked('location')} className={iCls} />
                 </PF>
                 <PF label="For Check">
                   <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
-                    <input type="checkbox" checked={!!editForm.for_check} onChange={e => sf('for_check', e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    <input type="checkbox" checked={!!editForm.for_check} onChange={e => sf('for_check', e.target.checked)} disabled={fieldLocked('for_check')} className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                     <span className="text-sm text-slate-600">Checked</span>
                   </label>
                 </PF>
                 <PF label="For Batch">
-                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={iCls}>
+                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} disabled={fieldLocked('for_batch')} className={iCls}>
                     <option value="">— Select —</option>
                     {BATCH_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
                   </select>
@@ -1313,25 +1337,25 @@ Add Record
 
               <PS title="Remove Meter">
                 <PF label="Remove Meter No.">
-                  <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} className={iCls} />
+                  <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} disabled={fieldLocked('remove_meter')} className={iCls} />
                 </PF>
                 <PF label="R. Serial Number">
-                  <input value={editForm.r_serial_number} onChange={e => sf('r_serial_number', e.target.value)} className={iCls} />
+                  <input value={editForm.r_serial_number} onChange={e => sf('r_serial_number', e.target.value)} disabled={fieldLocked('r_serial_number')} className={iCls} />
                 </PF>
                 <PF label="Demand Seal Aerolock">
-                  <input value={editForm.demand_seal_aerolock} onChange={e => sf('demand_seal_aerolock', e.target.value)} className={iCls} />
+                  <input value={editForm.demand_seal_aerolock} onChange={e => sf('demand_seal_aerolock', e.target.value)} disabled={fieldLocked('demand_seal_aerolock')} className={iCls} />
                 </PF>
                 <PF label="Removed Seal">
-                  <input value={editForm.removed_seal} onChange={e => sf('removed_seal', e.target.value)} className={iCls} />
+                  <input value={editForm.removed_seal} onChange={e => sf('removed_seal', e.target.value)} disabled={fieldLocked('removed_seal')} className={iCls} />
                 </PF>
                 <PF label="Cabinet Seal (Remove)">
-                  <input value={editForm.cabinet_seal_remove} onChange={e => sf('cabinet_seal_remove', e.target.value)} className={iCls} />
+                  <input value={editForm.cabinet_seal_remove} onChange={e => sf('cabinet_seal_remove', e.target.value)} disabled={fieldLocked('cabinet_seal_remove')} className={iCls} />
                 </PF>
                 <PF label="Reading (kWh)">
-                  <input value={editForm.reading_kwh} onChange={e => sf('reading_kwh', e.target.value)} className={iCls} />
+                  <input value={editForm.reading_kwh} onChange={e => sf('reading_kwh', e.target.value)} disabled={fieldLocked('reading_kwh')} className={iCls} />
                 </PF>
                 <PF label="DEMAND (kWh)/Cum Demand">
-                  <input value={editForm.demand_kwh_cum} onChange={e => sf('demand_kwh_cum', e.target.value)} className={iCls} />
+                  <input value={editForm.demand_kwh_cum} onChange={e => sf('demand_kwh_cum', e.target.value)} disabled={fieldLocked('demand_kwh_cum')} className={iCls} />
                 </PF>
                 {/* Normal removal vs Meter For Lab Test. Booba number and
                     witnessing date apply only to an MFLT. */}
@@ -1345,6 +1369,7 @@ Add Record
                         sf('mflt_checklist', on)
                         if (!on) { sf('booba_number', ''); sf('witness_date', '') }
                       }}
+                      disabled={fieldLocked('mflt_checklist')}
                       className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm text-slate-600">MFLT — Meter For Lab Test</span>
@@ -1354,7 +1379,7 @@ Add Record
                   <input
                     value={editForm.booba_number}
                     onChange={e => sf('booba_number', e.target.value)}
-                    disabled={!editForm.mflt_checklist}
+                    disabled={fieldLocked('booba_number') || (!editForm.mflt_checklist)}
                     placeholder={editForm.mflt_checklist ? '' : 'MFLT only'}
                     className={`${iCls} disabled:bg-slate-100 disabled:text-slate-400`}
                   />
@@ -1364,7 +1389,7 @@ Add Record
                     type="date"
                     value={editForm.witness_date}
                     onChange={e => sf('witness_date', e.target.value)}
-                    disabled={!editForm.mflt_checklist}
+                    disabled={fieldLocked('witness_date') || (!editForm.mflt_checklist)}
                     className={`${iCls} disabled:bg-slate-100 disabled:text-slate-400`}
                   />
                 </PF>
@@ -1372,63 +1397,64 @@ Add Record
 
               <PS title="New Installed Meter">
                 <PF label="Installed Meter No.">
-                  <input value={editForm.ins_meter} onChange={e => sf('ins_meter', e.target.value)} className={iCls} />
+                  <input value={editForm.ins_meter} onChange={e => sf('ins_meter', e.target.value)} disabled={fieldLocked('ins_meter')} className={iCls} />
                 </PF>
                 <PF label="Serial Number">
-                  <input value={editForm.ins_serial_number} onChange={e => sf('ins_serial_number', e.target.value)} className={iCls} />
+                  <input value={editForm.ins_serial_number} onChange={e => sf('ins_serial_number', e.target.value)} disabled={fieldLocked('ins_serial_number')} className={iCls} />
                 </PF>
                 <PF label="Demand Seal (5)">
-                  <input value={editForm.demand_seal_installed} onChange={e => sf('demand_seal_installed', e.target.value)} className={iCls} />
+                  <input value={editForm.demand_seal_installed} onChange={e => sf('demand_seal_installed', e.target.value)} disabled={fieldLocked('demand_seal_installed')} className={iCls} />
                 </PF>
                 <PF label="Installed Seal (1)">
-                  <input value={editForm.installed_seal} onChange={e => sf('installed_seal', e.target.value)} className={iCls} />
+                  <input value={editForm.installed_seal} onChange={e => sf('installed_seal', e.target.value)} disabled={fieldLocked('installed_seal')} className={iCls} />
                 </PF>
                 <PF label="Cabinet Seal (2)">
-                  <input value={editForm.cabinet_seal_installed} onChange={e => sf('cabinet_seal_installed', e.target.value)} className={iCls} />
+                  <input value={editForm.cabinet_seal_installed} onChange={e => sf('cabinet_seal_installed', e.target.value)} disabled={fieldLocked('cabinet_seal_installed')} className={iCls} />
                 </PF>
                 <PF label="TLN Tag">
-                  <input value={editForm.tln_tag} onChange={e => sf('tln_tag', e.target.value)} className={iCls} />
+                  <input value={editForm.tln_tag} onChange={e => sf('tln_tag', e.target.value)} disabled={fieldLocked('tln_tag')} className={iCls} />
                 </PF>
                 <PF label="Pole Tag">
-                  <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} className={iCls} />
+                  <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} disabled={fieldLocked('pole_tag')} className={iCls} />
                 </PF>
                 <PF label="MDLTR No.">
-                  <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} className={iCls} />
+                  <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} disabled={fieldLocked('mdltr_no')} className={iCls} />
                 </PF>
                 <PF label="Aging (days)">
-                  <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={iCls} />
+                  <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} disabled={fieldLocked('aging')} className={iCls} />
                 </PF>
               </PS>
 
               <PS title="Remarks & Batch">
                 <PF label="FO Type">
-                  <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} className={iCls}>
+                  <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} disabled={fieldLocked('fo_type')} className={iCls}>
                     <option value="">— Select —</option>
                     {FO_TYPE_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
                   </select>
                 </PF>
                 <PF label="Billed Amount (₱)">
-                  <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} className={iCls}>
+                  <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} disabled={fieldLocked('billed_amount')} className={iCls}>
                     <option value="">— Select —</option>
                     {BILLED_AMOUNT_OPTIONS.slice(1).map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Date Returned">
-                  <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} className={iCls} />
+                  <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} disabled={fieldLocked('date_returned')} className={iCls} />
                 </PF>
                 <PF label="Crew Payrol (₱)">
-                  <input type="number" step="0.01" value={editForm.crew_payrol} onChange={e => sf('crew_payrol', e.target.value)} className={iCls} />
+                  <input type="number" step="0.01" value={editForm.crew_payrol} onChange={e => sf('crew_payrol', e.target.value)} disabled={fieldLocked('crew_payrol')} className={iCls} />
                 </PF>
                 <PF label="Percentage (%)">
-                  <input value={editForm.percentage} onChange={e => sf('percentage', e.target.value)} className={iCls} />
+                  <input value={editForm.percentage} onChange={e => sf('percentage', e.target.value)} disabled={fieldLocked('percentage')} className={iCls} />
                 </PF>
                 <PF label="Plus Code">
-                  <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} className={iCls} />
+                  <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} disabled={fieldLocked('pluscode')} className={iCls} />
                 </PF>
                 <PF label="Remarks" span2>
   <textarea
     value={editForm.remarks}
     onChange={e => sf('remarks', e.target.value)}
+    disabled={fieldLocked('remarks')}
     rows={3}
     maxLength={100}
     className={`${iCls} resize-none`}
