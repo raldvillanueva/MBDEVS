@@ -173,11 +173,12 @@ export default function Sidebar() {
           Field Order Management
         </h1>
 
-        {/* An account tied to one sector has nowhere to switch to, so the
-            label stays — it still has to be obvious which sector is on
-            screen — but it is not a button. Offering "Change" would only
-            bounce them back here. */}
-        {sector && (profile?.sector ? (
+        {/* An account allowed into exactly one sector has nowhere to switch
+            to, so the label stays — it still has to be obvious which sector
+            is on screen — but it is not a button, because "Change" would
+            only bounce them straight back. Two or more sectors is a real
+            choice, so those accounts keep the button. */}
+        {sector && (profile?.sectors?.length === 1 ? (
           <span className="mt-4 flex items-center gap-2 rounded-lg bg-[#3C3C3C] px-3 py-1.5 text-xs font-semibold text-gray-300">
             <MapPin size={13} />
             {SECTOR_NAMES[sector] || sector}

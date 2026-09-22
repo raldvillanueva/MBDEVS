@@ -7,11 +7,22 @@ export default function EditAccountModal({ user, onClose, onSaved }) {
   const [username, setUsername] = useState(user?.username || '')
   const [fullName, setFullName] = useState(user?.full_name || '')
   const [email, setEmail] = useState(user?.email || '')
-  const [sector, setSector] = useState(user?.sector || '')
+  // Held as an array even for one sector, so nothing downstream has to
+  // handle "sometimes a string, sometimes a list".
+  const [sectors, setSectors] = useState(() =>
+    Array.isArray(user?.sectors) ? [...user.sectors] : [],
+  )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
   if (!user) return null
+
+  function toggleSector(key) {
+    setError('')
+    setSectors(prev =>
+      prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key],
+    )
+  }
 
   // Only what actually changed is sent. A field left alone is left out of
   // the request entirely, so an edit to one thing cannot quietly rewrite
@@ -21,7 +32,12 @@ export default function EditAccountModal({ user, onClose, onSaved }) {
   if (username.trim() !== (user.username || '')) changes.username = username.trim()
   if (fullName.trim() !== (user.full_name || '')) changes.full_name = fullName.trim()
   if (email.trim().toLowerCase() !== (user.email || '').toLowerCase()) changes.email = email.trim()
-  if (sector !== (user.sector || '')) changes.sector = sector
+  // Order is not meaningful, so a reorder is not a change. Comparing the
+  // sorted lists stops Save lighting up when nothing really differs.
+  const originalSectors = Array.isArray(user.sectors) ? [...user.sectors].sort() : []
+  if (JSON.stringify([...sectors].sort()) !== JSON.stringify(originalSectors)) {
+    changes.sectors = sectors
+  }
 
   const changedCount = Object.keys(changes).length
   const usernameChanged = 'username' in changes
@@ -151,20 +167,28 @@ export default function EditAccountModal({ user, onClose, onSaved }) {
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-600">
-                Assigned Sector <span className="font-normal text-slate-400">(optional)</span>
+                Allowed Sectors <span className="font-normal text-slate-400">(optional)</span>
               </label>
-              <select
-                value={sector}
-                onChange={e => { setSector(e.target.value); setError('') }}
-                className={`${inputClass} bg-white`}
-              >
-                <option value="">No specific sector — can use all of them</option>
+              <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-[#D9D9D9] p-2.5">
                 {DATA_SECTORS.map(s => (
-                  <option key={s} value={s}>{SECTOR_LABELS[s]}</option>
+                  <label
+                    key={s}
+                    className="flex cursor-pointer select-none items-center gap-2 rounded px-1.5 py-1 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={sectors.includes(s)}
+                      onChange={() => toggleSector(s)}
+                      className="h-4 w-4 rounded border-slate-300 text-[#D89B00] focus:ring-[#D89B00]"
+                    />
+                    {SECTOR_LABELS[s]}
+                  </label>
                 ))}
-              </select>
+              </div>
               <p className="mt-1 text-xs text-slate-400">
-                Restricts sign-in to one sector's data. MBDEVCO stays reachable either way.
+                {sectors.length === 0
+                  ? 'Nothing ticked — this account can use every sector.'
+                  : `Can only use ${sectors.length} of ${DATA_SECTORS.length} sectors. MBDEVCO is not reachable.`}
               </p>
             </div>
           </div>

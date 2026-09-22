@@ -47,7 +47,7 @@ const initialForm = {
   password: '',
   confirmPassword: '',
   contactNumber: '',
-  sector: '',
+  sectors: [],
 }
 
 function generatePassword() {
@@ -100,6 +100,16 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
     setStep('details')
   }
 
+  function toggleSector(key) {
+    setError('')
+    setForm(f => ({
+      ...f,
+      sectors: f.sectors.includes(key)
+        ? f.sectors.filter(s => s !== key)
+        : [...f.sectors, key],
+    }))
+  }
+
   function updateField(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
   }
@@ -150,11 +160,11 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
           },
           body: JSON.stringify({
             username: form.username.trim(),
+            sectors: form.sectors,
             email: form.email.trim(),
             password: form.password,
             full_name: form.fullName.trim(),
             account_type: role,
-            sector: form.sector,
           }),
         },
       )
@@ -368,22 +378,31 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label className="mb-1 block text-xs font-semibold text-slate-600">
-                    Assigned Sector <span className="font-normal text-slate-400">(optional)</span>
+                    Allowed Sectors <span className="font-normal text-slate-400">(optional)</span>
                   </label>
-                  <select
-                    value={form.sector}
-                    onChange={(e) => updateField('sector', e.target.value)}
-                    className="w-full rounded-lg border border-[#D9D9D9] bg-white px-3 py-2 text-sm outline-none focus:border-[#D89B00] focus:ring-1 focus:ring-[#D89B00]"
+              <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-[#D9D9D9] p-2.5">
+                {DATA_SECTORS.map(s => (
+                  <label
+                    key={s}
+                    className="flex cursor-pointer select-none items-center gap-2 rounded px-1.5 py-1 text-sm text-slate-700 hover:bg-slate-50"
                   >
-                    <option value="">No specific sector</option>
-                    {DATA_SECTORS.map((s) => (
-                      <option key={s} value={s}>
-                        {SECTOR_LABELS[s]}
-                      </option>
-                    ))}
-                  </select>
+                    <input
+                      type="checkbox"
+                      checked={form.sectors.includes(s)}
+                      onChange={() => toggleSector(s)}
+                      className="h-4 w-4 rounded border-slate-300 text-[#D89B00] focus:ring-[#D89B00]"
+                    />
+                    {SECTOR_LABELS[s]}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-slate-400">
+                {form.sectors.length === 0
+                  ? 'Nothing ticked — this account can use every sector.'
+                  : `Can only use ${form.sectors.length} of ${DATA_SECTORS.length} sectors. MBDEVCO is not reachable.`}
+              </p>
                 </div>
               </div>
             </div>
@@ -423,8 +442,11 @@ export default function CreateAccountModal({ open, onClose, onCreated }) {
               {activeRole?.label.toLowerCase()}, using the username{' '}
               <strong className="font-mono">{form.username}</strong> and the password you set.
               They appear in the list below straight away.
-              {form.sector && (
-                <> They'll only be able to use the <strong>{SECTOR_LABELS[form.sector]}</strong> sector.</>
+              {form.sectors.length > 0 && (
+                <>
+                  {' '}They&apos;ll only be able to use{' '}
+                  <strong>{form.sectors.map(s => SECTOR_LABELS[s]).join(', ')}</strong>.
+                </>
               )}
             </p>
             <button

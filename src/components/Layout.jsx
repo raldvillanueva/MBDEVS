@@ -2,6 +2,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { useSector } from '../lib/SectorContext'
 import { useAuth } from '../lib/AuthContext'
+import { canUseSector } from '../lib/sectorTables'
 
 export default function Layout() {
   const { sector } = useSector()
@@ -24,7 +25,7 @@ export default function Layout() {
   // MBDEVCO is not an exception. It rolls up every sector, so leaving it
   // open to a restricted account would show them totals for the sectors
   // they were kept out of.
-  if (profile?.sector && sector !== profile.sector) {
+  if (!canUseSector(profile, sector)) {
     return <Navigate to="/sectors" replace />
   }
 

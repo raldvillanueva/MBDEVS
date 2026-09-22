@@ -8,15 +8,16 @@
 //
 // POST /functions/v1/admin-users
 //   Authorization: Bearer <the caller's access token>
-//   { username, email, password, full_name, account_type, sector? }
+//   { username, email, password, full_name, account_type, sectors? }
 //
 // PATCH /functions/v1/admin-users    edit an existing account
 //   Authorization: Bearer <the caller's access token>
-//   { user_id, username?, full_name?, email?, password?, sector? }
+//   { user_id, username?, full_name?, email?, password?, sectors? }
 //
-// sector restricts the account to one sector ('rizal' | 'manila' |
-// 'pasig' | 'balintawak' | 'ami'). Omitted or '' means unrestricted — every
-// sector stays open, same as before this field existed.
+// sectors lists which sectors an account may use. Omitted, null or empty
+// means unrestricted — every sector stays open, same as before the field
+// existed. Allowed into nothing is not a state: that is a deactivated
+// account, not an empty list.
 //
 // There is no "read the password" here, and there cannot be: Supabase
 // stores a bcrypt hash, so the original is not recoverable by anyone —
@@ -222,15 +223,23 @@ Deno.serve(async req => {
       }
     }
 
-    // '' clears the restriction back to "every sector" — that's a real,
-    // intentional change, so it still has to go in patch, not be treated
-    // as absent.
-    if (typeof body.sector === 'string') {
-      const next = body.sector.trim()
-      if (next && !VALID_SECTORS.has(next)) {
-        return json({ error: `sector must be one of ${[...VALID_SECTORS].join(', ')}, or empty` }, 400, origin)
+    // A list sent as null or [] clears the restriction back to every
+    // sector. That is a real, intentional change, so it still goes in the
+    // patch rather than being treated as absent.
+    if (Array.isArray(body.sectors) || body.sectors === null) {
+      const next = (body.sectors ?? [])
+        .map((s: unknown) => String(s).trim())
+        .filter(Boolean)
+
+      const bad = next.filter((s: string) => !VALID_SECTORS.has(s))
+      if (bad.length > 0) {
+        return json({ error: `Unknown sector: ${bad.join(', ')}` }, 400, origin)
       }
-      patch.sector = next || null
+
+      // An empty list is stored as null, not as {}. Both mean
+      // unrestricted to the app, and keeping one representation means
+      // no reader has to handle two.
+      patch.sectors = next.length > 0 ? [...new Set(next)] : null
     }
 
     if (Object.keys(patch).length > 0) {
@@ -249,18 +258,20 @@ Deno.serve(async req => {
   const password = body.password ?? ''
   const fullName = (body.full_name ?? '').trim()
   const accountType = body.account_type ?? ''
-  const sector = (body.sector ?? '').trim() || null
+  const rawSectors = Array.isArray(body.sectors) ? body.sectors : []
+  const sectors = [...new Set(rawSectors.map((s: unknown) => String(s).trim()).filter(Boolean))]
 
   if (!username || !email || !password) {
     return json({ error: 'Username, email and password are required' }, 400, origin)
   }
-  if (sector && !VALID_SECTORS.has(sector)) {
-    return json({ error: `sector must be one of ${[...VALID_SECTORS].join(', ')}, or empty` }, 400, origin)
+  const badSectors = sectors.filter((s: string) => !VALID_SECTORS.has(s))
+  if (badSectors.length > 0) {
+    return json({ error: `Unknown sector: ${badSectors.join(', ')}` }, 400, origin)
   }
 
   // Mirrors the profiles_username_format constraint. Checking here too
   // turns a database error into a sentence the person can act on.
-  if (!/^[^@s]{3,32}$/.test(username)) {
+  if (!/^[^@\s]{3,32}$/.test(username)) {
     return json({ error: 'Username must be 3-32 characters, with no spaces or @' }, 400, origin)
   }
 
@@ -305,7 +316,7 @@ Deno.serve(async req => {
       email,
       account_type: accountType,
       role: ACCOUNT_TYPES[accountType],
-      sector,
+      sectors: sectors.length > 0 ? sectors : null,
     })
     .eq('id', created.user.id)
 
@@ -326,6 +337,6 @@ Deno.serve(async req => {
     username,
     email,
     account_type: accountType,
-    sector,
+    sectors,
   }, 201, origin)
 })

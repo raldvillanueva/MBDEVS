@@ -31,6 +31,29 @@ export function isDataSector(sector) {
   return DATA_SECTORS.includes(sector)
 }
 
+/**
+ * Which sectors an account may use.
+ *
+ * No list at all means unrestricted, so a profile that predates the
+ * restriction — or one nobody has limited — keeps every sector. An empty
+ * list is read the same way rather than as "allowed into nothing", which
+ * would lock someone out through a blank field rather than a decision.
+ */
+export function allowedSectors(profile) {
+  const listed = profile?.sectors
+  if (!Array.isArray(listed) || listed.length === 0) return DATA_SECTORS
+  return DATA_SECTORS.filter(s => listed.includes(s))
+}
+
+export function isSectorRestricted(profile) {
+  return Array.isArray(profile?.sectors) && profile.sectors.length > 0
+}
+
+export function canUseSector(profile, sector) {
+  if (!isSectorRestricted(profile)) return true
+  return profile.sectors.includes(sector)
+}
+
 // Falls back to Rizal's table for an unknown sector. Pages behind the layout
 // guard always have a real sector, so this only covers a bad direct URL.
 function suffixFor(sector) {

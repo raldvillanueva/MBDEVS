@@ -56,7 +56,7 @@ export default function ManageUsers() {
     setError('')
     const { data, error: err } = await supabase
       .from('profiles')
-      .select('id, username, email, full_name, role, account_type, sector, deactivated_at, archived_at, created_at')
+      .select('id, username, email, full_name, role, account_type, sectors, deactivated_at, archived_at, created_at')
       .order('account_type', { ascending: true })
 
     if (err) setError(err.message)
@@ -312,10 +312,17 @@ export default function ManageUsers() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    {u.sector ? (
-                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                        {SECTOR_LABELS[u.sector] || u.sector}
-                      </span>
+                    {u.sectors?.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {u.sectors.map(s => (
+                          <span
+                            key={s}
+                            className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
+                          >
+                            {SECTOR_LABELS[s] || s}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
                       <span className="whitespace-nowrap text-xs text-slate-400">All sectors</span>
                     )}

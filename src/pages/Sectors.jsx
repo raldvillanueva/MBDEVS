@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Building2, MapPin } from 'lucide-react'
 import { useSector } from '../lib/SectorContext'
+import { allowedSectors, isSectorRestricted } from '../lib/sectorTables'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabase'
 import logo from '../assets/mb-logo.jpg'
@@ -36,26 +37,27 @@ export default function Sectors() {
   const { setSector, clearSector } = useSector()
   const { profile, session } = useAuth()
 
-  // Unset (or unrecognized) means unrestricted — the account can still
-  // pick from every sector, same as before this field existed.
-  const assignedSector = profile?.sector
-  const isAssigned = SECTORS.some(s => s.key === assignedSector)
+  // No list means unrestricted, so the picker offers everything — the
+  // same as before accounts could be limited at all.
+  const allowed = allowedSectors(profile)
+  const restricted = isSectorRestricted(profile)
+  const visibleSectors = SECTORS.filter(s => allowed.includes(s.key))
 
-  // A restricted account has nothing to choose. Showing it a picker with
-  // a single box, and making it click that box every time it signs in,
-  // is a question with one answer — so answer it and move on.
-  //
+  // Exactly one sector is a question with one answer, so answer it and
+  // move on. Two or more is a real choice and still gets the picker.
+  const onlySector = visibleSectors.length === 1 ? visibleSectors[0].key : null
+
   // replace: true keeps this out of the history, or Back from the
   // dashboard would land here and bounce straight forward again.
   useEffect(() => {
-    if (isAssigned) {
-      setSector(assignedSector)
+    if (onlySector) {
+      setSector(onlySector)
       navigate('/summary', { replace: true })
     }
-  }, [isAssigned, assignedSector, setSector, navigate])
+  }, [onlySector, setSector, navigate])
 
   // Render nothing rather than a flash of the picker on the way past.
-  if (isAssigned) return null
+  if (onlySector) return null
 
   function selectSector(key, to) {
     setSector(key)
@@ -76,7 +78,11 @@ export default function Sectors() {
         <img src={logo} alt="MB Development" className="w-16 h-16 rounded-xl object-cover shadow-lg mb-3" />
         <h1 className="text-2xl font-bold text-[#2E2E2E]">Select a Sector</h1>
         <div className="w-12 h-1 bg-[#D89B00] rounded-full mt-2 mb-2" />
-        <p className="text-slate-500 text-sm">Choose a sector to view its field order data</p>
+        <p className="text-slate-500 text-sm">
+          {restricted
+            ? 'Choose from the sectors your account covers'
+            : 'Choose a sector to view its field order data'}
+        </p>
       </div>
 
       {/* Wrapping flex rather than a fixed column count: the row fits as
@@ -84,12 +90,16 @@ export default function Sectors() {
           sixth needs no change here and none of them end up stranded
           alone on a second line. */}
       <div className="flex w-full max-w-5xl flex-wrap justify-center gap-4">
-        {SECTORS.map(s => (
+        {visibleSectors.map(s => (
           <SectorBox key={s.key} label={s.label} icon={s.icon} onClick={() => selectSector(s.key, s.to)} />
         ))}
       </div>
 
-      <SectorBox label="MBDEVCO" icon={Building2} onClick={() => selectSector('mbdevco', '/summary')} wide />
+      {/* The rollup spans every sector, so it is not offered to an
+          account that has been kept out of some of them. */}
+      {!restricted && (
+        <SectorBox label="MBDEVCO" icon={Building2} onClick={() => selectSector('mbdevco', '/summary')} wide />
+      )}
 
       {/* Without the sidebar there is no other control on this page, so
           signing out has to be reachable from here. */}
