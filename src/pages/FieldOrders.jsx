@@ -133,6 +133,10 @@ const COLS = [
   { label: 'BOOBA NUMBER',        key: 'booba_number',          w: 115, render: r => r.booba_number || '—' },
   { label: 'MDLTR NO.',           key: 'mdltr_no',              w: 90,  render: r => r.mdltr_no || '—' },
   { label: 'AGING',               key: 'aging',                 w: 70,  render: r => {
+      // A checked record has been dealt with, so how long it has been
+      // sitting stops being a question worth asking. Blanking it keeps the
+      // column to rows that still need chasing.
+      if (r.for_check) return <span className="text-slate-300">—</span>
       const days = displayAgingDays(r)
       if (days == null) return '—'
       // Yellow from the warning threshold, red past the overdue one.
@@ -147,6 +151,8 @@ const COLS = [
   },
   { label: 'WITNESS DATE',        key: 'witness_date',          w: 115, render: r => r.witness_date || '—' },
   { label: 'DUE DATE',            key: 'due_date',              w: 90,  render: r => {
+      // Same as Aging: once it is checked there is nothing left to be due.
+      if (r.for_check) return <span className="text-slate-300">—</span>
       // Days left on the witnessing clock, not a calendar date: it counts
       // down from 21 so the number itself says how much time is left.
       const left = dueDaysLeft(r)
@@ -679,7 +685,8 @@ useEffect(() => {
     const header = EXPORT_FIELDS.map(f => f.label).join(',')
     // due_date is worked out from witness_date rather than stored, so it
     // has no column to read — every other field comes straight off the row.
-    const cell = (row, key) => (key === 'due_date' ? dueDaysLeft(row) : row[key])
+    const cell = (row, key) =>
+      key === 'due_date' ? (row.for_check ? '' : dueDaysLeft(row)) : row[key]
     const rows = data.map(row => EXPORT_FIELDS.map(f => esc(cell(row, f.key))).join(','))
     const csv = '﻿' + [header, ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -1004,7 +1011,7 @@ Add Record
                 ) : (
                   records.map((row, idx) => {
                     const sel = editRow?.id === row.id
-                    const overdue = agingLevel(row) === 'critical'
+                    const overdue = !row.for_check && agingLevel(row) === 'critical'
                     // Frozen section is tinted so it reads as its own block,
                     // distinct from the scrollable columns to its right.
                     const rowBg = sel ? '#eff6ff' : overdue ? '#fef2f2' : (hoverRowId === row.id ? '#e2e8f0' : '#f1f5f9')
@@ -1111,7 +1118,7 @@ Add Record
                 ) : (
                   records.map((row, idx) => {
                     const sel = editRow?.id === row.id
-                    const overdue = agingLevel(row) === 'critical'
+                    const overdue = !row.for_check && agingLevel(row) === 'critical'
                     const rowBg = sel ? '#eff6ff' : overdue ? '#fef2f2' : (hoverRowId === row.id ? '#f8fafc' : '#ffffff')
                     return (
                       <tr
