@@ -52,25 +52,25 @@ const ALIASES = {
   status_crew:           ['status crew', 'status', 'crew status', 'status_crew'],
   date_assign:           ['date assign', 'date assigned', 'assign date', 'date_assign'],
   for_check:             ['for checking', 'for check', 'chk', 'checked', 'for_check'],
-  date_executed:         ['for checking (2)', 'date exec', 'date executed', 'date executed', 'execution date', 'date_executed', 'for checking (date)'],
-  type_of_meter:         ['type of meter', 'meter type', 'type_of_meter'],
+  date_executed:         ['date of executed', 'for checking (2)', 'date exec', 'date executed', 'date executed', 'execution date', 'date_executed', 'for checking (date)'],
+  type_of_meter:         ['type of remove meter', 'type of removed meter', 'type of meter', 'meter type', 'type_of_meter'],
   job_description:       ['job description', 'job desc', 'description', 'job_description'],
-  crew_name:             ['crew name', 'crew', 'assigned crew', 'crew_name'],
+  crew_name:             ['assigned crew ', 'crew name', 'crew', 'assigned crew', 'crew_name'],
   location:              ['location', 'address'],
-  service_number:        ['service ID number', 'service no', 'service no.', 'acct no', 'account number', 'service #'],
+  service_number:        ['sin/ssn', 'sin', 'ssn', 'sin / ssn', 'service ID number', 'service no', 'service no.', 'acct no', 'account number', 'service #'],
   field_order_no:        ['field order/fo', 'field order no', 'field order no.', 'fo no', 'fo number', 'field order', 'fo#'],
   remove_meter:          ['remove meter', 'removed meter', 'meter removed', 'remove_meter'],
   r_serial_number:       ['r. serial number', 'r serial number', 'removed serial', 'r_serial_number'],
-  demand_seal_aerolock:  ['demand seal no. (5) aerolock', 'demand seal no. (5)', 'demand seal aerolock', 'aerolock', 'demand_seal_aerolock'],
-  removed_seal:          ['removed seal', 'seal removed', 'removed_seal'],
-  cabinet_seal_remove:   ['cabinet seal (2)', 'cabinet seal (remove)', 'cabinet seal remove', 'cabinet_seal_remove'],
-  reading_kwh:           ['reading (kwh)', 'reading kwh', 'kwh reading', 'reading', 'reading_kwh'],
+  demand_seal_aerolock:  ['remove (demand seal)', 'remove demand seal', 'demand seal no. (5) aerolock', 'demand seal no. (5)', 'demand seal aerolock', 'aerolock', 'demand_seal_aerolock'],
+  removed_seal:          ['remove (t-seal)', 'remove t-seal', 't-seal', 'remove (tseal)', 'removed seal', 'seal removed', 'removed_seal'],
+  cabinet_seal_remove:   ['remove (cabinet seal)', 'remove cabinet seal', 'cabinet seal (2)', 'cabinet seal (remove)', 'cabinet seal remove', 'cabinet_seal_remove'],
+  reading_kwh:           ['reading (remove meter)', 'reading remove meter', 'reading (kwh)', 'reading kwh', 'kwh reading', 'reading', 'reading_kwh'],
   demand_kwh_cum:        ['demand (kwh)/ cum demand', 'demand (kwh)/cum demand', 'demand kwh', 'cum demand', 'demand_kwh_cum'],
-  ins_meter:             ['ins. meter', 'ins meter', 'installed meter', 'new meter', 'meter installed', 'ins_meter'],
+  ins_meter:             ['inst. meter', 'inst meter', 'ins. meter', 'ins meter', 'installed meter', 'new meter', 'meter installed', 'ins_meter'],
   ins_serial_number:     ['serial number', 'installed serial', 'ins serial', 'new serial', 'ins_serial_number'],
   demand_seal_installed: ['demand seal (5)', 'demand seal installed', 'demand seal (installed)', 'demand_seal_installed'],
-  installed_seal:        ['installed seal (1)', 'installed seal', 'seal installed', 'ins seal', 'installed_seal'],
-  cabinet_seal_installed:['cabinet seal (2) (2)', 'cabinet seal installed', 'cab seal', 'cabinet_seal_installed'],
+  installed_seal:        ['install t-seal (1)', 'install t-seal', 'install tseal (1)', 'installed seal (1)', 'installed seal', 'seal installed', 'ins seal', 'installed_seal'],
+  cabinet_seal_installed:['install cabinet seal (2)', 'install cabinet seal', 'cabinet seal (2) (2)', 'cabinet seal installed', 'cab seal', 'cabinet_seal_installed'],
   tln_tag:               ['tln tag', 'tln', 'tln_tag'],
   pole_tag:              ['pole tag', 'pole', 'pole_tag'],
   booba_number:          ['booba number', 'booba no', 'booba', 'booba_number'],
@@ -84,7 +84,7 @@ const ALIASES = {
   for_batch:             ['for batch', 'batch', 'batch status', 'for_batch'],
   date_returned:         ['date returned', 'return date', 'date_returned'],
   crew_payrol:           ['crew payroll', 'crew payrol', 'payroll', 'crew_payrol'],
-  pluscode:              ['pluscode', 'plus code', 'plus_code'],
+  pluscode:              ['p-code / tln tag / p-tag (location)', 'p-code', 'pcode', 'p code', 'pluscode', 'plus code', 'plus_code'],
 }
 
 function parseCSV(text) {
@@ -132,6 +132,13 @@ function autoMap(headers) {
 function coerce(dbField, raw) {
   if (raw === '' || raw == null) return null
   if (DATE_FIELDS.has(dbField)) {
+    // A sheet date arrives as a real Date. Read the calendar parts rather
+    // than using toISOString, which shifts to UTC and can move the date
+    // back a day for anyone east of Greenwich.
+    if (raw instanceof Date) {
+      if (isNaN(raw.getTime())) return null
+      return `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}-${String(raw.getDate()).padStart(2, '0')}`
+    }
     const s = String(raw).trim()
     const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
     if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`
@@ -144,13 +151,14 @@ function coerce(dbField, raw) {
     const n = parseInt(raw); return isNaN(n) ? null : n
   }
   if (NUM_FLOAT_FIELDS.has(dbField)) {
-    const n = parseFloat(raw.replace(/[₱$,]/g, '')); return isNaN(n) ? null : n
+    const n = parseFloat(String(raw).replace(/[₱$,]/g, '')); return isNaN(n) ? null : n
   }
   if (BOOL_FIELDS.has(dbField)) {
-    const l = raw.toLowerCase()
+    if (typeof raw === 'boolean') return raw
+    const l = String(raw).toLowerCase()
     return l === 'true' || l === 'yes' || l === '1' || l === 'x' || l === '✓'
   }
-  return raw || null
+  return (raw === '' ? null : raw)
 }
 
 export default function ImportModal({ onClose, onImported }) {
@@ -166,24 +174,66 @@ export default function ImportModal({ onClose, onImported }) {
   const [rowOffset, setRowOffset] = useState('')
   const fileRef = useRef()
 
+  // Everything below works on an array of rows, so each format only has
+  // to get itself into that shape.
+  async function rowsFromSheet(buffer) {
+    // cellDates keeps real dates as Date objects rather than Excel serial
+    // numbers — 45658 would otherwise be imported as the number 45658.
+    // Loaded on demand. The sheet parser is about 400 kB, and everyone
+    // who never imports a file should not be paying for it on every page
+    // load.
+    const XLSX = await import('xlsx')
+    const wb = XLSX.read(buffer, { type: 'array', cellDates: true })
+    const sheet = wb.Sheets[wb.SheetNames[0]]
+    if (!sheet) return []
+    // defval keeps empty cells as empty strings so a blank column does
+    // not shift every value after it one place to the left.
+    return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false })
+  }
+
   function handleFile(file) {
     if (!file) return
-    if (!file.name.endsWith('.csv')) { alert('Please select a .csv file.'); return }
+
+    const name = file.name.toLowerCase()
+    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.xlsm')
+    const isCsv = name.endsWith('.csv')
+
+    if (!isExcel && !isCsv) {
+      alert('Please select a .csv or Excel (.xlsx) file.')
+      return
+    }
+
     const reader = new FileReader()
-    reader.onload = e => {
-      const parsed = parseCSV(e.target.result)
+    reader.onload = async e => {
+      let parsed
+      try {
+        parsed = isExcel
+          ? await rowsFromSheet(new Uint8Array(e.target.result))
+          : parseCSV(e.target.result)
+      } catch {
+        alert('That file could not be read. If it is an Excel file, try re-saving it.')
+        return
+      }
+
+      // A sheet cell can hold a number, a Date or a boolean. Everything
+      // downstream expects text, so normalise once here rather than
+      // guarding at every use.
+      parsed = parsed.map(r => r.map(cell =>
+        cell instanceof Date ? cell : (cell == null ? '' : String(cell).trim()),
+      ))
+
       if (parsed.length < 2) { alert('File is empty or has no data rows.'); return }
 
       const allAliases = Object.values(ALIASES).flat()
       let headerIdx = 0, bestScore = -1
       for (let i = 0; i < Math.min(5, parsed.length); i++) {
-        const score = parsed[i].filter(cell => allAliases.includes(cell.toLowerCase().trim())).length
+        const score = parsed[i].filter(cell => typeof cell === 'string' && allAliases.includes(cell.toLowerCase().trim())).length
         if (score > bestScore) { bestScore = score; headerIdx = i }
       }
 
       const seen = {}
       const headers = parsed[headerIdx].map(h => {
-        const clean = h.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+        const clean = String(h).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
         const k = clean.toLowerCase()
         seen[k] = (seen[k] || 0) + 1
         return seen[k] > 1 ? `${clean} (${seen[k]})` : clean
@@ -194,7 +244,8 @@ export default function ImportModal({ onClose, onImported }) {
       setMapping(autoMap(headers))
       setStep('map')
     }
-    reader.readAsText(file)
+    if (isExcel) reader.readAsArrayBuffer(file)
+    else reader.readAsText(file)
   }
 
   async function doImport() {
@@ -239,9 +290,9 @@ export default function ImportModal({ onClose, onImported }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div>
-            <h2 className="font-bold text-slate-800 text-lg">Import CSV</h2>
+            <h2 className="font-bold text-slate-800 text-lg">Import Records</h2>
             <p className="text-slate-500 text-xs mt-0.5">
-              {step === 'upload' && 'Upload a CSV exported from Google Sheets or Excel'}
+              {step === 'upload' && 'Upload an Excel (.xlsx) or CSV file — columns are matched for you'}
               {step === 'map' && `${csvRows.length} rows found • ${mappedCount} of ${DB_FIELDS.length} columns mapped`}
               {step === 'importing' && `Importing ${progress.done} of ${progress.total}...`}
               {step === 'done' && 'Import complete'}
@@ -267,7 +318,7 @@ export default function ImportModal({ onClose, onImported }) {
               <Upload size={40} className="mx-auto text-slate-400 mb-3" />
               <p className="text-slate-700 font-semibold text-base">Drop CSV file here or click to browse</p>
               <p className="text-slate-400 text-sm mt-1">Exported from Google Sheets or Excel</p>
-              <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={e => handleFile(e.target.files[0])} />
+              <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xlsm" className="hidden" onChange={e => handleFile(e.target.files[0])} />
             </div>
           </div>
         )}
