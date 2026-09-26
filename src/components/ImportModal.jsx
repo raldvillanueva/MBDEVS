@@ -57,7 +57,9 @@ const ALIASES = {
   job_description:       ['job description', 'job desc', 'description', 'job_description'],
   crew_name:             ['assigned crew ', 'crew name', 'crew', 'assigned crew', 'crew_name'],
   location:              ['location', 'address'],
-  service_number:        ['sin/ssn', 'sin', 'ssn', 'sin / ssn', 'service ID number', 'service no', 'service no.', 'acct no', 'account number', 'service #'],
+  // Every alias is compared against a lowercased header, so an alias with
+  // a capital in it can never match. 'service ID number' used to.
+  service_number:        ['sin/ssn', 'sin', 'ssn', 'sin / ssn', 'service id number', 'service no', 'service no.', 'acct no', 'account number', 'service #'],
   field_order_no:        ['field order/fo', 'field order no', 'field order no.', 'fo no', 'fo number', 'field order', 'fo#'],
   remove_meter:          ['remove meter', 'removed meter', 'meter removed', 'remove_meter'],
   r_serial_number:       ['r. serial number', 'r serial number', 'removed serial', 'r_serial_number'],
