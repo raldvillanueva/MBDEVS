@@ -129,16 +129,16 @@ function autoMap(headers) {
   return map
 }
 
+// Reads the calendar parts rather than using toISOString, which converts to
+// UTC and can move a Manila date back a day.
+function toISODate(d) {
+  if (!(d instanceof Date) || isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function coerce(dbField, raw) {
   if (raw === '' || raw == null) return null
   if (DATE_FIELDS.has(dbField)) {
-    // A sheet date arrives as a real Date. Read the calendar parts rather
-    // than using toISOString, which shifts to UTC and can move the date
-    // back a day for anyone east of Greenwich.
-    if (raw instanceof Date) {
-      if (isNaN(raw.getTime())) return null
-      return `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}-${String(raw.getDate()).padStart(2, '0')}`
-    }
     const s = String(raw).trim()
     const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
     if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`
@@ -219,7 +219,11 @@ export default function ImportModal({ onClose, onImported }) {
       // downstream expects text, so normalise once here rather than
       // guarding at every use.
       parsed = parsed.map(r => r.map(cell =>
-        cell instanceof Date ? cell : (cell == null ? '' : String(cell).trim()),
+        // Dates become text here rather than being carried through as
+        // objects. The preview table renders these cells straight out, and
+        // React throws on an object child — which takes the whole page down
+        // rather than showing a bad cell.
+        cell instanceof Date ? toISODate(cell) : (cell == null ? '' : String(cell).trim()),
       ))
 
       if (parsed.length < 2) { alert('File is empty or has no data rows.'); return }
