@@ -9,6 +9,7 @@ const DB_FIELDS = [
   { key: 'service_number',        label: 'Service ID Number' },
   { key: 'status_crew',           label: 'Status Crew' },
   { key: 'date_assign',           label: 'Date Assign' },
+  { key: 'for_check',             label: 'For Check' },
   { key: 'date_executed',         label: 'Date Executed' },
   { key: 'type_of_meter',         label: 'Type of Meter' },
   { key: 'job_description',       label: 'Job Description' },
@@ -348,6 +349,8 @@ export default function ImportModal({ onClose, onImported }) {
   }
 
   const mappedCount = Object.values(mapping).filter(Boolean).length
+  const usedHeaders = new Set(Object.values(mapping).filter(Boolean))
+  const unusedHeaders = csvHeaders.filter(h => h && !usedHeaders.has(h))
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70]">
@@ -441,6 +444,24 @@ export default function ImportModal({ onClose, onImported }) {
               {/* Column Mapping */}
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Column Mapping</p>
+
+                {/* Naming the columns nothing claimed. Hunting for them
+                    across thirty-odd dropdowns is the slow way to find out
+                    which ones still need a home. */}
+                {unusedHeaders.length > 0 && (
+                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-xs font-semibold text-amber-800">
+                      {unusedHeaders.length} column{unusedHeaders.length === 1 ? '' : 's'} in your file
+                      {unusedHeaders.length === 1 ? ' is' : ' are'} not being imported
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      {unusedHeaders.join(' · ')}
+                    </p>
+                    <p className="mt-1 text-[11px] text-amber-600">
+                      Pick one from a dropdown below to bring it in, or leave it out.
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
                   {DB_FIELDS.map(({ key, label }) => (
                     <div key={key} className="flex items-center gap-2">
