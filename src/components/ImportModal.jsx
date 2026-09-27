@@ -195,6 +195,9 @@ export default function ImportModal({ onClose, onImported }) {
   const [csvRows, setCsvRows] = useState([])
   const [mapping, setMapping] = useState({})
   const [progress, setProgress] = useState({ done: 0, total: 0, errors: 0 })
+  // What actually went wrong, grouped by reason. A count on its own is
+  // no use across twelve thousand rows.
+  const [failures, setFailures] = useState([])
   const [isDragging, setIsDragging] = useState(false)
   const [rowLimit, setRowLimit] = useState('')
   const [rowOffset, setRowOffset] = useState('')
@@ -280,7 +283,11 @@ export default function ImportModal({ onClose, onImported }) {
 
   async function doImport() {
     setStep('importing')
-    const BATCH = 100
+    setFailures([])
+    // Bigger batches mean far fewer round trips — 12,000 rows is 24
+    // requests at this size rather than 120. A batch that fails is
+    // retried row by row below, so the size costs nothing in accuracy.
+    const BATCH = 500
     const offset = rowOffset !== '' ? parseInt(rowOffset) : 0
     const limit = rowLimit !== '' ? parseInt(rowLimit) : csvRows.length
     const rowsToImport = csvRows.slice(offset, offset + limit)
@@ -299,14 +306,43 @@ export default function ImportModal({ onClose, onImported }) {
       return obj
     })
 
+    // Reason -> { count, firstRow, message }. Twenty distinct reasons is
+    // already more than anyone will read; the counts still add up.
+    const reasons = new Map()
+    function noteFailure(message, rowNumber) {
+      const key = String(message || 'Unknown error').slice(0, 200)
+      const seen = reasons.get(key)
+      if (seen) seen.count++
+      else if (reasons.size < 20) reasons.set(key, { count: 1, firstRow: rowNumber, message: key })
+    }
+
     for (let i = 0; i < payloads.length; i += BATCH) {
       const batch = payloads.slice(i, i + BATCH)
       const { error } = await supabase.from(foTable).insert(batch)
-      if (error) errors += batch.length
-      else done += batch.length
+
+      if (!error) {
+        done += batch.length
+      } else {
+        // Postgres rejects the whole statement when one row is bad, so a
+        // single duplicate would otherwise take 499 good rows down with
+        // it. Retry them one at a time: slow, but only for the batch that
+        // actually had a problem, and only the real offenders are lost.
+        for (let j = 0; j < batch.length; j++) {
+          const { error: rowError } = await supabase.from(foTable).insert([batch[j]])
+          if (rowError) {
+            errors++
+            noteFailure(rowError.message, offset + i + j + 2)
+          } else {
+            done++
+          }
+          if (j % 25 === 0) setProgress({ done: done + errors, total, errors })
+        }
+      }
+
       setProgress({ done: done + errors, total, errors })
     }
 
+    setFailures([...reasons.values()].sort((a, b) => b.count - a.count))
     setStep('done')
     if (onImported) onImported()
   }
@@ -324,7 +360,7 @@ export default function ImportModal({ onClose, onImported }) {
             <p className="text-slate-500 text-xs mt-0.5">
               {step === 'upload' && 'Upload an Excel (.xlsx) or CSV file — columns are matched for you'}
               {step === 'map' && `${csvRows.length} rows found • ${mappedCount} of ${DB_FIELDS.length} columns mapped`}
-              {step === 'importing' && `Importing ${progress.done} of ${progress.total}...`}
+              {step === 'importing' && `Importing ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}…`}
               {step === 'done' && 'Import complete'}
             </p>
           </div>
@@ -490,9 +526,25 @@ export default function ImportModal({ onClose, onImported }) {
               <p className="text-slate-500 text-sm mt-2">
                 {(progress.total - progress.errors).toLocaleString()} rows imported successfully
                 {progress.errors > 0 && (
-                  <span className="text-red-500 block mt-1">{progress.errors} rows failed to insert</span>
+                  <span className="text-red-500 block mt-1">
+                    {progress.errors.toLocaleString()} rows failed
+                  </span>
                 )}
               </p>
+
+              {failures.length > 0 && (
+                <div className="mt-4 max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left">
+                  <p className="mb-1.5 text-xs font-semibold text-red-800">Why they failed</p>
+                  {failures.map((f, i) => (
+                    <div key={i} className="border-t border-red-100 py-1.5 first:border-0 first:pt-0">
+                      <p className="text-xs text-red-700">{f.message}</p>
+                      <p className="mt-0.5 text-[11px] text-red-400">
+                        {f.count.toLocaleString()} row{f.count === 1 ? '' : 's'} · first at line {f.firstRow.toLocaleString()} of your file
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={onClose}
                 className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
