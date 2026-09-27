@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { supabase } from './supabase'
 
 const AuthContext = createContext(undefined)
@@ -7,10 +7,21 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined) // undefined = not yet resolved
   const [profile, setProfile] = useState(null)
   const [profileLoading, setProfileLoading] = useState(true)
+  const hasProfile = useRef(false)
 
   const fetchProfile = useCallback(async (userId) => {
-    if (!userId) { setProfile(null); setProfileLoading(false); return }
-    setProfileLoading(true)
+    if (!userId) {
+      setProfile(null)
+      hasProfile.current = false
+      setProfileLoading(false)
+      return
+    }
+
+    // Only block the UI while there is nothing to show. Flipping loading on
+    // a background refresh makes ProtectedRoute swap the whole app for a
+    // spinner, which unmounts everything under it — and anything half
+    // finished, like a part-filled import, goes with it.
+    if (!hasProfile.current) setProfileLoading(true)
 
     // select('*') rather than a column list on purpose. Naming a column that
     // does not exist yet fails the whole query, which lands here as "no
@@ -28,6 +39,7 @@ export function AuthProvider({ children }) {
     }
 
     setProfile(data || null)
+    hasProfile.current = !!data
     setProfileLoading(false)
   }, [])
 
@@ -37,10 +49,18 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Supabase hands back a fresh session object whenever it refreshes the
+  // token, which it does on its own schedule and whenever the tab regains
+  // focus. Keying this on the session itself therefore re-ran on every
+  // alt-tab. The profile only changes when the person does, so key it on
+  // the user id — the same id is the same id however many objects carry it.
+  const sessionResolved = session !== undefined
+  const userId = session?.user?.id ?? null
+
   useEffect(() => {
-    if (session === undefined) return
-    fetchProfile(session?.user?.id)
-  }, [session, fetchProfile])
+    if (!sessionResolved) return
+    fetchProfile(userId)
+  }, [sessionResolved, userId, fetchProfile])
 
   const loading = session === undefined || profileLoading
 
