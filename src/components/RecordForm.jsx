@@ -571,6 +571,14 @@ label="FO Action"
               )}
               {crewNames.map(name => <option key={name} value={name}>{name}</option>)}
             </select>
+            {/* The list can now genuinely be empty, and this is a required
+                field — so say where the names come from rather than leaving
+                a dropdown with nothing in it. */}
+            {crewNames.length === 0 && (
+              <span className="text-xs text-amber-600">
+                No crews set up yet — add them in System Settings.
+              </span>
+            )}
           </Field>
 
           <Field label="Location" >

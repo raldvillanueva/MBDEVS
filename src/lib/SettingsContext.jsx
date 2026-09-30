@@ -31,7 +31,11 @@ export function SettingsProvider({ children }) {
 
     const byKey = Object.fromEntries((data || []).map(r => [r.key, r.value]))
     const next = {
-      crewNames: Array.isArray(byKey.crew_names) && byKey.crew_names.length
+      // A saved empty list is a decision and is kept. Only a setting that
+      // was never saved at all falls back to the built-in names — checking
+      // for length as well meant clearing the list silently put the
+      // original seven back, and there was no way to empty it.
+      crewNames: Array.isArray(byKey.crew_names)
         ? byKey.crew_names
         : SETTINGS_DEFAULTS.crewNames,
       warningDays: Number(byKey.overdue_warning_days) || SETTINGS_DEFAULTS.warningDays,
