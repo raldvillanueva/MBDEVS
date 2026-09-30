@@ -542,37 +542,35 @@ label="FO Action"
           </Field>
 
           <Field label="Crew Name" required errorMessage={fieldErrors.crew_name}>
-            <input
+            {/* A select like every other list on this form. It was a
+                datalist so a one-off name could be typed, but that renders
+                as a differently-styled native popup and stood out against
+                the rest — and crews are managed in Settings now, so adding
+                one is no longer a code change. */}
+            <select
               value={form.crew_name ?? ''}
               onChange={e => {
                 const crew = e.target.value
                 setFieldErrors(prev => ({ ...prev, crew_name: false }))
-                setForm(prev => {
-                  let newStatus = prev.status_crew
-                  if (crew.trim() === '') {
-                    newStatus = 'FOR ASSIGN'
-                  } else if (
-                    prev.crew_name &&
-                    prev.crew_name.trim() !== '' &&
-                    prev.crew_name !== crew
-                  ) {
-                    newStatus = 'ASSIGNED'
-                  } else {
-                    newStatus = 'ASSIGNED'
-                  }
-                  return { ...prev, crew_name: crew, status_crew: newStatus }
-                })
+                setForm(prev => ({
+                  ...prev,
+                  crew_name: crew,
+                  // Assigning a crew is what moves a job off the unassigned
+                  // pile, and clearing it puts the job back.
+                  status_crew: crew.trim() === '' ? 'FOR ASSIGN' : 'ASSIGNED',
+                }))
               }}
-              // A datalist rather than a select: the configured crews are
-              // offered as you type, but a one-off name can still be entered
-              // without a Super Admin having to add it to Settings first.
-              list="crew-name-options"
-              className={`${inputClass} ${fieldErrors.crew_name ? '!border-red-500 !bg-red-200' : ''}`}
-              placeholder="e.g. J. BITAGO"
-            />
-            <datalist id="crew-name-options">
-              {crewNames.map(name => <option key={name} value={name} />)}
-            </datalist>
+              className={`${selectClass} ${fieldErrors.crew_name ? '!border-red-500 !bg-red-200' : ''}`}
+            >
+              <option value="">— Select —</option>
+              {/* A record can hold a crew who has since been taken off the
+                  list. Without this the select would show blank and quietly
+                  reassign them on the next save. */}
+              {form.crew_name && !crewNames.includes(form.crew_name) && (
+                <option value={form.crew_name}>{form.crew_name}</option>
+              )}
+              {crewNames.map(name => <option key={name} value={name}>{name}</option>)}
+            </select>
           </Field>
 
           <Field label="Location" >
