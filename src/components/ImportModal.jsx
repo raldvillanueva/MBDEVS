@@ -1,12 +1,18 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
-import { X, Upload, CheckCircle, Download } from 'lucide-react'
+import { X, Upload, CheckCircle, Download, ListPlus } from 'lucide-react'
+import { useDropdowns } from '../lib/DropdownContext'
+import { useAuth } from '../lib/AuthContext'
+import { DROPDOWN_FIELDS, normalizeOption } from '../lib/dropdownLists'
+import { useSubmissionColumns, SUBMISSION_COLUMNS } from '../lib/optionalColumns'
  
 const DB_FIELDS = [
   { key: 'field_order_no',        label: 'Field Order No.' },
   { key: 'service_number',        label: 'Service ID Number' },
+  { key: 'submitted_to',          label: 'Submitted To' },
+  { key: 'date_submitted',        label: 'Date of Submitted' },
   { key: 'status_crew',           label: 'Status Crew' },
   { key: 'date_assign',           label: 'Date Assign' },
   { key: 'for_check',             label: 'For Check' },
@@ -43,7 +49,7 @@ const DB_FIELDS = [
   { key: 'pluscode',              label: 'Plus Code' },
 ]
 
-const DATE_FIELDS = new Set(['date_assign', 'date_executed', 'witness_date', 'date_returned'])
+const DATE_FIELDS = new Set(['date_assign', 'date_executed', 'witness_date', 'date_returned', 'date_submitted'])
 const NUM_INT_FIELDS = new Set(['aging'])
 const NUM_FLOAT_FIELDS = new Set(['billed_amount', 'crew_payrol'])
 const BOOL_FIELDS = new Set(['mflt_checklist', 'for_check'])
@@ -61,6 +67,8 @@ const ALIASES = {
   // Every alias is compared against a lowercased header, so an alias with
   // a capital in it can never match. 'service ID number' used to.
   service_number:        ['sin/ssn', 'sin', 'ssn', 'sin / ssn', 'service id number', 'service no', 'service no.', 'acct no', 'account number', 'service #'],
+  submitted_to:          ['submitted to', 'submitted_to', 'submit to', 'submitted'],
+  date_submitted:        ['date of submitted', 'date submitted', 'date of submission', 'submission date', 'date_submitted'],
   field_order_no:        ['field order/fo', 'field order no', 'field order no.', 'fo no', 'fo number', 'field order', 'fo#'],
   remove_meter:          ['remove meter', 'removed meter', 'meter removed', 'remove_meter'],
   r_serial_number:       ['r. serial number', 'r serial number', 'removed serial', 'r_serial_number'],
@@ -203,6 +211,74 @@ export default function ImportModal({ onClose, onImported }) {
   const [rowLimit, setRowLimit] = useState('')
   const [rowOffset, setRowOffset] = useState('')
   const fileRef = useRef()
+  const { optionsFor, byField, usingDefaults, reload: reloadLists } = useDropdowns()
+  const { canDelete: canEditLists } = useAuth()
+  const [listBusy, setListBusy] = useState(false)
+  // Submitted To / Date of Submitted only once the table has those columns.
+  const hasSubmission = useSubmissionColumns(sector)
+  const fields = hasSubmission ? DB_FIELDS : DB_FIELDS.filter(f => !SUBMISSION_COLUMNS.includes(f.key))
+  const [listMessage, setListMessage] = useState('')
+
+  // Values in the file that are not on the dropdown lists. They still
+  // import exactly as written — this only makes them visible, so a typo
+  // ("REPLAC") or a new job type is noticed before it lands in 500 rows.
+  const unknownValues = useMemo(() => {
+    const out = []
+    for (const f of DROPDOWN_FIELDS) {
+      // Submitted To is free text; its list is only suggestions.
+      if (f.freeText) continue
+      const header = mapping[f.key]
+      if (!header) continue
+      const idx = csvHeaders.indexOf(header)
+      if (idx === -1) continue
+      const key = v => {
+        if (!f.numeric) return normalizeOption(v)
+        const n = parseFloat(String(v).replace(/[₱$,]/g, ''))
+        return Number.isFinite(n) ? String(n) : normalizeOption(v)
+      }
+      const known = new Set(optionsFor(f.key, sector).map(key))
+      const counts = new Map()
+      for (const row of csvRows) {
+        const raw = String(row[idx] ?? '').trim()
+        if (!raw) continue
+        const k = key(raw)
+        if (known.has(k)) continue
+        const hit = counts.get(k)
+        if (hit) hit.count++
+        else counts.set(k, { value: f.numeric ? k : normalizeOption(raw), count: 1 })
+      }
+      if (counts.size) out.push({ field: f, values: [...counts.values()].sort((a, b) => b.count - a.count) })
+    }
+    return out
+  }, [mapping, csvHeaders, csvRows, optionsFor, sector])
+
+  // entry: { field, values }. Pass only some values to add just those.
+  async function addUnknownToList(entry) {
+    setListBusy(true)
+    setListMessage('')
+    // Hidden values count as existing — restoring them is done on the
+    // Dropdown Lists page, not by adding a duplicate.
+    const existing = new Set((byField[entry.field.key] || []).map(r => normalizeOption(r.value)))
+    const maxOrder = (byField[entry.field.key] || []).reduce((m, r) => Math.max(m, r.sort_order || 0), 0)
+    const fresh = entry.values.map(v => v.value).filter(v => !existing.has(normalizeOption(v)))
+    const skipped = entry.values.length - fresh.length
+    if (fresh.length) {
+      const { error } = await supabase.from('dropdown_options').insert(
+        fresh.map((value, i) => ({ field: entry.field.key, value, sort_order: maxOrder + (i + 1) * 10 })),
+      )
+      if (error) {
+        setListBusy(false)
+        setListMessage(`Could not add to ${entry.field.label}: ${error.message}`)
+        return
+      }
+    }
+    await reloadLists()
+    setListBusy(false)
+    setListMessage(
+      `Added ${fresh.length} value${fresh.length === 1 ? '' : 's'} to ${entry.field.label}.` +
+      (skipped ? ` ${skipped} ${skipped === 1 ? 'is' : 'are'} on the list but hidden — restore ${skipped === 1 ? 'it' : 'them'} on the Dropdown Lists page.` : ''),
+    )
+  }
 
   // Everything below works on an array of rows, so each format only has
   // to get itself into that shape.
@@ -275,7 +351,9 @@ export default function ImportModal({ onClose, onImported }) {
       const dataRows = parsed.slice(headerIdx + 1).filter(r => r.some(c => c !== ''))
       setCsvHeaders(headers)
       setCsvRows(dataRows)
-      setMapping(autoMap(headers))
+      const auto = autoMap(headers)
+      if (!hasSubmission) for (const c of SUBMISSION_COLUMNS) delete auto[c]
+      setMapping(auto)
       setStep('map')
     }
     if (isExcel) reader.readAsArrayBuffer(file)
@@ -300,6 +378,7 @@ export default function ImportModal({ onClose, onImported }) {
       const obj = { seq: offset + i + 1 }
       for (const [dbField, csvHeader] of Object.entries(mapping)) {
         if (!csvHeader) continue
+        if (!hasSubmission && SUBMISSION_COLUMNS.includes(dbField)) continue
         const idx = csvHeaders.indexOf(csvHeader)
         if (idx === -1) continue
         obj[dbField] = coerce(dbField, row[idx] ?? '')
@@ -362,7 +441,7 @@ export default function ImportModal({ onClose, onImported }) {
             <h2 className="font-bold text-slate-800 text-lg">Import Records</h2>
             <p className="text-slate-500 text-xs mt-0.5">
               {step === 'upload' && 'Upload an Excel (.xlsx) or CSV file — columns are matched for you'}
-              {step === 'map' && `${csvRows.length} rows found • ${mappedCount} of ${DB_FIELDS.length} columns mapped`}
+              {step === 'map' && `${csvRows.length} rows found • ${mappedCount} of ${fields.length} columns mapped`}
               {step === 'importing' && `Importing ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}…`}
               {step === 'done' && 'Import complete'}
             </p>
@@ -441,6 +520,57 @@ export default function ImportModal({ onClose, onImported }) {
                 </div>
               </div>
 
+              {unknownValues.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-xs font-semibold text-amber-800">
+                    Some values in this file are not on the dropdown lists
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-amber-700">
+                    They will still be imported exactly as written. Check for typos first
+                    {canEditLists && !usingDefaults ? ' — then click a value to add just that one to the list, or add them all' : ''}.
+                  </p>
+                  {unknownValues.map(entry => (
+                    <div key={entry.field.key} className="mt-2 border-t border-amber-100 pt-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-amber-900">{entry.field.label}</p>
+                        {canEditLists && !usingDefaults && (
+                          <button
+                            type="button"
+                            onClick={() => addUnknownToList(entry)}
+                            disabled={listBusy}
+                            className="flex items-center gap-1 rounded border border-amber-300 bg-white px-2 py-0.5 text-[11px] font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                          >
+                            <ListPlus size={12} /> Add {entry.values.length === 1 ? 'it' : `all ${entry.values.length}`} to the list
+                          </button>
+                        )}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {entry.values.slice(0, 20).map(v => (
+                          canEditLists && !usingDefaults ? (
+                            <button
+                              key={v.value}
+                              type="button"
+                              disabled={listBusy}
+                              onClick={() => addUnknownToList({ field: entry.field, values: [v] })}
+                              title={`Add ${v.value} to the ${entry.field.label} list`}
+                              className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                            >
+                              + {v.value} <span className="text-amber-500">({v.count.toLocaleString()})</span>
+                            </button>
+                          ) : (
+                            <span key={v.value} className="rounded bg-white px-1.5 py-0.5 text-[11px] text-amber-900">
+                              {v.value} <span className="text-amber-500">({v.count.toLocaleString()})</span>
+                            </span>
+                          )
+                        ))}
+                        {entry.values.length > 20 && <span className="text-[11px] text-amber-700">+{entry.values.length - 20} more</span>}
+                      </div>
+                    </div>
+                  ))}
+                  {listMessage && <p className="mt-2 text-[11px] text-amber-900">{listMessage}</p>}
+                </div>
+              )}
+
               {/* Column Mapping */}
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Column Mapping</p>
@@ -463,7 +593,7 @@ export default function ImportModal({ onClose, onImported }) {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-                  {DB_FIELDS.map(({ key, label }) => (
+                  {fields.map(({ key, label }) => (
                     <div key={key} className="flex items-center gap-2">
                       <span className="text-xs text-slate-600 w-36 shrink-0 truncate">{label}</span>
                       <select
@@ -482,7 +612,7 @@ export default function ImportModal({ onClose, onImported }) {
             </div>
 
             <div className="shrink-0 px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50 gap-3">
-              <p className="text-sm text-slate-500 shrink-0">{mappedCount} of {DB_FIELDS.length} fields mapped</p>
+              <p className="text-sm text-slate-500 shrink-0">{mappedCount} of {fields.length} fields mapped</p>
               <div className="flex items-center gap-2 ml-auto">
                 <label className="text-xs text-slate-500 shrink-0">Start row:</label>
                 <input

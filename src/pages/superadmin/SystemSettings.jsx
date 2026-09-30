@@ -1,11 +1,70 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Save, RefreshCw, AlertTriangle, Plus, X, Users, Clock, Info } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Save, RefreshCw, AlertTriangle, Plus, X, Users, Clock, Info, SlidersHorizontal, ListChecks, Filter } from 'lucide-react'
 import SuperAdminLayout from './SuperAdminLayout'
+import DropdownLists from '../DropdownLists'
+import { FILTER_FIELDS } from '../../lib/recordFilters'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { useSettings } from '../../lib/SettingsContext'
 
-export default function SystemSettings() {
+/**
+ * System Settings, in two tabs:
+ *
+ *   General         crew names and overdue thresholds — Super Admin only
+ *                   (app_settings is writable only by is_super_admin()).
+ *   Dropdown Lists  the choices in the record forms — Admin and Super Admin
+ *                   (dropdown_options is writable by can_edit_lists()).
+ *
+ * The Super Admin opens it from the Super Admin section; an Admin opens it
+ * from the sector sidebar (inSectorApp), sees only the Dropdown Lists tab,
+ * and never gets the Super Admin chrome around it.
+ */
+export default function SystemSettings({ inSectorApp = false }) {
+  const { isSuperAdmin: isSuper, profile, role } = useAuth()
+  // Same rule as SuperAdminRoute: an account from before account_type
+  // existed with role admin is a Super Admin.
+  const isSuperAdmin = isSuper || (profile?.account_type == null && role === 'admin')
+  const [params, setParams] = useSearchParams()
+  const tab = !isSuperAdmin || params.get('tab') === 'lists' ? 'lists' : 'general'
+
+  const body = (
+    <>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-[#2E2E2E]">System Settings</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Values the whole system uses. Changing them here avoids a code change.
+        </p>
+      </div>
+
+      {isSuperAdmin && (
+        <div className="mb-6 flex gap-1 border-b border-[#D9D9D9]">
+          {[
+            { key: 'general', label: 'General', icon: SlidersHorizontal },
+            { key: 'lists', label: 'Dropdown Lists', icon: ListChecks },
+          ].map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setParams(key === 'lists' ? { tab: 'lists' } : {}, { replace: true })}
+              className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+                tab === key ? 'border-[#D89B00] text-[#2E2E2E]' : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === 'lists' ? <DropdownLists embedded /> : <GeneralSettings />}
+    </>
+  )
+
+  return inSectorApp ? body : <SuperAdminLayout>{body}</SuperAdminLayout>
+}
+
+function GeneralSettings() {
   const { session } = useAuth()
   // Saving refreshes the app-wide copy, so the crew dropdown and the overdue
   // tiles change on the next render rather than after a reload.
@@ -13,6 +72,8 @@ export default function SystemSettings() {
   const [crewNames, setCrewNames] = useState([])
   const [warningDays, setWarningDays] = useState(10)
   const [criticalDays, setCriticalDays] = useState(21)
+  // Columns whose filter is switched off, everywhere, for everyone.
+  const [filterOff, setFilterOff] = useState([])
   const [newCrew, setNewCrew] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -34,6 +95,7 @@ export default function SystemSettings() {
     setCrewNames(Array.isArray(byKey.crew_names) ? byKey.crew_names : [])
     setWarningDays(Number(byKey.overdue_warning_days ?? 10))
     setCriticalDays(Number(byKey.overdue_critical_days ?? 21))
+    setFilterOff(Array.isArray(byKey.filter_disabled_columns) ? byKey.filter_disabled_columns : [])
     setLoading(false)
   }, [])
 
@@ -76,6 +138,7 @@ export default function SystemSettings() {
       { key: 'crew_names', label: 'Crew names', value: crewNames, ...stamp },
       { key: 'overdue_warning_days', label: 'Overdue warning (days)', value: warningDays, ...stamp },
       { key: 'overdue_critical_days', label: 'Overdue critical (days)', value: criticalDays, ...stamp },
+      { key: 'filter_disabled_columns', label: 'Column filters switched off', value: filterOff, ...stamp },
     ], { onConflict: 'key' })
 
     if (err) {
@@ -94,14 +157,8 @@ export default function SystemSettings() {
   }
 
   return (
-    <SuperAdminLayout>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#2E2E2E]">System Settings</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Values the whole system uses. Changing them here avoids a code change.
-          </p>
-        </div>
+    <>
+      <div className="mb-4 flex max-w-2xl justify-end">
         <button
           onClick={load}
           className="flex items-center gap-2 rounded-lg border border-[#D9D9D9] bg-white px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
@@ -243,6 +300,57 @@ export default function SystemSettings() {
             </div>
           </section>
 
+          {/* Column filters on / off */}
+          <section className="overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-b border-[#D9D9D9] px-5 py-4">
+              <Filter size={18} className="text-[#D89B00]" />
+              <h2 className="font-semibold text-[#2E2E2E]">Column Filters</h2>
+              <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                {FILTER_FIELDS.length - filterOff.length} of {FILTER_FIELDS.length} on
+              </span>
+              <div className="ml-auto flex gap-3 text-xs">
+                <button onClick={() => setFilterOff([])} className="text-blue-600 hover:underline">All on</button>
+                <button onClick={() => setFilterOff(FILTER_FIELDS.map(f => f.key))} className="text-slate-500 hover:underline">All off</button>
+              </div>
+            </div>
+
+            <div className="px-5 py-4">
+              <p className="mb-3 text-sm text-slate-500">
+                Which columns can be filtered in Field Orders, Pending Records and Archived Work Orders.
+                Switching one off removes its ▽ filter from the column header and from “+ Add filter”, for every account.
+              </p>
+
+              <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+                {FILTER_FIELDS.map(f => {
+                  const on = !filterOff.includes(f.key)
+                  return (
+                    <label key={f.key} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50">
+                      <span className={`text-sm ${on ? 'text-slate-700' : 'text-slate-400'}`}>{f.label}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={on}
+                        onClick={() => setFilterOff(on ? [...filterOff, f.key] : filterOff.filter(k => k !== f.key))}
+                        className={`relative h-5 w-9 shrink-0 rounded-full transition ${on ? 'bg-[#D89B00]' : 'bg-slate-300'}`}
+                        title={on ? 'Filter on — click to switch off' : 'Filter off — click to switch on'}
+                      >
+                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${on ? 'left-[18px]' : 'left-0.5'}`} />
+                      </button>
+                    </label>
+                  )
+                })}
+              </div>
+
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <p>
+                  The search box still looks in every column, and no records change. A saved filter that used a
+                  switched-off column simply skips that part until it is switched back on.
+                </p>
+              </div>
+            </div>
+          </section>
+
           <button
             onClick={save}
             disabled={saving}
@@ -253,6 +361,6 @@ export default function SystemSettings() {
           </button>
         </div>
       )}
-    </SuperAdminLayout>
+    </>
   )
 }

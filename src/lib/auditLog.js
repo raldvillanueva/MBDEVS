@@ -18,6 +18,13 @@ export const AUDIT_ACTIONS = {
   ACCOUNT_DEACTIVATED: 'account.deactivated',
   ACCOUNT_ARCHIVED: 'account.archived',
   ACCOUNT_REACTIVATED: 'account.reactivated',
+  // Written by the database (dropdown_options trigger), not by the app,
+  // so a list change cannot skip the log. Listed here for the labels.
+  DROPDOWN_ADDED: 'dropdown.added',
+  DROPDOWN_RENAMED: 'dropdown.renamed',
+  DROPDOWN_HIDDEN: 'dropdown.hidden',
+  DROPDOWN_RESTORED: 'dropdown.restored',
+  DROPDOWN_SECTORS_CHANGED: 'dropdown.sectors_changed',
 }
 
 export const AUDIT_ACTION_LABELS = {
@@ -35,6 +42,11 @@ export const AUDIT_ACTION_LABELS = {
   'account.deactivated': 'Deactivated account',
   'account.archived': 'Archived account',
   'account.reactivated': 'Reactivated account',
+  'dropdown.added': 'Added dropdown value',
+  'dropdown.renamed': 'Renamed dropdown value',
+  'dropdown.hidden': 'Hid dropdown value',
+  'dropdown.restored': 'Restored dropdown value',
+  'dropdown.sectors_changed': 'Changed dropdown sectors',
 }
 
 /**

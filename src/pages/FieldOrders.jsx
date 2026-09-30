@@ -1,16 +1,21 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
-import { Plus, Search, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive, Send, Info } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive, Send, Info } from 'lucide-react'
 import ImportModal from '../components/ImportModal'
 import RequestDeletionModal from '../components/RequestDeletionModal'
 import RequestEditModal from '../components/RequestEditModal'
 import { useAuth } from '../lib/AuthContext'
 import { displayAgingDays, agingLevel, dueDaysLeft, dueLevel } from '../lib/aging'
 import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
-import { useSettings } from '../lib/SettingsContext'
+import { useDropdowns } from '../lib/DropdownContext'
+import { useColumnOptions } from '../lib/useColumnOptions'
+import { emptyFilters, applyFiltersToQuery, hasActiveFilters, filterField, ruleIsComplete, withoutColumns } from '../lib/recordFilters'
+import { useFilterColumns, withSubmission, SUBMISSION_COLUMNS } from '../lib/optionalColumns'
+import FilterBar from '../components/filters/FilterBar'
+import { FloatingPanel, ValuePicker, RuleEditor } from '../components/filters/FilterControls'
 
 const PAGE_SIZE = 50
 
@@ -18,7 +23,9 @@ const PAGE_SIZE = 50
 // the direct edit only moves the three things that genuinely still change
 // afterwards. Anything else is a correction, and corrections go through
 // Request Edit where somebody reviews them.
-const FIELD_ORDER_EDITABLE = ['status_crew', 'for_check', 'for_batch']
+// Submitted To / Date of Submitted are filled in after the job, when the
+// record is already here, so they stay directly editable too.
+const FIELD_ORDER_EDITABLE = ['status_crew', 'for_check', 'for_batch', 'submitted_to', 'date_submitted']
 
 // Aging and Due Date are worked out in the browser, so there is no column
 // to sort on — they order by the date they are derived from instead.
@@ -29,31 +36,21 @@ const SORT_FIELDS = {
   due_date: { column: 'witness_date',  invert: false },
 }
 
-const STATUS_OPTIONS = ['All', 'RE-ASSIGN','FOR ASSIGN', 'ASSIGNED', 'CANCEL', 'CANCEL-EMC', 'FC CANCEL', 'FIELD COMPLETED', 'REVISITED FIELD COM.', 'REVISITED CANCEL']
-const TYPE_OF_METER_OPTIONS = ['All', '12S', '12S ID METER', '1S', '1S EMC L-G', '25S', '2S EMC L-G', '2S EMC L-L', '2S EMX', '2S ID', '2S ID METER', '2S ID METER/ERC', '2S PLAIN METER', '9S', 'EMX', 'ERC 2S PLAIN METER', 'FOR REPLACE', 'KLOAD', 'RETURNED']
-const JOB_DESCRIPTION_OPTIONS = ['All', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX', 'RETIRE', 'RETIRE-EMC', 'RETIRE-EMC-WIRE']
-const FO_TYPE_OPTIONS = ['All', 'CANCEL', 'CANCEL-EMC', 'CUT SERVICE ENTRANCE', 'ENERGIZED', 'REMOVE', 'REMOVE-EMC', 'REMOVE-EMC-WIRE', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX']
-const BILLED_AMOUNT_OPTIONS = ['All', '0', '172.45', '253.43', '344.9', '383.22', '574.83', '766.44', '958.05', '1013.71', '1689.61']
-const BATCH_OPTIONS = ['All', 'ALREADY BATCH', 'FOR BATCH', 'MISSING METER', 'OTHERS PENDING']
+// Type of Meter, Job Description, FO Type, For Batch and Billed Amount come
+// from the Dropdown Lists page (useDropdowns). Search, filters and the
+// Year/Month period live in one `filters` object — see lib/recordFilters.js.
 
-const MONTH_OPTIONS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-const CURRENT_YEAR = new Date().getFullYear()
-const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => String(CURRENT_YEAR + 1 - i))
-
-// Turns the year/month selection into an inclusive [start, end] date_executed
-// range. Month is only meaningful with a year, so it is ignored without one.
-function periodRange(year, month) {
-  if (year === 'All') return null
-  const y = Number(year)
-  if (month === 'All') return [`${y}-01-01`, `${y}-12-31`]
-  const m = MONTH_OPTIONS.indexOf(month) + 1
-  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate()
-  const mm = String(m).padStart(2, '0')
-  return [`${y}-${mm}-01`, `${y}-${mm}-${String(lastDay).padStart(2, '0')}`]
+// Column → the filter it opens from its header. Aging is worked out from
+// Date Executed, so it filters on that; Due Date has no filter.
+function headerFilterKey(colKey) {
+  if (colKey === 'aging') return 'aging_days'
+  if (colKey === 'due_date') return null
+  return filterField(colKey) ? colKey : null
 }
+
+// Fetching everything that matches, for the export. The server hands back
+// at most 1,000 rows per request, so this pages through.
+const EXPORT_CHUNK = 1000
 
 const EMPTY_FORM = {
   status_crew: 'FOR ASSIGN', date_assign: '', for_check: false, date_executed: '', type_of_meter: '',
@@ -64,6 +61,7 @@ const EMPTY_FORM = {
   pole_tag: '', booba_number: '', mdltr_no: '', aging: '', witness_date: '', remarks: '',
   mflt_checklist: false, fo_type: '', billed_amount: '', for_batch: '', date_returned: '',
   crew_payrol: '', percentage: '', pluscode: '',
+  submitted_to: '', date_submitted: '',
 }
 
 function StatusBadge({ status }) {
@@ -113,6 +111,9 @@ const COLS = [
   { label: 'DATE ASSIGN',         key: 'date_assign',           w: 105, render: r => r.date_assign || '—' },
   { label: 'TYPE OF METER',       key: 'type_of_meter',         w: 130, render: r => r.type_of_meter || '—' },
   { label: 'SERVICE ID NUMBER',      key: 'service_number',        w: 135, render: r => r.service_number || '—' },
+  // Shown only once the database has these columns (lib/optionalColumns.js).
+  { label: 'SUBMITTED TO',        key: 'submitted_to',          w: 130, render: r => r.submitted_to || '—' },
+  { label: 'DATE OF SUBMITTED',   key: 'date_submitted',        w: 140, render: r => r.date_submitted || '—' },
   // — REMOVE METER —
   { label: 'REMOVE METER',        key: 'remove_meter',          w: 130, render: r => r.remove_meter || '—' },
   { label: 'R. SERIAL NUMBER',    key: 'r_serial_number',       w: 130, render: r => r.r_serial_number || '—' },
@@ -182,10 +183,14 @@ export default function FieldOrders() {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
   const { role, session, profile, canEncode, canManage, canDelete } = useAuth()
-  // Crew names are a System Settings value, so the filter list follows
-  // whatever a Super Admin has set rather than a constant in this file.
-  const { crewNames } = useSettings()
-  const crewNameOptions = useMemo(() => ['All', ...crewNames], [crewNames])
+  const { optionsFor } = useDropdowns()
+  // Filter values = the dropdown list + what is actually in the records.
+  const getOptions = useColumnOptions({ page: 'field_orders', sector })
+  // New columns the database may not have yet, and columns the Super Admin
+  // switched filtering off for (System Settings → General).
+  const { hasSubmission, missing, disabled, hidden } = useFilterColumns(sector)
+  const scrollCols = hasSubmission ? SCROLL_COLS : SCROLL_COLS.filter(c => !SUBMISSION_COLUMNS.includes(c.key))
+  const exportFields = f => hasSubmission || !SUBMISSION_COLUMNS.includes(f.key)
   // canManage covers Admin and up — everything except permanent delete,
   // which is canDelete.
   const isAdmin = canManage || role === 'admin'
@@ -204,22 +209,15 @@ export default function FieldOrders() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
-  const [typeOfMeterFilter, setTypeOfMeterFilter] = useState('All')
-  const [jobDescriptionFilter, setJobDescriptionFilter] = useState('All')
-  const [crewNameFilter, setCrewNameFilter] = useState('All')
+  const [filters, setFilters] = useState(emptyFilters)
+  // What actually applies: switched-off or missing columns dropped, so the
+  // count, the table, the export and "Select all" all mean the same rows.
+  const effective = useMemo(() => withoutColumns(filters, hidden), [filters, hidden])
+  const [loadError, setLoadError] = useState('')
   const [sortKey, setSortKey] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
-  const [foTypeFilter, setFoTypeFilter] = useState('All')
-  const [billedAmountFilter, setBilledAmountFilter] = useState('All')
-  const [batchFilter, setBatchFilter] = useState('All')
-  const [dateExecutedFilter, setDateExecutedFilter] = useState('')
-  const [dateAssignFilter, setDateAssignFilter] = useState('')
-  const [yearFilter, setYearFilter] = useState('All')
-  const [monthFilter, setMonthFilter] = useState('All')
-  const [openFilterKey, setOpenFilterKey] = useState(null)
-  const [filterPos, setFilterPos] = useState({ x: 0, y: 0 })
+  // The header filter that is open: { fieldKey, anchorRect, options }.
+  const [headerFilter, setHeaderFilter] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [confirm, setConfirm] = useState(null)
   const [editRow, setEditRow] = useState(null)
@@ -243,21 +241,13 @@ function deleteSelected() {
     onConfirm: async () => {
       if (selectAllPages) {
         let q = supabase.from(foTable).delete().is('archived_at', null)
-        const hasFilters = search || statusFilter !== 'All' || typeOfMeterFilter !== 'All' || jobDescriptionFilter !== 'All' || crewNameFilter !== 'All' || foTypeFilter !== 'All' || billedAmountFilter !== 'All' || batchFilter !== 'All' || dateExecutedFilter || dateAssignFilter
-        if (!hasFilters) {
-          q = q.neq('id', '00000000-0000-0000-0000-000000000000')
-        } else {
-          if (search) q = q.or(`field_order_no.ilike.%${search}%,service_number.ilike.%${search}%,crew_name.ilike.%${search}%,location.ilike.%${search}%,remove_meter.ilike.%${search}%,ins_meter.ilike.%${search}%`)
-          if (statusFilter !== 'All') q = statusFilter === 'FIELD COMPLETED' ? q.ilike('status_crew', '%FIELD%') : q.ilike('status_crew', statusFilter)
-          if (typeOfMeterFilter !== 'All') q = q.ilike('type_of_meter', typeOfMeterFilter)
-          if (jobDescriptionFilter !== 'All') q = q.ilike('job_description', jobDescriptionFilter)
-          if (crewNameFilter !== 'All') q = q.ilike('crew_name', crewNameFilter)
-          if (foTypeFilter !== 'All') q = q.ilike('fo_type', foTypeFilter)
-          if (billedAmountFilter !== 'All') q = q.eq('billed_amount', parseFloat(billedAmountFilter))
-          if (batchFilter !== 'All') q = q.ilike('for_batch', batchFilter)
-          if (dateExecutedFilter) q = q.eq('date_executed', dateExecutedFilter)
-          if (dateAssignFilter) q = q.eq('date_assign', dateAssignFilter)
-        }
+        // Exactly the filters on screen — the same function that loads the
+        // table — so "all N records" means the N the person is looking at.
+        // (Before, the Year/Month filter was left out here, so a bulk action
+        // on "March 2025" reached every month.)
+        q = hasActiveFilters(effective)
+          ? applyFiltersToQuery(q, effective, { page: 'field_orders', missing })
+          : q.neq('id', '00000000-0000-0000-0000-000000000000')
         await q
       } else {
         await supabase.from(foTable).delete().in('id', selectedRows)
@@ -284,21 +274,13 @@ function archiveSelected() {
     onConfirm: async () => {
       if (selectAllPages) {
         let q = supabase.from(foTable).update({ archived_at: new Date().toISOString() }).is('archived_at', null)
-        const hasFilters = search || statusFilter !== 'All' || typeOfMeterFilter !== 'All' || jobDescriptionFilter !== 'All' || crewNameFilter !== 'All' || foTypeFilter !== 'All' || billedAmountFilter !== 'All' || batchFilter !== 'All' || dateExecutedFilter || dateAssignFilter
-        if (!hasFilters) {
-          q = q.neq('id', '00000000-0000-0000-0000-000000000000')
-        } else {
-          if (search) q = q.or(`field_order_no.ilike.%${search}%,service_number.ilike.%${search}%,crew_name.ilike.%${search}%,location.ilike.%${search}%,remove_meter.ilike.%${search}%,ins_meter.ilike.%${search}%`)
-          if (statusFilter !== 'All') q = statusFilter === 'FIELD COMPLETED' ? q.ilike('status_crew', '%FIELD%') : q.ilike('status_crew', statusFilter)
-          if (typeOfMeterFilter !== 'All') q = q.ilike('type_of_meter', typeOfMeterFilter)
-          if (jobDescriptionFilter !== 'All') q = q.ilike('job_description', jobDescriptionFilter)
-          if (crewNameFilter !== 'All') q = q.ilike('crew_name', crewNameFilter)
-          if (foTypeFilter !== 'All') q = q.ilike('fo_type', foTypeFilter)
-          if (billedAmountFilter !== 'All') q = q.eq('billed_amount', parseFloat(billedAmountFilter))
-          if (batchFilter !== 'All') q = q.ilike('for_batch', batchFilter)
-          if (dateExecutedFilter) q = q.eq('date_executed', dateExecutedFilter)
-          if (dateAssignFilter) q = q.eq('date_assign', dateAssignFilter)
-        }
+        // Exactly the filters on screen — the same function that loads the
+        // table — so "all N records" means the N the person is looking at.
+        // (Before, the Year/Month filter was left out here, so a bulk action
+        // on "March 2025" reached every month.)
+        q = hasActiveFilters(effective)
+          ? applyFiltersToQuery(q, effective, { page: 'field_orders', missing })
+          : q.neq('id', '00000000-0000-0000-0000-000000000000')
         await q
       } else {
         await supabase.from(foTable).update({ archived_at: new Date().toISOString() }).in('id', selectedRows)
@@ -357,30 +339,17 @@ prev.filter(x=>x!==id)
     }
 
     q = q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-
-    if (search) {
-      q = q.or(
-        `field_order_no.ilike.%${search}%,service_number.ilike.%${search}%,crew_name.ilike.%${search}%,location.ilike.%${search}%,remove_meter.ilike.%${search}%,ins_meter.ilike.%${search}%`
-      )
-    }
-    if (statusFilter !== 'All') {
-      q = statusFilter === 'FIELD COMPLETED' ? q.ilike('status_crew', '%FIELD%') : q.ilike('status_crew', statusFilter)
-    }
-    if (typeOfMeterFilter !== 'All') q = q.ilike('type_of_meter', typeOfMeterFilter)
-    if (jobDescriptionFilter !== 'All') q = q.ilike('job_description', jobDescriptionFilter)
-    if (crewNameFilter !== 'All') q = q.ilike('crew_name', crewNameFilter)
-    if (foTypeFilter !== 'All') q = q.ilike('fo_type', foTypeFilter)
-    if (billedAmountFilter !== 'All') q = q.eq('billed_amount', parseFloat(billedAmountFilter))
-    if (batchFilter !== 'All') q = q.ilike('for_batch', batchFilter)
-    if (dateExecutedFilter) q = q.eq('date_executed', dateExecutedFilter)
-    if (dateAssignFilter) q = q.eq('date_assign', dateAssignFilter)
-    const range = periodRange(yearFilter, monthFilter)
-    if (range) q = q.gte('date_executed', range[0]).lte('date_executed', range[1])
+    q = applyFiltersToQuery(q, effective, { page: 'field_orders', missing })
 
     const { data, count, error } = await q
-    if (!error) { setRecords(data); setTotal(count) }
+    if (!error) { setRecords(data); setTotal(count); setLoadError('') }
+    else {
+      // Say so, rather than showing "No records found" for a failed load.
+      console.error('Could not load field orders', error)
+      setLoadError('The records could not be loaded with these filters. Try removing the last filter you added.')
+    }
     setLoading(false)
-  }, [foTable, page, sortKey, sortDir, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter, dateAssignFilter, yearFilter, monthFilter])
+  }, [foTable, page, sortKey, sortDir, effective, missing])
 
 useEffect(() => { 
   fetchRecords() 
@@ -391,7 +360,7 @@ useEffect(() => {
   setPage(0)
   setSelectAllPages(false)
   setSelectedRows([])
-}, [sortKey, sortDir, search, statusFilter, typeOfMeterFilter, jobDescriptionFilter, crewNameFilter, foTypeFilter, billedAmountFilter, batchFilter, dateExecutedFilter,  dateAssignFilter, yearFilter, monthFilter])
+}, [sortKey, sortDir, effective])
 
 
   const ROW_HEIGHT = 33
@@ -454,21 +423,50 @@ useEffect(() => {
     scheduleRowSnap()
   }
 
-  function toggleFilter(key, e) {
-    if (openFilterKey === key) { setOpenFilterKey(null); return }
-    const rect = e.currentTarget.getBoundingClientRect()
-    setFilterPos({ x: rect.left, y: rect.bottom + 4 })
-    setOpenFilterKey(key)
+  // Every column header has a filter. Columns with a set of values (Job
+  // Description, Crew, Status…) open a tick list; the rest open a condition
+  // ("before", "contains", "more than"…).
+  async function toggleFilter(fieldKey, e) {
+    if (headerFilter?.fieldKey === fieldKey) { setHeaderFilter(null); return }
+    const anchorRect = e.currentTarget.getBoundingClientRect()
+    const field = filterField(fieldKey)
+    if (!field?.list) { setHeaderFilter({ fieldKey, anchorRect }); return }
+    setHeaderFilter({ fieldKey, anchorRect, loading: true, options: [] })
+    const options = await getOptions(fieldKey).catch(() => [])
+    setHeaderFilter(cur => (cur?.fieldKey === fieldKey ? { ...cur, loading: false, options } : cur))
   }
 
-  useEffect(() => {
-    if (!openFilterKey) return
-    function handler(e) {
-      if (!e.target.closest('[data-filter-dropdown]')) setOpenFilterKey(null)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [openFilterKey])
+  function headerFilterActive(fieldKey) {
+    if (!fieldKey) return false
+    return !!filters.values?.[fieldKey]?.length ||
+      (filters.rules || []).some(r => r.field === fieldKey && ruleIsComplete(r))
+  }
+
+  function applyHeaderValues(fieldKey, picked) {
+    const values = { ...(filters.values || {}) }
+    if (picked.length) values[fieldKey] = picked
+    else delete values[fieldKey]
+    setFilters({ ...filters, values })
+    setHeaderFilter(null)
+  }
+
+  function applyHeaderRule(rule) {
+    const rules = [...(filters.rules || [])]
+    const i = rules.findIndex(r => r.id === rule.id)
+    if (i >= 0) rules[i] = rule
+    else rules.push(rule)
+    setFilters({ ...filters, rules })
+    setHeaderFilter(null)
+  }
+
+  function removeHeaderRule(id) {
+    setFilters({ ...filters, rules: (filters.rules || []).filter(r => r.id !== id) })
+    setHeaderFilter(null)
+  }
+
+  // The drawer's dropdowns: the list for this sector, plus the record's own
+  // value if it is no longer on the list.
+  const opts = field => optionsFor(field, sector, editForm?.[field])
 
   function openEdit(row) {
     setEditRow(row)
@@ -557,7 +555,7 @@ useEffect(() => {
 
 
 
-  const { error } = await supabase.from(foTable).update(payload).eq('id', editRow.id)
+  const { error } = await supabase.from(foTable).update(withSubmission(payload, hasSubmission)).eq('id', editRow.id)
 
 
 
@@ -633,6 +631,8 @@ useEffect(() => {
     { key: 'crew_name',             label: 'Crew Name' },
     { key: 'location',              label: 'Location' },
     { key: 'service_number',        label: 'Service ID Number' },
+    { key: 'submitted_to',          label: 'Submitted To' },
+    { key: 'date_submitted',        label: 'Date of Submitted' },
     { key: 'field_order_no',        label: 'Field Order/FO' },
     { key: 'remove_meter',          label: 'Remove Meter' },
     { key: 'r_serial_number',       label: 'R. Serial Number' },
@@ -675,25 +675,50 @@ useEffect(() => {
       .order('created_at', { ascending: false })
     setExportingSelected(false)
     if (error || !data || data.length === 0) return
+    downloadCsv(data, `field_orders_selected_${new Date().toISOString().slice(0, 10)}.csv`)
+  }
 
+  // Everything the current search and filters match, not just this page.
+  const [exportingFiltered, setExportingFiltered] = useState(false)
+  async function exportFiltered() {
+    if (total === 0) return
+    setExportingFiltered(true)
+    const rows = []
+    for (let from = 0; ; from += EXPORT_CHUNK) {
+      let q = supabase.from(foTable).select('*').is('archived_at', null)
+        .order('seq', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, from + EXPORT_CHUNK - 1)
+      q = applyFiltersToQuery(q, effective, { page: 'field_orders', missing })
+      const { data, error } = await q
+      if (error) { setExportingFiltered(false); setLoadError('The export could not be completed. Please try again.'); return }
+      rows.push(...(data || []))
+      if (!data || data.length < EXPORT_CHUNK) break
+    }
+    setExportingFiltered(false)
+    if (rows.length) downloadCsv(rows, `field_orders_${hasActiveFilters(effective) ? 'filtered_' : ''}${new Date().toISOString().slice(0, 10)}.csv`)
+  }
+
+  function downloadCsv(data, filename) {
     function esc(val) {
       if (val === null || val === undefined) return ''
       const s = String(val)
       return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
     }
 
-    const header = EXPORT_FIELDS.map(f => f.label).join(',')
+    const header = EXPORT_FIELDS.filter(exportFields).map(f => f.label).join(',')
     // due_date is worked out from witness_date rather than stored, so it
     // has no column to read — every other field comes straight off the row.
     const cell = (row, key) =>
       key === 'due_date' ? (row.for_check ? '' : dueDaysLeft(row)) : row[key]
-    const rows = data.map(row => EXPORT_FIELDS.map(f => esc(cell(row, f.key))).join(','))
+    const rows = data.map(row => EXPORT_FIELDS.filter(exportFields).map(f => esc(cell(row, f.key))).join(','))
     const csv = '﻿' + [header, ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `field_orders_selected_${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = filename
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -709,18 +734,6 @@ useEffect(() => {
   function sortArrow(key) {
     if (sortKey !== key) return ''
     return sortDir === 'asc' ? '▲' : '▼'
-  }
-
-  const COL_FILTER_KEYS = {
-    status_crew:    { options: STATUS_OPTIONS,        value: statusFilter,        set: setStatusFilter,        isActive: () => statusFilter !== 'All' },
-    date_assign: { type: 'date', value: dateAssignFilter, set: setDateAssignFilter, isActive: () => !!dateAssignFilter,},
-    date_executed:  { type: 'date',                   value: dateExecutedFilter,  set: setDateExecutedFilter,  isActive: () => !!dateExecutedFilter },
-    type_of_meter:  { options: TYPE_OF_METER_OPTIONS, value: typeOfMeterFilter,   set: setTypeOfMeterFilter,   isActive: () => typeOfMeterFilter !== 'All' },
-    job_description:{ options: JOB_DESCRIPTION_OPTIONS,value: jobDescriptionFilter,set: setJobDescriptionFilter,isActive: () => jobDescriptionFilter !== 'All' },
-    crew_name:      { options: crewNameOptions,       value: crewNameFilter,      set: setCrewNameFilter,      isActive: () => crewNameFilter !== 'All' },
-    fo_type:        { options: FO_TYPE_OPTIONS,       value: foTypeFilter,        set: setFoTypeFilter,        isActive: () => foTypeFilter !== 'All' },
-    billed_amount:  { options: BILLED_AMOUNT_OPTIONS, value: billedAmountFilter,  set: setBilledAmountFilter,  isActive: () => billedAmountFilter !== 'All', formatLabel: o => o === 'All' ? 'All' : `₱${o}` },
-    for_batch:      { options: BATCH_OPTIONS,         value: batchFilter,         set: setBatchFilter,         isActive: () => batchFilter !== 'All' },
   }
 
   return (
@@ -804,53 +817,34 @@ Add Record
 </div>
       </div>
 
-      {/* Search + period filter */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 shrink-0">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search FO#, Service ID Number, crew, location..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <select
-            value={yearFilter}
-            onChange={e => {
-              setYearFilter(e.target.value)
-              if (e.target.value === 'All') setMonthFilter('All')
-            }}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      {/* Search, filters, period, saved filters */}
+      <FilterBar
+        page="field_orders"
+        sector={sector}
+        filters={filters}
+        onChange={setFilters}
+        getOptions={getOptions}
+        missing={missing}
+        disabled={disabled}
+        showPeriod
+        placeholder="Search FO#, service ID, crew, location, meter, seal, remarks…"
+        rightSlot={(
+          <button
+            type="button"
+            onClick={exportFiltered}
+            disabled={exportingFiltered || total === 0}
+            title="Download every record the search and filters match, as a CSV"
+            className="ml-auto flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
           >
-            <option value="All">All years</option>
-            {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+            <Download size={15} />
+            {exportingFiltered ? 'Exporting…' : `Export ${hasActiveFilters(effective) ? 'filtered ' : 'all '}(${total.toLocaleString()})`}
+          </button>
+        )}
+      />
 
-          <select
-            value={monthFilter}
-            onChange={e => setMonthFilter(e.target.value)}
-            disabled={yearFilter === 'All'}
-            title={yearFilter === 'All' ? 'Pick a year first' : 'Filter by month'}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400"
-          >
-            <option value="All">All months</option>
-            {MONTH_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-
-          {yearFilter !== 'All' && (
-            <button
-              onClick={() => { setYearFilter('All'); setMonthFilter('All') }}
-              className="px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
+      {loadError && (
+        <div className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</div>
+      )}
 
 
       {/* Selection Banner */}
@@ -960,8 +954,9 @@ Add Record
                     #
                   </th>
                   {FROZEN_COLS.map(col => {
-                    const filterCfg = COL_FILTER_KEYS[col.key]
-                    const isActive = filterCfg && filterCfg.isActive()
+                    const hk = headerFilterKey(col.key)
+                    const filterKey = hk && !hidden.includes(hk) ? hk : null
+                    const isActive = headerFilterActive(filterKey)
                     return (
                       <th
                         key={col.key}
@@ -979,10 +974,11 @@ Add Record
                               {sortArrow(col.key)}
                             </span>
                           </button>
-                          {filterCfg && (
+                          {filterKey && (
                             <button
-                              data-filter-dropdown
-                              onClick={e => { e.stopPropagation(); toggleFilter(col.key, e) }}
+                              data-filter-anchor
+                              title={`Filter ${col.label}`}
+                              onClick={e => { e.stopPropagation(); toggleFilter(filterKey, e) }}
                               className={`shrink-0 rounded px-0.5 transition-colors ${isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
                               style={{ fontSize: 9, lineHeight: 1 }}
                             >
@@ -1006,7 +1002,7 @@ Add Record
                   </tr>
                 ) : records.length === 0 ? (
                   <tr>
-                    <td colSpan={FROZEN_COLS.length + (isAdmin ? 2 : 1)} className="px-4 py-16 text-center text-slate-400">No records found.</td>
+                    <td colSpan={FROZEN_COLS.length + (isAdmin ? 2 : 1)} className="px-4 py-16 text-center text-slate-400">{hasActiveFilters(effective) ? 'No records match these filters.' : 'No records found.'}</td>
                   </tr>
                 ) : (
                   records.map((row, idx) => {
@@ -1066,9 +1062,10 @@ Add Record
             <table className="text-xs border-collapse" style={{ minWidth: 'max-content', width: '100%', tableLayout: 'fixed' }}>
               <thead className="sticky top-0 z-20">
                 <tr style={{ background: '#1e293b', height: 37 }}>
-                  {SCROLL_COLS.map(col => {
-                    const filterCfg = COL_FILTER_KEYS[col.key]
-                    const isActive = filterCfg && filterCfg.isActive()
+                  {scrollCols.map(col => {
+                    const hk = headerFilterKey(col.key)
+                    const filterKey = hk && !hidden.includes(hk) ? hk : null
+                    const isActive = headerFilterActive(filterKey)
                     return (
                       <th
                         key={col.key}
@@ -1086,10 +1083,11 @@ Add Record
                               {sortArrow(col.key)}
                             </span>
                           </button>
-                          {filterCfg && (
+                          {filterKey && (
                             <button
-                              data-filter-dropdown
-                              onClick={e => { e.stopPropagation(); toggleFilter(col.key, e) }}
+                              data-filter-anchor
+                              title={`Filter ${col.label}`}
+                              onClick={e => { e.stopPropagation(); toggleFilter(filterKey, e) }}
                               className={`shrink-0 rounded px-0.5 transition-colors ${isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
                               style={{ fontSize: 9, lineHeight: 1 }}
                             >
@@ -1105,7 +1103,7 @@ Add Record
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={SCROLL_COLS.length} className="px-4 py-16 text-center">
+                    <td colSpan={scrollCols.length} className="px-4 py-16 text-center">
                       <div className="flex justify-center">
                         <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
                       </div>
@@ -1113,7 +1111,7 @@ Add Record
                   </tr>
                 ) : records.length === 0 ? (
                   <tr>
-                    <td colSpan={SCROLL_COLS.length} className="px-4 py-16 text-center text-slate-400">No records found.</td>
+                    <td colSpan={scrollCols.length} className="px-4 py-16 text-center text-slate-400">{hasActiveFilters(effective) ? 'No records match these filters.' : 'No records found.'}</td>
                   </tr>
                 ) : (
                   records.map((row, idx) => {
@@ -1129,7 +1127,7 @@ Add Record
                         style={{ background: rowBg, height: 33 }}
                         className={`cursor-pointer border-b border-slate-100 transition-colors ${sel ? 'outline outline-2 outline-blue-400 outline-offset-[-2px]' : ''}`}
                       >
-                        {SCROLL_COLS.map(col => (
+                        {scrollCols.map(col => (
                           <td
                             key={col.key}
                             style={{ minWidth: col.w, maxWidth: col.w }}
@@ -1284,13 +1282,13 @@ Add Record
                 <PF label="Type of Meter">
                   <select value={editForm.type_of_meter} onChange={e => sf('type_of_meter', e.target.value)} disabled={fieldLocked('type_of_meter')} className={iCls}>
                     <option value="">— Select —</option>
-                    {TYPE_OF_METER_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
+                    {opts('type_of_meter').map(o => <option key={o}>{o}</option>)}
                   </select>
                 </PF>
                 <PF label="Job Description">
                   <select value={editForm.job_description} onChange={e => sf('job_description', e.target.value)} disabled={fieldLocked('job_description')} className={iCls}>
                     <option value="">— Select —</option>
-                    {JOB_DESCRIPTION_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
+                    {opts('job_description').map(o => <option key={o}>{o}</option>)}
                   </select>
                 </PF>
                 <PF label="Crew Name">
@@ -1337,9 +1335,28 @@ Add Record
                 <PF label="For Batch">
                   <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} disabled={fieldLocked('for_batch')} className={iCls}>
                     <option value="">— Select —</option>
-                    {BATCH_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
+                    {opts('for_batch').map(o => <option key={o}>{o}</option>)}
                   </select>
                 </PF>
+                {hasSubmission && (
+                  <>
+                    <PF label="Submitted To">
+                      <input
+                        value={editForm.submitted_to ?? ''}
+                        onChange={e => sf('submitted_to', e.target.value)}
+                        disabled={fieldLocked('submitted_to')}
+                        list="submitted-to-options"
+                        className={iCls}
+                      />
+                      <datalist id="submitted-to-options">
+                        {optionsFor('submitted_to', sector).map(o => <option key={o} value={o} />)}
+                      </datalist>
+                    </PF>
+                    <PF label="Date of Submitted">
+                      <input type="date" value={editForm.date_submitted ?? ''} onChange={e => sf('date_submitted', e.target.value)} disabled={fieldLocked('date_submitted')} className={iCls} />
+                    </PF>
+                  </>
+                )}
               </PS>
 
               <PS title="Remove Meter">
@@ -1436,13 +1453,13 @@ Add Record
                 <PF label="FO Type">
                   <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} disabled={fieldLocked('fo_type')} className={iCls}>
                     <option value="">— Select —</option>
-                    {FO_TYPE_OPTIONS.slice(1).map(o => <option key={o}>{o}</option>)}
+                    {opts('fo_type').map(o => <option key={o}>{o}</option>)}
                   </select>
                 </PF>
                 <PF label="Billed Amount (₱)">
                   <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} disabled={fieldLocked('billed_amount')} className={iCls}>
                     <option value="">— Select —</option>
-                    {BILLED_AMOUNT_OPTIONS.slice(1).map(option => <option key={option}>{option}</option>)}
+                    {opts('billed_amount').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Date Returned">
@@ -1563,50 +1580,38 @@ Add Record
         />
       )}
 
-      {/* Column filter dropdown overlay */}
-      {openFilterKey && COL_FILTER_KEYS[openFilterKey] && (() => {
-        const cfg = COL_FILTER_KEYS[openFilterKey]
+      {/* Column header filter */}
+      {headerFilter && (() => {
+        const field = filterField(headerFilter.fieldKey)
+        if (!field) return null
+        const close = () => setHeaderFilter(null)
+        if (field.list) {
+          return (
+            <FloatingPanel anchorRect={headerFilter.anchorRect} onClose={close} width={280}>
+              <p className="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{field.label}</p>
+              <ValuePicker
+                key={field.key}
+                options={headerFilter.options}
+                loading={headerFilter.loading}
+                selected={filters.values?.[field.key] || []}
+                onApply={picked => applyHeaderValues(field.key, picked)}
+                onCancel={close}
+              />
+            </FloatingPanel>
+          )
+        }
+        const existing = (filters.rules || []).find(r => r.field === field.key)
+        const rule = existing || { id: `col:${field.key}`, field: field.key, op: '' }
         return (
-          <div
-            data-filter-dropdown
-            style={{ position: 'fixed', left: filterPos.x, top: filterPos.y, zIndex: 1000 }}
-            className="bg-white rounded-xl shadow-2xl border border-slate-200 min-w-[180px] max-h-72 overflow-y-auto"
-          >
-            {cfg.type === 'date' ? (
-              <div className="p-3 space-y-2">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filter by date</p>
-                <input
-                  type="date"
-                  value={cfg.value}
-                  onChange={e => cfg.set(e.target.value)}
-                  className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {cfg.value && (
-                  <button
-                    onClick={() => { cfg.set(''); setOpenFilterKey(null) }}
-                    className="w-full text-xs text-red-500 hover:text-red-700 py-1 text-center"
-                  >
-                    Clear filter
-                  </button>
-                )}
-              </div>
-            ) : (
-              cfg.options.map(o => {
-                const isSelected = cfg.value === o
-                const label = cfg.formatLabel ? cfg.formatLabel(o) : o
-                return (
-                  <button
-                    key={o}
-                    data-filter-dropdown
-                    onClick={() => { cfg.set(o); setOpenFilterKey(null) }}
-                    className={`w-full text-left px-4 py-2 text-sm transition-colors ${isSelected ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}
-                  >
-                    {label}
-                  </button>
-                )
-              })
-            )}
-          </div>
+          <FloatingPanel anchorRect={headerFilter.anchorRect} onClose={close} width={300}>
+            <RuleEditor
+              key={rule.id}
+              rule={rule}
+              onApply={applyHeaderRule}
+              onCancel={close}
+              onRemove={existing ? () => removeHeaderRule(existing.id) : undefined}
+            />
+          </FloatingPanel>
         )
       })()}
     </div>

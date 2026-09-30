@@ -13,6 +13,8 @@ export const FIELD_LABELS = {
   location: 'Location',
   service_number: 'Service ID Number',
   field_order_no: 'Field Order/FO',
+  submitted_to: 'Submitted To',
+  date_submitted: 'Date of Submitted',
   remove_meter: 'Remove Meter',
   r_serial_number: 'R. Serial Number',
   demand_seal_aerolock: 'Demand Seal No.5',

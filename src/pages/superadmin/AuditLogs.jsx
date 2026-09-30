@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search, RefreshCw, AlertTriangle, Trash2, Archive, ArchiveRestore, CheckCircle2, XCircle, UserPlus, ShieldCheck, KeyRound, Pencil, UserX, UserCheck } from 'lucide-react'
+import { Search, RefreshCw, AlertTriangle, Trash2, Archive, ArchiveRestore, CheckCircle2, XCircle, UserPlus, ShieldCheck, KeyRound, Pencil, UserX, UserCheck, ListPlus, EyeOff, Eye, MapPin } from 'lucide-react'
 import SuperAdminLayout from './SuperAdminLayout'
 import { supabase } from '../../lib/supabase'
 import { AUDIT_ACTION_LABELS } from '../../lib/auditLog'
+import { dropdownFieldLabel } from '../../lib/dropdownLists'
 
 const PAGE_SIZE = 100
 
@@ -24,6 +25,11 @@ const ACTION_STYLE = {
   'account.deactivated': { icon: UserX, tint: 'bg-amber-100 text-amber-800' },
   'account.archived': { icon: Archive, tint: 'bg-red-100 text-red-700' },
   'account.reactivated': { icon: UserCheck, tint: 'bg-emerald-100 text-emerald-700' },
+  'dropdown.added': { icon: ListPlus, tint: 'bg-emerald-100 text-emerald-700' },
+  'dropdown.renamed': { icon: Pencil, tint: 'bg-blue-100 text-blue-700' },
+  'dropdown.hidden': { icon: EyeOff, tint: 'bg-amber-100 text-amber-800' },
+  'dropdown.restored': { icon: Eye, tint: 'bg-emerald-100 text-emerald-700' },
+  'dropdown.sectors_changed': { icon: MapPin, tint: 'bg-purple-100 text-purple-700' },
 }
 
 const FILTERS = [
@@ -35,7 +41,22 @@ const FILTERS = [
   { value: 'account.role_changed', label: 'Role changes' },
   { value: 'account.password_reset', label: 'Password resets' },
   { value: 'account.deactivated', label: 'Deactivations' },
+  // A prefix: every kind of dropdown list change.
+  { value: 'dropdown.', label: 'Dropdown list changes' },
 ]
+
+function sectorsText(list) {
+  return Array.isArray(list) && list.length ? list.join(', ').toUpperCase() : 'all sectors'
+}
+
+// One line saying what a dropdown change actually was.
+function dropdownDetail(e) {
+  const d = e.details || {}
+  const list = dropdownFieldLabel(d.field)
+  if (e.action === 'dropdown.renamed') return `${list}: ${d.old} → ${d.new}`
+  if (e.action === 'dropdown.sectors_changed') return `${list}: ${sectorsText(d.old)} → ${sectorsText(d.new)}`
+  return list
+}
 
 function when(iso) {
   if (!iso) return '—'
@@ -72,7 +93,8 @@ export default function AuditLogs() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return entries.filter(e => {
-      const matchesFilter = filter === 'all' || e.action === filter
+      const matchesFilter =
+        filter === 'all' || (filter.endsWith('.') ? e.action?.startsWith(filter) : e.action === filter)
       const matchesSearch =
         !q ||
         e.actor_name?.toLowerCase().includes(q) ||
@@ -175,6 +197,9 @@ export default function AuditLogs() {
                       <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-500">
                         {e.sector}
                       </span>
+                    )}
+                    {e.action?.startsWith('dropdown.') && (
+                      <p className="text-xs text-slate-400">{dropdownDetail(e)}</p>
                     )}
                     {e.details?.count > 1 && (
                       <span className="ml-2 text-xs text-slate-400">and {e.details.count - 1} more</span>

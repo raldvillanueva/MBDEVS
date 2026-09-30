@@ -1,18 +1,21 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
-import { X, Save, CheckCircle, Search, Info } from 'lucide-react'
+import { X, Save, CheckCircle, Info } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { useSettings } from '../lib/SettingsContext'
+import { useDropdowns } from '../lib/DropdownContext'
+import { emptyFilters, rowMatchesFilters, withoutColumns } from '../lib/recordFilters'
+import { useFilterColumns, withSubmission } from '../lib/optionalColumns'
+import { useColumnOptions } from '../lib/useColumnOptions'
+import FilterBar from '../components/filters/FilterBar'
 
 const STATUS_CREW_OPTIONS = ['FOR ASSIGN', 'ASSIGNED', 'REASSIGN','CANCEL', 'CANCEL-EMC', 'FC CANCEL', 'FIELD COMPLETED', 'REVISITED FIELD COM.', 'REVISITED CANCEL']
-const TYPE_OF_METER_OPTIONS = ['12S', '12S ID METER', '1S', '1S EMC L-G', '25S', '2S EMC L-G', '2S EMC L-L', '2S EMX', '2S ID', '2S ID METER', '2S ID METER/ERC', '2S PLAIN METER', '9S', 'EMX', 'ERC 2S PLAIN METER', 'FOR REPLACE', 'KLOAD', 'RETURNED']
-const JOB_DESCRIPTION_OPTIONS = ['REPLACE', 'REPLACE-EMC', 'REPLACE-EMX', 'RETIRE', 'RETIRE-EMC', 'RETIRE-EMC-WIRE']
-const FO_TYPE_OPTIONS = ['CANCEL', 'CANCEL-EMC', 'CUT SERVICE ENTRANCE', 'ENERGIZED', 'REMOVE', 'REMOVE-EMC', 'REMOVE-EMC-WIRE', 'REPLACE', 'REPLACE-EMC', 'REPLACE-EMX']
+// Type of Meter, Job Description, FO Type, Billed Amount and For Batch come
+// from the Dropdown Lists page (useDropdowns). Status Crew and FO Action
+// stay fixed because the app reads them.
 const FO_ACTION_OPTIONS = ['Replace FO', 'Energized FO', 'Retirement FO', 'Others']
-const BILLED_AMOUNT_OPTIONS = ['0', '172.45', '253.43', '344.9', '383.22', '574.83', '766.44', '958.05', '1013.71', '1689.61']
-const BATCH_OPTIONS = ['ALREADY BATCH', 'FOR BATCH', 'MISSING METER', 'OTHERS PENDING']
 
 const EMPTY_FORM = {
   status_crew: '', date_assign: '', for_check: false, date_executed: '', type_of_meter: '',
@@ -24,6 +27,8 @@ const EMPTY_FORM = {
   pole_tag: '', booba_number: '', mdltr_no: '', aging: '', witness_date: '', remarks: '',
   mflt_checklist: false, fo_type: '', billed_amount: '', for_batch: '', date_returned: '',
   crew_payrol: '', pluscode: '',
+  // Optional; only saved once the database has these columns.
+  submitted_to: '', date_submitted: '',
 }
 
 const iCls = 'w-full px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
@@ -126,6 +131,7 @@ export default function PendingRecords() {
   const { role, canEncode, canManage } = useAuth()
   // Crew names come from System Settings, not a constant in this file.
   const { crewNames } = useSettings()
+  const { optionsFor } = useDropdowns()
   // Removing from Pending and bulk actions are review decisions.
   const isAdmin = canManage || role === 'admin'
   // Pending is the Encoder's own workspace: they put records here and they
@@ -141,7 +147,7 @@ export default function PendingRecords() {
   const [savingToFO, setSavingToFO] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [confirm, setConfirm] = useState(null)
-  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState(emptyFilters)
   const [selectedRows, setSelectedRows] = useState([])
   const [bulkAction, setBulkAction] = useState(null)
   const [pageError, setPageError] = useState('')
@@ -149,17 +155,18 @@ export default function PendingRecords() {
 
   const cls = key => (missing.includes(key) ? `${iCls} !border-red-500 !bg-red-50` : iCls)
 
-  const filtered = pending.filter(r => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (
-      r.field_order_no?.toLowerCase().includes(q) ||
-      r.ins_meter?.toLowerCase().includes(q) ||
-      r.crew_name?.toLowerCase().includes(q) ||
-      r.location?.toLowerCase().includes(q) ||
-      r.service_number?.toLowerCase().includes(q)
-    )
-  })
+  // Every pending row is loaded, so search and filters run here in the
+  // browser — same rules as Field Orders (lib/recordFilters.js).
+  // `unavailable`: new columns not in the database yet; switched-off
+  // column filters (System Settings) are dropped too.
+  const { hasSubmission, missing: unavailable, disabled: filterOff, hidden: filterHidden } = useFilterColumns(sector)
+  const filtered = useMemo(
+    () => pending.filter(r => rowMatchesFilters(r, withoutColumns(filters, filterHidden), { page: 'pending', missing: unavailable })),
+    [pending, filters, filterHidden, unavailable],
+  )
+  const getOptions = useColumnOptions({ page: 'pending', sector, rows: pending })
+  const opts = field => optionsFor(field, sector, editForm?.[field])
+  const searching = filtered.length !== pending.length
   const displayPending = mode === 'QUEUE' ? [...filtered] : [...filtered].reverse()
 
   const fetchPending = useCallback(async () => {
@@ -181,7 +188,7 @@ export default function PendingRecords() {
     return () => supabase.removeChannel(channel)
   }, [fetchPending, poTable, sector])
 
-  useEffect(() => { setSelectedRows([]) }, [search])
+  useEffect(() => { setSelectedRows([]) }, [filters])
 
   function openEdit(row) {
     setEditRow(row)
@@ -219,7 +226,9 @@ export default function PendingRecords() {
       date_returned: rest.date_returned || null,
     }
   }
-  function savePayload() { return toPayload(editForm) }
+  // Leaves Submitted To / Date of Submitted out until the table has them.
+  const toSave = record => withSubmission(toPayload(record), hasSubmission)
+  function savePayload() { return toSave(editForm) }
 
   async function updatePending() {
     setSaving(true)
@@ -333,7 +342,7 @@ async function sendSelectedToFieldOrders() {
 
   setBulkAction('send')
   setPageError('')
-  const { error: insertError } = await supabase.from(foTable).insert(selected.map(toPayload))
+  const { error: insertError } = await supabase.from(foTable).insert(selected.map(toSave))
   if (insertError) { setPageError(friendlySaveError(insertError)); setBulkAction(null); return }
   const { error: deleteError } = await supabase.from(poTable).delete().in('id', selectedRows)
   if (deleteError) setPageError('The selected records were sent, but some could not be removed from Pending. Please refresh the page.')
@@ -383,16 +392,19 @@ async function sendSelectedToFieldOrders() {
     </button>
   </>
 )}
-          <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search FO#, meter, crew, location..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-72"
-            />
-          </div>
+        </div>
+      </div>
+
+      <FilterBar
+        page="pending"
+        sector={sector}
+        filters={filters}
+        onChange={setFilters}
+        getOptions={getOptions}
+        missing={unavailable}
+        disabled={filterOff}
+        placeholder="Search FO#, meter, crew, location, remarks…"
+        rightSlot={(
           <select
             value={mode}
             onChange={e => setMode(e.target.value)}
@@ -401,8 +413,8 @@ async function sendSelectedToFieldOrders() {
             <option value="STACK">STACK</option>
             <option value="QUEUE">QUEUE</option>
           </select>
-        </div>
-      </div>
+        )}
+      />
 
       {pageError && (
         <div className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -441,7 +453,7 @@ async function sendSelectedToFieldOrders() {
               ) : displayPending.length === 0 ? (
                 <tr>
                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-16 text-center text-slate-400">
-                    No pending records.
+                    {pending.length > 0 ? 'No pending records match these filters.' : 'No pending records.'}
                   </td>
                 </tr>
               ) : (
@@ -494,8 +506,7 @@ async function sendSelectedToFieldOrders() {
           </table>
         </div>
         <div className="shrink-0 px-4 py-2.5 border-t border-slate-100 bg-slate-50 text-sm text-slate-500">
-          {search ? `${filtered.length} of ${pending.length}` : pending.length} pending record{pending.length !== 1 ? 's' : ''}
-          {search && filtered.length === 0 && <span className="ml-2 text-slate-400">— no matches for "{search}"</span>}
+          {searching ? `${filtered.length} of ${pending.length}` : pending.length} pending record{pending.length !== 1 ? 's' : ''}
         </div>
       </div>
 
@@ -550,7 +561,7 @@ async function sendSelectedToFieldOrders() {
                 <Info size={14} className="mt-0.5 shrink-0" />
                 <p>
                   Fields marked <span className="font-bold text-red-500">*</span> must be filled in
-                  before this record is sent to Field Orders. Only <strong>Remarks</strong> is optional.
+                  before this record is sent to Field Orders. Only <strong>Remarks</strong>{hasSubmission ? <>, <strong>Submitted To</strong> and <strong>Date of Submitted</strong> are</> : ' is'} optional.
                 </p>
               </div>
 
@@ -584,13 +595,13 @@ async function sendSelectedToFieldOrders() {
                 <PF label="Type of Meter">
                   <select value={editForm.type_of_meter} onChange={e => sf('type_of_meter', e.target.value)} className={cls('type_of_meter')}>
                     <option value="">— Select —</option>
-                    {TYPE_OF_METER_OPTIONS.map(option => <option key={option}>{option}</option>)}
+                    {opts('type_of_meter').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF> 
                 <PF label="Job Description">
                   <select value={editForm.job_description} onChange={e => sf('job_description', e.target.value)} className={cls('job_description')}>
                     <option value="">— Select —</option>
-                    {JOB_DESCRIPTION_OPTIONS.map(option => <option key={option}>{option}</option>)}
+                    {opts('job_description').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Crew Name">
@@ -611,9 +622,27 @@ async function sendSelectedToFieldOrders() {
                 <PF label="For Batch">
                   <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={cls('for_batch')}>
                     <option value="">— Select —</option>
-                    {BATCH_OPTIONS.map(option => <option key={option}>{option}</option>)}
+                    {opts('for_batch').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
+                {hasSubmission && (
+                  <>
+                    <PF label="Submitted To" optional>
+                      <input
+                        value={editForm.submitted_to ?? ''}
+                        onChange={e => sf('submitted_to', e.target.value)}
+                        list="pending-submitted-to-options"
+                        className={iCls}
+                      />
+                      <datalist id="pending-submitted-to-options">
+                        {optionsFor('submitted_to', sector).map(o => <option key={o} value={o} />)}
+                      </datalist>
+                    </PF>
+                    <PF label="Date of Submitted" optional>
+                      <input type="date" value={editForm.date_submitted ?? ''} onChange={e => sf('date_submitted', e.target.value)} className={iCls} />
+                    </PF>
+                  </>
+                )}
               </PS>
 
               {showRemoveMeterSection && (
@@ -720,13 +749,13 @@ async function sendSelectedToFieldOrders() {
                 <PF label="FO Type">
                   <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} className={cls('fo_type')}>
                     <option value="">— Select —</option>
-                    {FO_TYPE_OPTIONS.map(option => <option key={option}>{option}</option>)}
+                    {opts('fo_type').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Billed Amount (₱)">
                   <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} className={cls('billed_amount')}>
                     <option value="">— Select —</option>
-                    {BILLED_AMOUNT_OPTIONS.map(option => <option key={option}>{option}</option>)}
+                    {opts('billed_amount').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Date Returned">

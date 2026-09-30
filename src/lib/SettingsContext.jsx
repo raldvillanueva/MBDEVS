@@ -9,6 +9,8 @@ export const SETTINGS_DEFAULTS = {
   crewNames: ['A. TOMADA', 'B. VERDARERO', 'C. BENIGNO', 'D. FABOL', 'E. VILLAREAL', 'J. BITAGO', 'J. J. SERRANO'],
   warningDays: 10,
   criticalDays: 21,
+  // Columns the Super Admin has switched column filtering off for.
+  disabledFilterColumns: [],
 }
 
 const SettingsContext = createContext({ ...SETTINGS_DEFAULTS, loading: true, reload: () => {} })
@@ -34,6 +36,7 @@ export function SettingsProvider({ children }) {
         : SETTINGS_DEFAULTS.crewNames,
       warningDays: Number(byKey.overdue_warning_days) || SETTINGS_DEFAULTS.warningDays,
       criticalDays: Number(byKey.overdue_critical_days) || SETTINGS_DEFAULTS.criticalDays,
+      disabledFilterColumns: Array.isArray(byKey.filter_disabled_columns) ? byKey.filter_disabled_columns : [],
     }
 
     // The Field Orders table decides its aging and due-date colours outside

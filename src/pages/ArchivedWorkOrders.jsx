@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArchiveRestore, Pencil, Search } from 'lucide-react'
+import { ArchiveRestore, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
 import { useAuth } from '../lib/AuthContext'
 import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
+import { emptyFilters, applyFiltersToQuery, hasActiveFilters, withoutColumns } from '../lib/recordFilters'
+import { useFilterColumns } from '../lib/optionalColumns'
+import { useColumnOptions } from '../lib/useColumnOptions'
+import FilterBar from '../components/filters/FilterBar'
+
+// The server returns at most this many rows in one go.
+const MAX_ROWS = 1000
 
 export default function ArchivedWorkOrders() {
   const { sector } = useSector()
@@ -16,7 +23,9 @@ export default function ArchivedWorkOrders() {
   const isAdmin = canManage || role === 'admin'
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState(emptyFilters)
+  const { missing, disabled, hidden } = useFilterColumns(sector)
+  const effective = useMemo(() => withoutColumns(filters, hidden), [filters, hidden])
   const [error, setError] = useState('')
   const [selectedRows, setSelectedRows] = useState([])
   const [restoringId, setRestoringId] = useState(null)
@@ -32,9 +41,7 @@ export default function ArchivedWorkOrders() {
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
 
-    if (search) {
-      query = query.or(`field_order_no.ilike.%${search}%,service_number.ilike.%${search}%,crew_name.ilike.%${search}%,ins_meter.ilike.%${search}%`)
-    }
+    query = applyFiltersToQuery(query, effective, { page: 'archived', missing })
 
     const { data, error: fetchError } = await query
     if (fetchError) {
@@ -44,10 +51,11 @@ export default function ArchivedWorkOrders() {
       setSelectedRows(previous => previous.filter(id => (data || []).some(record => record.id === id)))
     }
     setLoading(false)
-  }, [foTable, search])
+  }, [foTable, effective, missing])
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
-  useEffect(() => { setSelectedRows([]) }, [search])
+  useEffect(() => { setSelectedRows([]) }, [filters])
+  const getOptions = useColumnOptions({ page: 'archived', sector })
 
   async function restoreRecord(id) {
     setRestoringId(id)
@@ -122,16 +130,23 @@ async function restoreSelected() {
         <p className="mt-0.5 text-sm text-slate-500">Completed work orders kept for reference.</p>
       </div>
 
-      <div className="relative shrink-0">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="search"
-          value={search}
-          onChange={event => setSearch(event.target.value)}
-          placeholder="Search FO#, service no., crew, or meter..."
-          className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
+      <FilterBar
+        page="archived"
+        sector={sector}
+        filters={filters}
+        onChange={setFilters}
+        getOptions={getOptions}
+        missing={missing}
+        disabled={disabled}
+        showPeriod
+        placeholder="Search FO#, service no., crew, meter, location…"
+      />
+
+      {!loading && records.length >= MAX_ROWS && (
+        <p className="shrink-0 text-xs text-amber-700">
+          Showing the {MAX_ROWS.toLocaleString()} most recently archived. Use the search or filters to find older ones.
+        </p>
+      )}
 
       {isAdmin && selectedRows.length > 0 && (
   <div className="flex justify-end">
@@ -181,7 +196,7 @@ async function restoreSelected() {
             {loading ? (
               <tr><td colSpan={isAdmin ? 7 : 6} className="px-4 py-16 text-center text-slate-400">Loading archived work orders...</td></tr>
             ) : records.length === 0 ? (
-              <tr><td colSpan={isAdmin ? 7 : 6} className="px-4 py-16 text-center text-slate-400">No archived work orders.</td></tr>
+              <tr><td colSpan={isAdmin ? 7 : 6} className="px-4 py-16 text-center text-slate-400">{hasActiveFilters(effective) ? 'No archived work orders match these filters.' : 'No archived work orders.'}</td></tr>
             ) : records.map(record => (
               <tr key={record.id} className="border-t border-slate-100 hover:bg-slate-50">
                 {isAdmin && (

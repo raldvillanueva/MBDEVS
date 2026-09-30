@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck, MapPin, Pencil } from 'lucide-react'
+import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck, MapPin, Pencil, Settings } from 'lucide-react'
 import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
@@ -112,12 +112,15 @@ export default function Sidebar() {
   const REPORTS = { to: '/reports', icon: FileText, label: 'Audit Reports' }
   const DELETIONS = { to: '/deletion-requests', icon: ShieldAlert, label: 'Deletion Requests', badge: deletionCount }
   const EDIT_REQUESTS = { to: '/edit-requests', icon: Pencil, label: 'Edit Requests', badge: editRequestCount }
+  // System Settings. An Admin sees only its Dropdown Lists tab; the
+  // General tab (crews, thresholds) stays Super Admin only.
+  const LISTS = { to: '/settings', icon: Settings, label: 'System Settings' }
 
   // Managing accounts is Super Admin work, reached from the Super Admin
   // section rather than from here. No sector sidebar carries it.
   const NAV_BY_ACCOUNT_TYPE = {
-    super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, EDIT_REQUESTS, DELETIONS],
-    admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, EDIT_REQUESTS, DELETIONS],
+    super_admin: [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, EDIT_REQUESTS, DELETIONS, LISTS],
+    admin:       [DASHBOARD, FIELD_ORDERS, PENDING, ARCHIVED, REPORTS, EDIT_REQUESTS, DELETIONS, LISTS],
     encoder:     [DASHBOARD, FIELD_ORDERS, PENDING, REPORTS],
     viewer:      [DASHBOARD, FIELD_ORDERS, ARCHIVED],
   }

@@ -8,6 +8,8 @@ import { addPendingOrders } from '../lib/pendingStorage'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useSettings } from '../lib/SettingsContext'
+import { useDropdowns } from '../lib/DropdownContext'
+import { useSubmissionColumns, withSubmission } from '../lib/optionalColumns'
  
 const EMPTY_FORM = {
   // Main Info
@@ -51,6 +53,9 @@ const EMPTY_FORM = {
   crew_payrol: '',
   percentage: '',
   pluscode: '',
+  // Main Info, new — only shown/saved once the database has the columns
+  submitted_to: '',
+  date_submitted: '',
 }
 
 function Field({ label, children, required, errorMessage }) {
@@ -93,6 +98,12 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   const poTable = pendingOrdersTable(sector)
   const { accountType, canEncode, canManage } = useAuth()
   const { crewNames } = useSettings()
+  // Job Description, Type of Meter, FO Type, For Batch and Billed Amount
+  // come from the Dropdown Lists page. The record's own value is always
+  // offered too, so an older value is never blanked out on edit.
+  const { optionsFor } = useDropdowns()
+  const opts = field => optionsFor(field, sector, form[field])
+  const hasSubmission = useSubmissionColumns(sector)
   // A Viewer has no business on this form at all. An Encoder does: they
   // add to Pending, and a reviewer moves it on to Field Orders.
   const isStaff = accountType === 'viewer' || !canEncode
@@ -241,7 +252,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
   // =========================
   // PAYLOAD
   // =========================
-  const payload = {
+  const payload = withSubmission({
     ...form,
     aging: form.aging ? parseInt(form.aging) : null,
     billed_amount: form.billed_amount ? parseFloat(form.billed_amount) : null,
@@ -250,7 +261,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
     date_executed: form.date_executed || null,
     witness_date: form.witness_date || null,
     date_returned: form.date_returned || null,
-  }
+  }, hasSubmission)
 
   let error = null
 
@@ -512,25 +523,21 @@ label="FO Action"
           <Field label="For Batch">
             <select{...text('for_batch')}>
               <option value="">— Select —</option>
-              <option value="ALREADY BATCH">ALREADY BATCH</option>
+              {opts('for_batch').map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
 
           <Field label="Type of Meter">
             <select {...text('type_of_meter')} className={selectClass}>
               <option value="">— Select —</option>
-              <option value="2S PLAIN METER">2S PLAIN METER</option>
-              <option value="1S PLAIN METER">1S PLAIN METER</option>
-              <option value="3S PLAIN METER">3S PLAIN METER</option>
+              {opts('type_of_meter').map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
 
           <Field label="Job Description">
             <select {...text('job_description')} className={selectClass}>
               <option value="">— Select —</option>
-              <option value="REPLACE">REPLACE</option>
-              <option value="RETIRE">RETIRE</option>
-              <option value="REMOVE">REMOVE</option>
+              {opts('job_description').map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
 
@@ -576,6 +583,20 @@ label="FO Action"
 />
             </div>
           </Field>
+
+          {hasSubmission && (
+            <>
+              <Field label="Submitted To">
+                <input {...text('submitted_to')} list="record-submitted-to-options" placeholder="Who it was submitted to" />
+                <datalist id="record-submitted-to-options">
+                  {optionsFor('submitted_to', sector).map(o => <option key={o} value={o} />)}
+                </datalist>
+              </Field>
+              <Field label="Date of Submitted">
+                <input type="date" {...text('date_submitted')} />
+              </Field>
+            </>
+          )}
         </div>
       </div>
 
@@ -741,10 +762,7 @@ label="FO Action"
             
             >
               <option value="">— Select —</option>
-              <option value="REPLACE">REPLACE</option>
-              <option value="RETIRE">RETIRE</option>
-              <option value="REMOVE">REMOVE</option>
-              <option value="CANCEL">CANCEL</option>
+              {opts('fo_type').map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
 
@@ -753,7 +771,13 @@ label="FO Action"
               onChange={e => { set('billed_amount', e.target.value) 
                 setFieldErrors(prev=>({...prev, billed_amount:false}))}}
                 className={`${inputClass}${fieldErrors.billed_amount? '!border-red-500 !bg-red-200':''}`}
+                // The usual amounts are suggested (from Dropdown Lists); any
+                // other amount can still be typed.
+                list="billed-amount-options"
                 />
+            <datalist id="billed-amount-options">
+              {optionsFor('billed_amount', sector).map(o => <option key={o} value={o} />)}
+            </datalist>
           </Field>
 
           <Field label="Date Returned">

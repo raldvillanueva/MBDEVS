@@ -21,6 +21,8 @@ import HomeRedirect from './pages/HomeRedirect'
 import { AuthProvider } from './lib/AuthContext'
 import { SectorProvider } from './lib/SectorContext'
 import { SettingsProvider } from './lib/SettingsContext'
+import { DropdownProvider } from './lib/DropdownContext'
+import ListsRoute from './components/ListsRoute'
 
 // The Super Admin section: account management and system-wide views.
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard'
@@ -33,6 +35,7 @@ export default function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
+      <DropdownProvider>
       <SectorProvider>
         <BrowserRouter>
           <Routes>
@@ -57,6 +60,7 @@ export default function App() {
             <Route path="/super-admin/records" element={<SuperAdminRoute><ViewRecords /></SuperAdminRoute>} />
             <Route path="/super-admin/audit-logs" element={<SuperAdminRoute><AuditLogs /></SuperAdminRoute>} />
             <Route path="/super-admin/settings" element={<SuperAdminRoute><SystemSettings /></SuperAdminRoute>} />
+            <Route path="/super-admin/dropdown-lists" element={<Navigate to="/super-admin/settings?tab=lists" replace />} />
             <Route path="/admin" element={<Navigate to="/sectors" replace />} />
             <Route path="/supervisor" element={<Navigate to="/sectors" replace />} />
             <Route path="/encoder" element={<Navigate to="/sectors" replace />} />
@@ -86,10 +90,15 @@ export default function App() {
               <Route path="archived-work-orders" element={<ArchivedWorkOrders />} />
               <Route path="deletion-requests" element={<AdminRoute><DeletionRequests /></AdminRoute>} />
               <Route path="edit-requests" element={<AdminRoute><EditRequests /></AdminRoute>} />
+              {/* System Settings from the sector sidebar: Admin gets the
+                  Dropdown Lists tab only; Super Admin gets both tabs. */}
+              <Route path="settings" element={<ListsRoute><SystemSettings inSectorApp /></ListsRoute>} />
+              <Route path="dropdown-lists" element={<Navigate to="/settings" replace />} />
             </Route>
           </Routes>
         </BrowserRouter>
       </SectorProvider>
+      </DropdownProvider>
       </SettingsProvider>
     </AuthProvider>
   )
