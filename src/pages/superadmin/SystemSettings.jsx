@@ -79,6 +79,10 @@ function GeneralSettings() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  // What the database currently holds. Adding a crew only changes the
+  // list on screen, and the page looked identical either way — so it was
+  // easy to add one, walk away, and never find out it was not saved.
+  const [saved, setSaved] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -96,6 +100,12 @@ function GeneralSettings() {
     setWarningDays(Number(byKey.overdue_warning_days ?? 10))
     setCriticalDays(Number(byKey.overdue_critical_days ?? 21))
     setFilterOff(Array.isArray(byKey.filter_disabled_columns) ? byKey.filter_disabled_columns : [])
+    setSaved({
+      crewNames: Array.isArray(byKey.crew_names) ? byKey.crew_names : [],
+      warningDays: Number(byKey.overdue_warning_days ?? 10),
+      criticalDays: Number(byKey.overdue_critical_days ?? 21),
+      filterOff: Array.isArray(byKey.filter_disabled_columns) ? byKey.filter_disabled_columns : [],
+    })
     setLoading(false)
   }, [])
 
@@ -151,10 +161,28 @@ function GeneralSettings() {
       return
     }
 
+    // What is on screen is now what the database holds, so the unsaved
+    // warning clears without needing a reload to find that out.
+    setSaved({
+      crewNames: [...crewNames],
+      warningDays: Number(warningDays),
+      criticalDays: Number(criticalDays),
+      filterOff: [...filterOff],
+    })
+
     await reloadAppSettings()
     setSaving(false)
     setNotice('Settings saved. Everyone else sees the change when they next load a page.')
   }
+
+  // Order carries no meaning in either list, so a reorder is not a change.
+  const same = (a, b) => JSON.stringify([...(a || [])].sort()) === JSON.stringify([...(b || [])].sort())
+  const dirty = !!saved && (
+    !same(crewNames, saved.crewNames) ||
+    !same(filterOff, saved.filterOff) ||
+    Number(warningDays) !== saved.warningDays ||
+    Number(criticalDays) !== saved.criticalDays
+  )
 
   return (
     <>
@@ -351,14 +379,23 @@ function GeneralSettings() {
             </div>
           </section>
 
-          <button
-            onClick={save}
-            disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-[#D89B00] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#C58A00] disabled:opacity-60"
-          >
-            <Save size={16} />
-            {saving ? 'Saving…' : 'Save settings'}
-          </button>
+          <div className="sticky bottom-0 -mx-1 flex items-center gap-3 border-t border-[#D9D9D9] bg-[#F4F4F4] px-1 py-3">
+            <button
+              onClick={save}
+              disabled={saving || !dirty}
+              className="flex items-center gap-2 rounded-lg bg-[#D89B00] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#C58A00] disabled:opacity-60"
+            >
+              <Save size={16} />
+              {saving ? 'Saving…' : 'Save settings'}
+            </button>
+
+            {dirty && (
+              <span className="flex items-center gap-1.5 text-sm font-medium text-amber-700">
+                <AlertTriangle size={15} />
+                Not saved yet
+              </span>
+            )}
+          </div>
         </div>
       )}
     </>
