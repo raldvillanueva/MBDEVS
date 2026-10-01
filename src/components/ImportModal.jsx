@@ -4,6 +4,7 @@ import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
 import { X, Upload, CheckCircle, Download, ListPlus } from 'lucide-react'
 import { useDropdowns } from '../lib/DropdownContext'
+import { downloadImportTemplate } from '../lib/importTemplate'
 import { useAuth } from '../lib/AuthContext'
 import { DROPDOWN_FIELDS, normalizeOption } from '../lib/dropdownLists'
 import { useSubmissionColumns, SUBMISSION_COLUMNS } from '../lib/optionalColumns'
@@ -129,29 +130,6 @@ function parseCSV(text) {
   return rows
 }
 
-function templateHeaders() {
-  return DB_FIELDS.map(f => {
-    const aliases = ALIASES[f.key] || []
-    if (aliases.includes(f.label.toLowerCase().trim())) return f.label
-    const fallback = aliases[0]
-    return fallback ? fallback.replace(/\b\w/g, c => c.toUpperCase()) : f.label
-  })
-}
-
-function downloadTemplate() {
-  // A header row and nothing else. An example row would be imported
-  // along with the real data by anyone who forgot to delete it.
-  const csv = '\ufeff' + templateHeaders().join(',') + '\n'
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'field_orders_import_template.csv'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
 
 function autoMap(headers) {
   const map = {}, used = new Set()
@@ -529,21 +507,20 @@ export default function ImportModal({ onClose, onImported }) {
           </div>
         )}
 
-        {/* Somewhere to start from, for anyone being asked to send data
-            in. Built from the same field list the matcher uses, so what
-            comes back maps itself. */}
+        {/* Somewhere to start from, for anyone being asked to send data in. */}
         {step === 'upload' && (
-          <div className="border-t border-slate-200 px-6 py-3 shrink-0">
+          <div className="shrink-0 border-t border-slate-200 px-6 py-3">
             <button
-              onClick={downloadTemplate}
+              onClick={() => downloadImportTemplate().catch(() => {})}
               className="flex items-center gap-2 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
             >
               <Download size={15} />
-              Download blank template
+              Download blank template (Excel)
             </button>
             <p className="mt-1 text-xs text-slate-400">
-              Send this to whoever is filling it in. Every column in it is matched
-              automatically, so nothing needs mapping by hand.
+              Send this to whoever is filling it in. It opens in Excel or Google Sheets
+              with the same columns and colours as the sheet they already use, and every
+              one is matched automatically when it comes back.
             </p>
           </div>
         )}
