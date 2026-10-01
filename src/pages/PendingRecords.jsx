@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
-import { X, Save, CheckCircle, Info } from 'lucide-react'
+import { X, Save, CheckCircle, Info, Upload } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import ImportModal from '../components/ImportModal'
 import { useSettings } from '../lib/SettingsContext'
 import { useDropdowns } from '../lib/DropdownContext'
 import { emptyFilters, rowMatchesFilters, withoutColumns } from '../lib/recordFilters'
@@ -152,6 +153,7 @@ export default function PendingRecords() {
   const [bulkAction, setBulkAction] = useState(null)
   const [pageError, setPageError] = useState('')
   const [missing, setMissing] = useState([])
+  const [showImport, setShowImport] = useState(false)
 
   const cls = key => (missing.includes(key) ? `${iCls} !border-red-500 !bg-red-50` : iCls)
 
@@ -374,6 +376,19 @@ async function sendSelectedToFieldOrders() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Imports land here by default, so this is where the button
+              belongs. It was on Field Orders, a page the rows no longer
+              arrive on. */}
+          {isAdmin && (
+            <button
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+            >
+              <Upload size={15} />
+              Import
+            </button>
+          )}
+
           {isAdmin && selectedRows.length > 0 && (
   <>
     <button
@@ -792,6 +807,13 @@ async function sendSelectedToFieldOrders() {
       )}
 
       {/* Confirm Modal */}
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImported={() => { fetchPending(); setShowImport(false) }}
+        />
+      )}
+
       {confirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]">
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">

@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
 import { Plus, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive, Send, Info } from 'lucide-react'
-import ImportModal from '../components/ImportModal'
 import RequestDeletionModal from '../components/RequestDeletionModal'
 import RequestEditModal from '../components/RequestEditModal'
 import { useAuth } from '../lib/AuthContext'
@@ -619,7 +618,6 @@ useEffect(() => {
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   const [exportingSelected, setExportingSelected] = useState(false)
-  const [showImport, setShowImport] = useState(false)
 
   const EXPORT_FIELDS = [
     { key: 'status_crew',           label: 'Status Crew' },
@@ -749,15 +747,6 @@ useEffect(() => {
 
   {canEncode && (
     <>
-  {isAdmin && (
-  <button
-    onClick={() => setShowImport(true)}
-    className="flex items-center gap-2 border border-slate-200 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-  >
-    <Upload size={15} />
-    Import
-  </button>
-  )}
 
   <input
     type="number"
@@ -1573,12 +1562,6 @@ Add Record
         </div>
       )}
 
-      {showImport && (
-        <ImportModal
-          onClose={() => setShowImport(false)}
-          onImported={() => { fetchRecords(); setShowImport(false) }}
-        />
-      )}
 
       {/* Column header filter */}
       {headerFilter && (() => {
