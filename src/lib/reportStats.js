@@ -3,6 +3,7 @@
 // showing — one calculation, not two copies that can drift apart.
 import { supabase } from './supabase'
 import { fieldOrdersTable, pendingOrdersTable } from './sectorTables'
+import { fetchAllRows } from './fetchAllRows'
 import { isOverdueBy } from './aging'
 
 export const FO_COLUMNS =
@@ -122,9 +123,11 @@ const PAGE = 1000
 const PENDING_COLUMNS = 'id, status_crew, date_assign, date_executed'
 
 export async function fetchSectorPendingRows(sector) {
-  const { data, error } = await supabase
-    .from(pendingOrdersTable(sector))
-    .select(PENDING_COLUMNS)
+  const { data, error } = await fetchAllRows(() =>
+    supabase
+      .from(pendingOrdersTable(sector))
+      .select(PENDING_COLUMNS)
+      .order('id', { ascending: true }))
 
   if (error) {
     console.error(`Failed to load ${sector} pending orders:`, error)

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from '../lib/fetchAllRows'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
 import { X, Save, CheckCircle, Info, Upload, Plus } from 'lucide-react'
@@ -180,7 +181,11 @@ export default function PendingRecords() {
 
   const fetchPending = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase.from(poTable).select('*').order('created_at', { ascending: false })
+    // Paged: search and the filters run over every row on this page, so
+    // stopping at the first thousand would hide records and make the
+    // "N of N pending" count wrong with it.
+    const { data } = await fetchAllRows(() =>
+      supabase.from(poTable).select('*').order('created_at', { ascending: false }))
     if (data) {
       setPending(data)
       setSelectedRows(previous => previous.filter(id => data.some(row => row.id === id)))

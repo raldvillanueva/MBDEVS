@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArchiveRestore, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from '../lib/fetchAllRows'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
 import { useAuth } from '../lib/AuthContext'
@@ -35,15 +36,21 @@ export default function ArchivedWorkOrders() {
   const fetchRecords = useCallback(async () => {
     setLoading(true)
     setError('')
-    let query = supabase
-      .from(foTable)
-      .select('*')
-      .not('archived_at', 'is', null)
-      .order('archived_at', { ascending: false })
+    // Paged. The archive only grows, and a silent stop at a thousand would
+    // make older records simply unreachable from this page.
+    const build = () => applyFiltersToQuery(
+      supabase
+        .from(foTable)
+        .select('*')
+        .not('archived_at', 'is', null)
+        .order('archived_at', { ascending: false })
+        // archived_at ties would otherwise let rows repeat or vanish
+        // between pages.
+        .order('id', { ascending: true }),
+      effective, { page: 'archived', missing },
+    )
 
-    query = applyFiltersToQuery(query, effective, { page: 'archived', missing })
-
-    const { data, error: fetchError } = await query
+    const { data, error: fetchError } = await fetchAllRows(build)
     if (fetchError) {
       setError('We could not load archived work orders. Please try again.')
     } else {
