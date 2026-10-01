@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { useSector } from '../lib/SectorContext'
 import { DATA_SECTORS, SECTOR_LABELS, isDataSector } from '../lib/sectorTables'
-import { YEAR_START, TODAY, inDateRange, computeStats, fetchSectorRows } from '../lib/reportStats'
+import { YEAR_START, TODAY, inDateRange, computeStats, isAssigned, fetchSectorRows, fetchSectorPendingRows } from '../lib/reportStats'
 import { useSettings } from '../lib/SettingsContext'
 
 function Section({ title, children }) {
@@ -90,6 +90,9 @@ function rowSector(row) {
 
 export default function Dashboard() {
   const [rows, setRows] = useState([])
+  // Kept apart from the field orders. Only the Assigned tile reads these;
+  // mixing them in would quietly change every other figure on the page.
+  const [pendingRows, setPendingRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [dateFrom, setDateFrom] = useState(YEAR_START)
   const [dateTo, setDateTo] = useState(TODAY)
@@ -111,8 +114,12 @@ export default function Dashboard() {
       : isDataSector(sector) ? [sector] : []
 
     async function fetchData() {
-      const perSector = await Promise.all(sectorsToLoad.map(fetchSectorRows))
+      const [perSector, perSectorPending] = await Promise.all([
+        Promise.all(sectorsToLoad.map(fetchSectorRows)),
+        Promise.all(sectorsToLoad.map(fetchSectorPendingRows)),
+      ])
       setRows(perSector.flat())
+      setPendingRows(perSectorPending.flat())
       setLoading(false)
     }
     fetchData()
@@ -139,18 +146,30 @@ export default function Dashboard() {
 
   const stats = useMemo(() => computeStats(filtered, days), [filtered, days])
 
+  // A job with a crew on it is assigned whether or not it has been reviewed
+  // into Field Orders yet, so the tile counts both. Scoped and date-filtered
+  // the same way as everything else on the page.
+  const assignedPending = useMemo(() => {
+    const scoped = scope === 'all' || !scope
+      ? pendingRows
+      : pendingRows.filter(row => rowSector(row) === scope)
+    return inDateRange(scoped, dateFrom, dateTo).filter(isAssigned).length
+  }, [pendingRows, scope, dateFrom, dateTo])
+
   // Per-sector figures for the breakdown table. Date-filtered like everything
   // else, but never sector-filtered, so each sector is always listed — a sector
   // with no records shows zeros rather than disappearing.
   const bySector = useMemo(() => {
     const dated = inDateRange(rows, dateFrom, dateTo)
+    const datedPending = inDateRange(pendingRows, dateFrom, dateTo)
     return SUMMARY_SECTORS
       .filter(option => option.key !== 'all')
       .map(option => ({
         ...option,
         stats: computeStats(dated.filter(row => rowSector(row) === option.key), days),
+        assignedPending: datedPending.filter(row => rowSector(row) === option.key).filter(isAssigned).length,
       }))
-  }, [rows, dateFrom, dateTo])
+  }, [rows, pendingRows, dateFrom, dateTo])
 
   // Deliberately built from every row, not the date-filtered set: a pending
   // task has not been executed yet, so it has no date_executed and any
@@ -265,7 +284,17 @@ export default function Dashboard() {
 
       <Section title="Status">
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Assigned" value={stats.assigned} icon={ClipboardList} tint="bg-blue-50 text-blue-600" />
+          {/* Pending records count here too: a job with a crew on it is
+              assigned whether or not it has been reviewed into Field Orders
+              yet. The sub-line says so, because this is the one tile whose
+              number is not just the Field Orders table. */}
+          <StatCard
+            label="Assigned"
+            value={stats.assigned + assignedPending}
+            icon={ClipboardList}
+            tint="bg-blue-50 text-blue-600"
+            sub={assignedPending > 0 ? `${assignedPending.toLocaleString()} still in Pending` : undefined}
+          />
           <StatCard label="Field Complete" value={stats.fieldComplete} icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600" />
           <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} tint="bg-rose-50 text-rose-600" />
           <StatCard
@@ -347,7 +376,11 @@ export default function Dashboard() {
                     ) : (
                       <>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">{entry.stats.total}</td>
-                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.assigned}</td>
+                        {/* Same rule as the tile above, or the rollup would
+                            disagree with the figure beside it. */}
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">
+                          {entry.stats.assigned + entry.assignedPending}
+                        </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.fieldComplete}</td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-slate-600">{entry.stats.cancelled}</td>
                         <td className={`px-4 py-2.5 text-right tabular-nums ${entry.stats.overdueCritical > 0 ? 'font-semibold text-red-600' : 'text-slate-600'}`}>

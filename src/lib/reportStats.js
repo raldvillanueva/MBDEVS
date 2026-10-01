@@ -2,7 +2,7 @@
 // report always contains exactly the figures the Dashboard is already
 // showing — one calculation, not two copies that can drift apart.
 import { supabase } from './supabase'
-import { fieldOrdersTable } from './sectorTables'
+import { fieldOrdersTable, pendingOrdersTable } from './sectorTables'
 import { isOverdueBy } from './aging'
 
 export const FO_COLUMNS =
@@ -51,13 +51,19 @@ export function inDateRange(rows, from, to) {
 // The two overdue day counts are a System Settings value, so they arrive from
 // the caller. The defaults match what the app used before they were editable,
 // which keeps callers that don't care about them working unchanged.
+// A job with a crew on it. The same rule wherever the question is asked —
+// a pending record and a filed one count the same way.
+export function isAssigned(row) {
+  return ['ASSIGNED', 'REASSIGN'].includes(row?.status_crew?.toUpperCase() || '')
+}
+
 export function computeStats(list, { warningDays = 10, criticalDays = 21 } = {}) {
   const status = row => row.status_crew?.toUpperCase() || ''
   const action = row => row.fo_action?.toUpperCase() || ''
 
   return {
     total: list.length,
-    assigned: list.filter(r => ['ASSIGNED', 'REASSIGN'].includes(status(r))).length,
+    assigned: list.filter(isAssigned).length,
     fieldComplete: list.filter(r => status(r).includes('FIELD')).length,
     cancelled: list.filter(r => status(r).includes('CANCEL')).length,
     totalBilled: list.reduce((sum, r) => sum + (parseFloat(r.billed_amount) || 0), 0),
@@ -109,6 +115,23 @@ export function thresholdsOf(stats) {
 // quietly going back to under-reporting.
 const MAX_ROWS = 100000
 const PAGE = 1000
+
+// Only what the Assigned tile needs. A pending record is not a field order
+// and is not folded into the rest of the figures — it is counted for this
+// one question and nothing else.
+const PENDING_COLUMNS = 'id, status_crew, date_assign, date_executed'
+
+export async function fetchSectorPendingRows(sector) {
+  const { data, error } = await supabase
+    .from(pendingOrdersTable(sector))
+    .select(PENDING_COLUMNS)
+
+  if (error) {
+    console.error(`Failed to load ${sector} pending orders:`, error)
+    return []
+  }
+  return (data || []).map(row => ({ ...row, __sector: sector }))
+}
 
 export async function fetchSectorRows(sector) {
   const table = fieldOrdersTable(sector)
