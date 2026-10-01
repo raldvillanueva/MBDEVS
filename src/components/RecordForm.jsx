@@ -525,12 +525,16 @@ label="FO Action"
           </Field>
 
 
+          {/* No meter was touched on a cancelled job, so there is no type
+              to record. */}
+          {!isCancelled && (
           <Field label="Type of Meter">
             <select {...text('type_of_meter')} className={selectClass}>
               <option value="">— Select —</option>
               {opts('type_of_meter').map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
+          )}
 
           <Field label="Job Description">
             <select {...text('job_description')} className={selectClass}>

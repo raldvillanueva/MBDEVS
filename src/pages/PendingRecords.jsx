@@ -654,12 +654,16 @@ async function sendSelectedToFieldOrders() {
                 <PF label="Date Execution">
                   <input type="date" value={editForm.date_executed} onChange={e => sf('date_executed', e.target.value)} className={cls('date_executed')} />
                 </PF>
+                {/* No meter was touched on a cancelled job, so there is no
+                    type to record. */}
+                {!isCancelled && (
                 <PF label="Type of Meter">
                   <select value={editForm.type_of_meter} onChange={e => sf('type_of_meter', e.target.value)} className={cls('type_of_meter')}>
                     <option value="">— Select —</option>
                     {opts('type_of_meter').map(option => <option key={option}>{option}</option>)}
                   </select>
-                </PF> 
+                </PF>
+                )} 
                 <PF label="Job Description">
                   <select value={editForm.job_description} onChange={e => sf('job_description', e.target.value)} className={cls('job_description')}>
                     <option value="">— Select —</option>
@@ -681,12 +685,17 @@ async function sendSelectedToFieldOrders() {
                     <span className="text-sm text-slate-600">Checked</span>
                   </label>
                 </PF>
+                {/* Nothing came back from a cancelled job, so there is
+                    nothing to batch. Hidden on the record form too, which
+                    keeps the two in step. */}
+                {!isCancelled && (
                 <PF label="For Batch">
                   <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={cls('for_batch')}>
                     <option value="">— Select —</option>
                     {opts('for_batch').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
+                )}
                 {hasSubmission && (
                   <>
                     <PF label="Submitted To" optional>
