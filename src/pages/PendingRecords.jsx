@@ -434,7 +434,7 @@ async function sendSelectedToFieldOrders() {
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">#</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">FIELD ORDER</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">FO ACTION</th>
-                <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">INSTALLED METER</th>
+                <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">REMOVED METER</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">CREW NAME</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">SERVICE ID NUMBER</th>
                 <th className="px-3 py-2.5 text-left font-medium text-slate-300 whitespace-nowrap">DATE ADDED</th>
@@ -483,7 +483,7 @@ async function sendSelectedToFieldOrders() {
                     <td className="px-3 py-2.5 text-slate-400">{i + 1}</td>
                     <td className="px-3 py-2.5 font-mono text-blue-600 font-medium">{row.field_order_no || '—'}</td>
                     <td className="px-3 py-2.5 text-slate-700">{row.fo_action || '—'}</td>
-                    <td className="px-3 py-2.5 font-mono text-blue-600">{row.ins_meter || '—'}</td>
+                    <td className="px-3 py-2.5 font-mono text-blue-600">{row.remove_meter || '—'}</td>
                     <td className="px-3 py-2.5 text-slate-700">{row.crew_name || '—'}</td>
                     <td className="px-3 py-2.5 text-slate-700 max-w-[240px] overflow-hidden text-ellipsis whitespace-nowrap">{row.service_number || '—'}</td>
                     <td className="px-3 py-2.5 text-slate-500 whitespace-nowrap">
