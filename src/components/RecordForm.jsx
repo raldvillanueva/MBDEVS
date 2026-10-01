@@ -618,7 +618,7 @@ label="FO Action"
             <input {...text('remove_meter')} placeholder="e.g. 108BA055151" />
           </Field>
 
-          <Field label="Terminal Seal">
+          <Field label="R. Serial Number">
             <input {...text('r_serial_number')} placeholder="e.g. 0824851" />
           </Field>
 
@@ -626,7 +626,7 @@ label="FO Action"
             <input {...text('demand_seal_aerolock')} placeholder="Seal number" />
           </Field>
 
-          <Field label="Removed Seal" >
+          <Field label="Terminal Seal" >
             <input {...text('removed_seal')} placeholder="e.g. A22PT0018882" />
           </Field>
 

@@ -115,9 +115,9 @@ const COLS = [
   { label: 'DATE OF SUBMITTED',   key: 'date_submitted',        w: 140, render: r => r.date_submitted || '—' },
   // — REMOVE METER —
   { label: 'REMOVE METER',        key: 'remove_meter',          w: 130, render: r => r.remove_meter || '—' },
-  { label: 'TERMINAL SEAL (REMOVED)', key: 'r_serial_number',   w: 160, render: r => r.r_serial_number || '—' },
+  { label: 'R. SERIAL NUMBER',    key: 'r_serial_number',       w: 130, render: r => r.r_serial_number || '—' },
   { label: 'DEMAND SEAL NO.5',    key: 'demand_seal_aerolock',  w: 140, render: r => r.demand_seal_aerolock || '—' },
-  { label: 'REMOVED SEAL',        key: 'removed_seal',          w: 120, render: r => r.removed_seal || '—' },
+  { label: 'TERMINAL SEAL (REMOVED)', key: 'removed_seal',      w: 160, render: r => r.removed_seal || '—' },
   { label: 'CABINET SEAL (2)',     key: 'cabinet_seal_remove',   w: 130, render: r => r.cabinet_seal_remove || '—' },
   { label: 'READING (kWh)',        key: 'reading_kwh',           w: 115, render: r => r.reading_kwh || '—' },
   { label: 'DEMAND/Cum (kWh)', key: 'demand_kwh_cum',    w: 130, render: r => r.demand_kwh_cum || '—' },
@@ -633,9 +633,9 @@ useEffect(() => {
     { key: 'date_submitted',        label: 'Date of Submitted' },
     { key: 'field_order_no',        label: 'Field Order/FO' },
     { key: 'remove_meter',          label: 'Remove Meter' },
-    { key: 'r_serial_number',       label: 'Terminal Seal (Removed)' },
+    { key: 'r_serial_number',       label: 'R. Serial Number' },
     { key: 'demand_seal_aerolock',  label: 'Demand Seal No.5' },
-    { key: 'removed_seal',          label: 'Removed Seal' },
+    { key: 'removed_seal',          label: 'Terminal Seal (Removed)' },
     { key: 'cabinet_seal_remove',   label: 'Cabinet Seal (2)' },
     { key: 'reading_kwh',           label: 'Reading (kWh)' },
     { key: 'demand_kwh_cum',        label: 'DEMAND (kWh)/Cum Demand' },
@@ -1296,13 +1296,13 @@ useEffect(() => {
                 <PF label="Remove Meter No.">
                   <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} disabled={fieldLocked('remove_meter')} className={iCls} />
                 </PF>
-                <PF label="Terminal Seal">
+                <PF label="R. Serial Number">
                   <input value={editForm.r_serial_number} onChange={e => sf('r_serial_number', e.target.value)} disabled={fieldLocked('r_serial_number')} className={iCls} />
                 </PF>
                 <PF label="Demand Seal Aerolock">
                   <input value={editForm.demand_seal_aerolock} onChange={e => sf('demand_seal_aerolock', e.target.value)} disabled={fieldLocked('demand_seal_aerolock')} className={iCls} />
                 </PF>
-                <PF label="Removed Seal">
+                <PF label="Terminal Seal">
                   <input value={editForm.removed_seal} onChange={e => sf('removed_seal', e.target.value)} disabled={fieldLocked('removed_seal')} className={iCls} />
                 </PF>
                 <PF label="Cabinet Seal (Remove)">

@@ -697,13 +697,13 @@ async function sendSelectedToFieldOrders() {
                 <PF label="Remove Meter No.">
                   <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} className={cls('remove_meter')} />
                 </PF>
-                <PF label="Terminal Seal">
+                <PF label="R. Serial Number">
                   <input value={editForm.r_serial_number} onChange={e => sf('r_serial_number', e.target.value)} className={cls('r_serial_number')} />
                 </PF>
                 <PF label="Demand Seal Aerolock">
                   <input value={editForm.demand_seal_aerolock} onChange={e => sf('demand_seal_aerolock', e.target.value)} className={cls('demand_seal_aerolock')} />
                 </PF>
-                <PF label="Removed Seal">
+                <PF label="Terminal Seal">
                   <input value={editForm.removed_seal} onChange={e => sf('removed_seal', e.target.value)} className={cls('removed_seal')} />
                 </PF>
                 <PF label="Cabinet Seal (Remove)">
