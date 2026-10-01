@@ -104,7 +104,6 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   // always offered too, so an older value is never blanked out on edit.
   const { optionsFor } = useDropdowns()
   const opts = field => optionsFor(field, sector, form[field])
-  const crewNames = opts('crew_name')
   const hasSubmission = useSubmissionColumns(sector)
   // A Viewer has no business on this form at all. An Encoder does: they
   // add to Pending, and a reviewer moves it on to Field Orders.
@@ -112,6 +111,10 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   const fastFONoRef = useRef(null)
   const autoSubmitLock = useRef(false)
   const [form, setForm] = useState(initialData || EMPTY_FORM)
+  // Below `form`, not above it: opts() reads form[field], so calling it any
+  // earlier reads a const that has not been initialised yet and throws
+  // before the form can render at all.
+  const crewNames = opts('crew_name')
   const [saving, setSaving] = useState(false)
   const [savingPending, setSavingPending] = useState(false)
   const [pendingRepeat, setPendingRepeat] = useState(1)
