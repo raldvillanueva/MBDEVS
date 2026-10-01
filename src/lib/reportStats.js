@@ -6,7 +6,10 @@ import { fieldOrdersTable } from './sectorTables'
 import { isOverdueBy } from './aging'
 
 export const FO_COLUMNS =
-  'status_crew, fo_type, fo_action, for_batch, billed_amount, crew_name, ' +
+  // id is selected because paging orders by it to break ties; ordering by a
+  // column that is not selected is allowed, but relying on that is a
+  // needless thing to be wrong about.
+  'id, status_crew, fo_type, fo_action, for_batch, billed_amount, crew_name, ' +
   'field_order_no, location, created_at, seq, date_assign, date_executed, ' +
   'date_returned, archived_at'
 
@@ -26,9 +29,21 @@ export const TODAY = toISODate(new Date())
 export function inDateRange(rows, from, to) {
   if (!from && !to) return rows
   return rows.filter(row => {
-    if (!row.date_executed) return false
-    if (from && row.date_executed < from) return false
-    if (to && row.date_executed > to) return false
+    // Date executed is the right date to place a job by, but an assigned
+    // job that has not been done yet does not have one — and most imported
+    // rows carry only the assignment date. Dropping those made the whole
+    // Dashboard read zero while the table held thousands of records, so
+    // fall back to the assignment date.
+    const when = row.date_executed || row.date_assign
+
+    // Neither date means the record cannot be placed in time at all. It is
+    // still a real record, so it is counted rather than hidden: a figure
+    // that silently omits rows is worse than one that includes an undated
+    // few.
+    if (!when) return true
+
+    if (from && when < from) return false
+    if (to && when > to) return false
     return true
   })
 }
@@ -84,16 +99,46 @@ export function thresholdsOf(stats) {
 
 // Fetch one sector's field_orders rows, tagged with the sector they came
 // from. A failed sector must not blank out the whole dashboard/report.
-export async function fetchSectorRows(sector) {
-  const { data, error } = await supabase
-    .from(fieldOrdersTable(sector))
-    .select(FO_COLUMNS)
-    .order('seq', { ascending: true, nullsFirst: true })
-    .order('created_at', { ascending: false })
+// PostgREST returns at most 1,000 rows per request and says nothing about
+// the rest. Without paging, every figure on the Dashboard was computed from
+// the first thousand records and presented as the total — wrong, and wrong
+// in a way nothing on screen would reveal.
+//
+// A hard stop so a runaway loop cannot hang the page. Well past any sector's
+// real size; if it is ever reached the console says so rather than the page
+// quietly going back to under-reporting.
+const MAX_ROWS = 100000
+const PAGE = 1000
 
-  if (error) {
-    console.error(`Failed to load ${sector} field orders:`, error)
-    return []
+export async function fetchSectorRows(sector) {
+  const table = fieldOrdersTable(sector)
+  const all = []
+
+  for (let from = 0; from < MAX_ROWS; from += PAGE) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(FO_COLUMNS)
+      .order('seq', { ascending: true, nullsFirst: true })
+      .order('created_at', { ascending: false })
+      // id breaks ties. Without it, rows sharing a seq and a created_at come
+      // back in no fixed order and could repeat or vanish between pages.
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1)
+
+    if (error) {
+      console.error(`Failed to load ${sector} field orders:`, error)
+      // Whatever arrived before the failure, rather than nothing.
+      break
+    }
+    if (!data || data.length === 0) break
+
+    all.push(...data)
+    if (data.length < PAGE) break
   }
-  return (data || []).map(row => ({ ...row, __sector: sector }))
+
+  if (all.length >= MAX_ROWS) {
+    console.warn(`${sector}: stopped at ${MAX_ROWS} rows; totals are understated`)
+  }
+
+  return all.map(row => ({ ...row, __sector: sector }))
 }
