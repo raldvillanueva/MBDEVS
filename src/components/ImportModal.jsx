@@ -148,13 +148,40 @@ function autoMap(headers) {
 // UTC and can move a Manila date back a day.
 function toISODate(d) {
   if (!(d instanceof Date) || isNaN(d.getTime())) return ''
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  // A date in a spreadsheet is a calendar day: no time, no timezone. By the
+  // time it reaches here it is a Date, and SheetJS lands it 25 seconds short
+  // of midnight when it turns the stored serial back — so reading the
+  // calendar parts straight off gave the day before. 2026-09-30 imported as
+  // the 29th, on every row with a real date cell.
+  //
+  // Snapping to the nearest midnight puts it back on the day it was typed,
+  // and is read in UTC so the viewer's own timezone cannot shift it again.
+  const snapped = new Date(Math.round(d.getTime() / 86400000) * 86400000)
+  return `${snapped.getUTCFullYear()}-${String(snapped.getUTCMonth() + 1).padStart(2, '0')}-${String(snapped.getUTCDate()).padStart(2, '0')}`
 }
 
 function coerce(dbField, raw) {
   if (raw === '' || raw == null) return null
   if (DATE_FIELDS.has(dbField)) {
     const s = String(raw).trim()
+
+    // A bare number in a date column is an Excel serial — days since
+    // 1899-12-30. It reaches us whenever the cell lost its date format
+    // somewhere along the way, and without this it would be stored as the
+    // literal text "46294".
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      const serial = Number(s)
+      // 1 is 1900-01-01 and 2958465 is 9999-12-31. Outside that it is some
+      // other number that happens to be sitting in a date column, and
+      // guessing at it would be worse than leaving it empty.
+      if (serial >= 1 && serial <= 2958465) {
+        const d = new Date(Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000)
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      }
+      return null
+    }
+
     const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
     if (mdy) return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s

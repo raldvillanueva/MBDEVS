@@ -68,11 +68,11 @@ export async function downloadImportTemplate() {
   // The dropdown arrows on row 1, same as the sheet they are used to.
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: COLUMNS.length } }
 
-  // Dates as text, not as a date type. Excel reformats a date cell to
-  // whatever the machine's locale is, and a sheet that shows 09/30/2026 on
-  // one computer and 30/09/2026 on another is how the wrong month gets
-  // imported.
-  ws.getColumn(1).numFmt = '@'
+  // The date column is deliberately left as a normal column. Forcing it to
+  // text made Excel store a typed date as its raw serial number with a text
+  // format, and the importer then read 46294 instead of a date. Left alone,
+  // a real date stays a real date — which is unambiguous, unlike the
+  // 09/01/2026 that a text column would have produced.
 
   const buffer = await wb.xlsx.writeBuffer()
   const blob = new Blob([buffer], {
