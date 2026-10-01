@@ -132,7 +132,6 @@ export default function PendingRecords() {
   const poTable = pendingOrdersTable(sector)
   const { role, canEncode, canManage } = useAuth()
   // Crew names come from System Settings, not a constant in this file.
-  const { crewNames } = useSettings()
   const { optionsFor } = useDropdowns()
   // Removing from Pending and bulk actions are review decisions.
   const isAdmin = canManage || role === 'admin'
@@ -650,7 +649,7 @@ async function sendSelectedToFieldOrders() {
                 <PF label="Crew Name">
                   <select value={editForm.crew_name} onChange={e => sf('crew_name', e.target.value)} className={cls('crew_name')}>
                     <option value="">— Select —</option>
-                    {crewNames.map(option => <option key={option}>{option}</option>)}
+                    {opts('crew_name').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
                 <PF label="Location" span2>

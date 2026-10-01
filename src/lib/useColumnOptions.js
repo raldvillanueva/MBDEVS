@@ -24,7 +24,6 @@ const CACHE_MS = 60 * 1000
  */
 export function useColumnOptions({ page, sector, rows }) {
   const { optionsFor } = useDropdowns()
-  const { crewNames } = useSettings()
   const cache = useRef(new Map())
 
   useEffect(() => { cache.current = new Map() }, [page, sector])
@@ -36,7 +35,6 @@ export function useColumnOptions({ page, sector, rows }) {
 
     let listValues = []
     if (DROPDOWN_FIELD_KEYS.includes(fieldKey)) listValues = optionsFor(fieldKey, sector)
-    else if (fieldKey === 'crew_name') listValues = crewNames || []
     else if (fieldKey === 'status_crew') listValues = STATUS_FILTER_OPTIONS
     else if (fieldKey === 'fo_action') listValues = FO_ACTION_OPTIONS
 
@@ -102,5 +100,5 @@ export function useColumnOptions({ page, sector, rows }) {
 
     if (blank) ordered.push({ value: BLANK, label: '(Blank)', count: blank.count })
     return ordered
-  }, [optionsFor, crewNames, rows, page, sector])
+  }, [optionsFor, rows, page, sector])
 }

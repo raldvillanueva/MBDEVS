@@ -69,12 +69,10 @@ function GeneralSettings() {
   // Saving refreshes the app-wide copy, so the crew dropdown and the overdue
   // tiles change on the next render rather than after a reload.
   const { reload: reloadAppSettings } = useSettings()
-  const [crewNames, setCrewNames] = useState([])
   const [warningDays, setWarningDays] = useState(10)
   const [criticalDays, setCriticalDays] = useState(21)
   // Columns whose filter is switched off, everywhere, for everyone.
   const [filterOff, setFilterOff] = useState([])
-  const [newCrew, setNewCrew] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -96,12 +94,10 @@ function GeneralSettings() {
     }
 
     const byKey = Object.fromEntries((data || []).map(r => [r.key, r.value]))
-    setCrewNames(Array.isArray(byKey.crew_names) ? byKey.crew_names : [])
     setWarningDays(Number(byKey.overdue_warning_days ?? 10))
     setCriticalDays(Number(byKey.overdue_critical_days ?? 21))
     setFilterOff(Array.isArray(byKey.filter_disabled_columns) ? byKey.filter_disabled_columns : [])
     setSaved({
-      crewNames: Array.isArray(byKey.crew_names) ? byKey.crew_names : [],
       warningDays: Number(byKey.overdue_warning_days ?? 10),
       criticalDays: Number(byKey.overdue_critical_days ?? 21),
       filterOff: Array.isArray(byKey.filter_disabled_columns) ? byKey.filter_disabled_columns : [],
@@ -110,22 +106,6 @@ function GeneralSettings() {
   }, [])
 
   useEffect(() => { load() }, [load])
-
-  function addCrew() {
-    const name = newCrew.trim().toUpperCase()
-    if (!name) return
-    if (crewNames.includes(name)) {
-      setError(`${name} is already on the list.`)
-      return
-    }
-    setError('')
-    setCrewNames([...crewNames, name].sort())
-    setNewCrew('')
-  }
-
-  function removeCrew(name) {
-    setCrewNames(crewNames.filter(n => n !== name))
-  }
 
   async function save() {
     setError('')
@@ -145,7 +125,6 @@ function GeneralSettings() {
     // Upsert rather than update: an update against a key the seed never
     // created would report success while changing nothing.
     const { error: err } = await supabase.from('app_settings').upsert([
-      { key: 'crew_names', label: 'Crew names', value: crewNames, ...stamp },
       { key: 'overdue_warning_days', label: 'Overdue warning (days)', value: warningDays, ...stamp },
       { key: 'overdue_critical_days', label: 'Overdue critical (days)', value: criticalDays, ...stamp },
       { key: 'filter_disabled_columns', label: 'Column filters switched off', value: filterOff, ...stamp },
@@ -164,7 +143,6 @@ function GeneralSettings() {
     // What is on screen is now what the database holds, so the unsaved
     // warning clears without needing a reload to find that out.
     setSaved({
-      crewNames: [...crewNames],
       warningDays: Number(warningDays),
       criticalDays: Number(criticalDays),
       filterOff: [...filterOff],
@@ -178,7 +156,6 @@ function GeneralSettings() {
   // Order carries no meaning in either list, so a reorder is not a change.
   const same = (a, b) => JSON.stringify([...(a || [])].sort()) === JSON.stringify([...(b || [])].sort())
   const dirty = !!saved && (
-    !same(crewNames, saved.crewNames) ||
     !same(filterOff, saved.filterOff) ||
     Number(warningDays) !== saved.warningDays ||
     Number(criticalDays) !== saved.criticalDays
@@ -214,69 +191,6 @@ function GeneralSettings() {
       ) : (
         <div className="max-w-2xl space-y-5">
 
-          {/* Crew names */}
-          <section className="overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-sm">
-            <div className="flex items-center gap-2 border-b border-[#D9D9D9] px-5 py-4">
-              <Users size={18} className="text-[#D89B00]" />
-              <h2 className="font-semibold text-[#2E2E2E]">Crew Names</h2>
-              <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-                {crewNames.length}
-              </span>
-            </div>
-
-            <div className="px-5 py-4">
-              <p className="mb-3 text-sm text-slate-500">
-                These fill the Crew Name dropdown when encoding a record.
-              </p>
-
-              <div className="mb-4 flex flex-wrap gap-2">
-                {crewNames.length === 0 && (
-                  <p className="text-sm text-slate-400">No crews yet.</p>
-                )}
-                {crewNames.map(name => (
-                  <span
-                    key={name}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-1 pl-3 pr-1.5 text-sm text-slate-700"
-                  >
-                    {name}
-                    <button
-                      onClick={() => removeCrew(name)}
-                      title={`Remove ${name}`}
-                      className="rounded-full p-0.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
-                    >
-                      <X size={13} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newCrew}
-                  onChange={e => setNewCrew(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCrew() } }}
-                  placeholder="e.g. R. SANTOS"
-                  className="flex-1 rounded-lg border border-[#D9D9D9] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#D89B00]"
-                />
-                <button
-                  onClick={addCrew}
-                  className="flex items-center gap-1.5 rounded-lg border border-[#D9D9D9] px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-                >
-                  <Plus size={15} />
-                  Add
-                </button>
-              </div>
-
-              <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                <Info size={14} className="mt-0.5 shrink-0" />
-                <p>
-                  Removing a crew only takes them off the dropdown. Records already
-                  naming them keep that name — nothing is rewritten.
-                </p>
-              </div>
-            </div>
-          </section>
 
           {/* Overdue thresholds */}
           <section className="overflow-hidden rounded-2xl border border-[#D9D9D9] bg-white shadow-sm">

@@ -99,12 +99,12 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   const foTable = fieldOrdersTable(sector)
   const poTable = pendingOrdersTable(sector)
   const { accountType, canEncode, canManage } = useAuth()
-  const { crewNames } = useSettings()
-  // Job Description, Type of Meter, FO Type, For Batch and Billed Amount
-  // come from the Dropdown Lists page. The record's own value is always
-  // offered too, so an older value is never blanked out on edit.
+  // Job Description, Type of Meter, FO Type, For Batch, Billed Amount and
+  // Crew Name come from the Dropdown Lists page. The record's own value is
+  // always offered too, so an older value is never blanked out on edit.
   const { optionsFor } = useDropdowns()
   const opts = field => optionsFor(field, sector, form[field])
+  const crewNames = opts('crew_name')
   const hasSubmission = useSubmissionColumns(sector)
   // A Viewer has no business on this form at all. An Encoder does: they
   // add to Pending, and a reviewer moves it on to Field Orders.
@@ -575,7 +575,7 @@ label="FO Action"
                 a dropdown with nothing in it. */}
             {crewNames.length === 0 && (
               <span className="text-xs text-amber-600">
-                No crews set up yet — add them in System Settings.
+                No crews set up yet — add them in System Settings → Dropdown Lists.
               </span>
             )}
           </Field>

@@ -12,6 +12,9 @@ export const DROPDOWN_FIELDS = [
   { key: 'billed_amount',   label: 'Billed Amount', numeric: true },
   // Suggestions only: the form still accepts any name typed in.
   { key: 'submitted_to',    label: 'Submitted To', freeText: true },
+  // Moved here from the General tab. Crews are per sector in practice,
+  // and this is the only list that can be limited to one.
+  { key: 'crew_name',       label: 'Crew Name' },
 ]
 
 export const DROPDOWN_FIELD_KEYS = DROPDOWN_FIELDS.map(f => f.key)
@@ -42,6 +45,9 @@ export const DEFAULT_OPTIONS = {
   for_batch: ['ALREADY BATCH', 'FOR BATCH', 'MISSING METER', 'OTHERS PENDING'],
   billed_amount: ['0', '172.45', '253.43', '344.9', '383.22', '574.83', '766.44', '958.05', '1013.71', '1689.61'],
   submitted_to: [],
+  // Only the fallback for before the migration has run. The real names
+  // come from dropdown_options.
+  crew_name: [],
 }
 
 // Status Crew and FO Action stay fixed on purpose: the app reads them to
