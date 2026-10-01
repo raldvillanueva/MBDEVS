@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck, MapPin, Pencil, Settings, KeyRound } from 'lucide-react'
-import ChangePasswordModal from './ChangePasswordModal'
+import { LayoutDashboard, ClipboardList, Clock, Archive, ShieldAlert, LogOut, Eye, ArrowLeftRight, FileText, ShieldCheck, MapPin, Pencil, Settings } from 'lucide-react'
+import AccountMenu from './AccountMenu'
 import logo from '../assets/mb-logo.jpg'
 import { useAuth } from '../lib/AuthContext'
 import { useSector } from '../lib/SectorContext'
@@ -36,7 +36,6 @@ export default function Sidebar() {
   const [deletionCount, setDeletionCount] = useState(0)
   const [editRequestCount, setEditRequestCount] = useState(0)
   const [signingOut, setSigningOut] = useState(false)
-  const [changingPassword, setChangingPassword] = useState(false)
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -257,39 +256,29 @@ export default function Sidebar() {
 
       <div className="border-t border-[#444] px-5 py-4">
 
-        <p className="truncate text-xs text-gray-300" title={profile?.full_name || session?.user?.email}>
-          {profile?.full_name || session?.user?.email}
-        </p>
+        {/* Anything to do with your own account hangs off your own name. */}
+        <AccountMenu>
+          <p className="truncate text-xs text-gray-300" title={profile?.full_name || session?.user?.email}>
+            {profile?.full_name || session?.user?.email}
+          </p>
 
-        <span
-          className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-            ACCOUNT_TYPE_BADGES[accountType] || 'bg-slate-500 text-white'
-          }`}
-        >
-          {ACCOUNT_TYPE_LABELS[accountType] || accountType || role}
-        </span>
-
-        {/* Every account can change its own password. The Super Admin's
-            reset is for a password nobody can remember; this is for one
-            the owner simply wants changed. */}
-        <button
-          onClick={() => setChangingPassword(true)}
-          className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#3C3C3C] hover:text-white"
-        >
-          <KeyRound size={16} />
-          Change Password
-        </button>
+          <span
+            className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+              ACCOUNT_TYPE_BADGES[accountType] || 'bg-slate-500 text-white'
+            }`}
+          >
+            {ACCOUNT_TYPE_LABELS[accountType] || accountType || role}
+          </span>
+        </AccountMenu>
 
         <button
           onClick={handleSignOut}
           disabled={signingOut}
-          className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#3C3C3C] hover:text-white disabled:opacity-60"
+          className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#3C3C3C] hover:text-white disabled:opacity-60"
         >
           <LogOut size={16} />
           {signingOut ? 'Signing out…' : 'Sign Out'}
         </button>
-
-        {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
 
         <p className="mt-3 text-[11px] text-gray-500">
           MB Development Corporation
