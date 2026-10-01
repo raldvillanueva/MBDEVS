@@ -381,9 +381,18 @@ async function sendSelectedToFieldOrders() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Imports land here by default, so this is where the button
-              belongs. It was on Field Orders, a page the rows no longer
-              arrive on. */}
+          {/* Import first: bringing a batch in is the usual way records
+              get here, and adding one by hand is the exception. */}
+          {isAdmin && (
+            <button
+              onClick={() => setShowImport(true)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
+            >
+              <Upload size={15} />
+              Import
+            </button>
+          )}
+
           {canEdit && (
             <>
               <input
@@ -403,16 +412,6 @@ async function sendSelectedToFieldOrders() {
                 Add Record
               </button>
             </>
-          )}
-
-          {isAdmin && (
-            <button
-              onClick={() => setShowImport(true)}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100"
-            >
-              <Upload size={15} />
-              Import
-            </button>
           )}
 
           {isAdmin && selectedRows.length > 0 && (
