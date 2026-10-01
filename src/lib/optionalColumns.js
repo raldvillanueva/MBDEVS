@@ -52,35 +52,6 @@ export function withSubmission(payload, has) {
   return out
 }
 
-// Photos arrived the same way, with record_photos_setup.sql. Until that
-// has been run the strip stays hidden and `photos` is left out of saves,
-// so the app works either side of the migration.
-
-export const PHOTO_COLUMNS = ['photos']
-
-/** true once both of the sector's tables can hold photo paths. */
-export function usePhotoColumn(sector) {
-  const [has, setHas] = useState(false)
-  useEffect(() => {
-    let alive = true
-    if (!isDataSector(sector)) { setHas(false); return undefined }
-    Promise.all([
-      tableHas(fieldOrdersTable(sector), PHOTO_COLUMNS),
-      tableHas(pendingOrdersTable(sector), PHOTO_COLUMNS),
-    ]).then(([a, b]) => { if (alive) setHas(a && b) })
-    return () => { alive = false }
-  }, [sector])
-  return has
-}
-
-/** Drop the photo list from a save when the table cannot take it. */
-export function withPhotos(payload, has) {
-  if (has) return payload
-  const out = { ...payload }
-  for (const c of PHOTO_COLUMNS) delete out[c]
-  return out
-}
-
 /**
  * For the filter bar and column headers of one sector:
  *   missing   new columns this sector's tables do not have yet

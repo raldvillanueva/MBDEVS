@@ -11,8 +11,7 @@ import { useSettings } from '../lib/SettingsContext'
 import { isCancelledRecord } from '../lib/cancelled'
 import { useDropdowns } from '../lib/DropdownContext'
 import { emptyFilters, rowMatchesFilters, withoutColumns } from '../lib/recordFilters'
-import { useFilterColumns, usePhotoColumn, withPhotos, withSubmission } from '../lib/optionalColumns'
-import RecordPhotos from '../components/RecordPhotos'
+import { useFilterColumns, withSubmission } from '../lib/optionalColumns'
 import { useColumnOptions } from '../lib/useColumnOptions'
 import { FO_ACTION_OPTIONS } from '../lib/dropdownLists'
 import FilterBar from '../components/filters/FilterBar'
@@ -33,7 +32,7 @@ const EMPTY_FORM = {
   mflt_checklist: false, fo_type: '', billed_amount: '', for_batch: '', date_returned: '',
   crew_payrol: '', pluscode: '', plangrid: '',
   // Optional; only saved once the database has these columns.
-  submitted_to: '', date_submitted: '', photos: [],
+  submitted_to: '', date_submitted: '',
 }
 
 const iCls = 'w-full px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
@@ -184,7 +183,6 @@ export default function PendingRecords() {
   // `unavailable`: new columns not in the database yet; switched-off
   // column filters (System Settings) are dropped too.
   const { hasSubmission, missing: unavailable, disabled: filterOff, hidden: filterHidden } = useFilterColumns(sector)
-  const hasPhotos = usePhotoColumn(sector)
   const filtered = useMemo(
     () => pending.filter(r => rowMatchesFilters(r, withoutColumns(filters, filterHidden), { page: 'pending', missing: unavailable })),
     [pending, filters, filterHidden, unavailable],
@@ -255,9 +253,8 @@ export default function PendingRecords() {
       date_returned: rest.date_returned || null,
     }
   }
-  // Leaves Submitted To / Date of Submitted — and the photo list — out
-  // until the table has the columns for them.
-  const toSave = record => withPhotos(withSubmission(toPayload(record), hasSubmission), hasPhotos)
+  // Leaves Submitted To / Date of Submitted out until the table has them.
+  const toSave = record => withSubmission(toPayload(record), hasSubmission)
   function savePayload() { return toSave(editForm) }
 
   async function updatePending() {
@@ -843,19 +840,6 @@ async function sendSelectedToFieldOrders() {
                       <input type="date" value={editForm.date_submitted ?? ''} onChange={e => sf('date_submitted', e.target.value)} className={iCls} />
                     </PF>
                   </>
-                )}
-                {/* One row of thumbnails rather than a panel of its own:
-                    the drawer is long enough already, and the pictures are
-                    looked at full size anyway. */}
-                {hasPhotos && (
-                  <div className="col-span-2">
-                    <RecordPhotos
-                      value={editForm.photos}
-                      onChange={next => sf('photos', next)}
-                      sector={sector}
-                      readOnly={!canEdit}
-                    />
-                  </div>
                 )}
                 <PF label="Remarks" span2 optional>
                   <textarea value={editForm.remarks} onChange={e => sf('remarks', e.target.value)} rows={3} className={`${iCls} resize-none`} />

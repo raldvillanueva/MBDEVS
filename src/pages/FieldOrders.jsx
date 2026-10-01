@@ -13,19 +13,25 @@ import { useDropdowns } from '../lib/DropdownContext'
 import { useColumnOptions } from '../lib/useColumnOptions'
 import { emptyFilters, applyFiltersToQuery, hasActiveFilters, filterField, ruleIsComplete, withoutColumns } from '../lib/recordFilters'
 import { useFilterColumns, withSubmission, SUBMISSION_COLUMNS } from '../lib/optionalColumns'
-import RecordPhotos from '../components/RecordPhotos'
 import FilterBar from '../components/filters/FilterBar'
 import { FloatingPanel, ValuePicker, RuleEditor } from '../components/filters/FilterControls'
 
 const PAGE_SIZE = 50
 
 // Once a record is in Field Orders it is the record of what happened, so
-// the direct edit only moves the three things that genuinely still change
+// the direct edit only moves the things that genuinely still change
 // afterwards. Anything else is a correction, and corrections go through
 // Request Edit where somebody reviews them.
 // Submitted To / Date of Submitted are filled in after the job, when the
 // record is already here, so they stay directly editable too.
-const FIELD_ORDER_EDITABLE = ['status_crew', 'for_check', 'for_batch', 'submitted_to', 'date_submitted']
+// Installed Meter No. and the installed Terminal Seal join them: both are
+// routinely read off the paperwork after the record has moved on, and
+// sending every one of those through review was making work out of
+// ordinary completion.
+const FIELD_ORDER_EDITABLE = [
+  'status_crew', 'for_check', 'for_batch', 'submitted_to', 'date_submitted',
+  'ins_meter', 'installed_seal',
+]
 
 // Aging and Due Date are worked out in the browser, so there is no column
 // to sort on — they order by the date they are derived from instead.
@@ -1403,12 +1409,6 @@ useEffect(() => {
     {(editForm.remarks || '').length}/100
   </p>
 </PF>
-                {/* Read from the stored row, not the form: a record here
-                    is settled, so its pictures are there to be looked at
-                    and nothing more. Renders nothing when there are none. */}
-                <div className="col-span-2">
-                  <RecordPhotos value={editRow.photos} onChange={() => {}} sector={sector} readOnly />
-                </div>
               </PS>
 
               </fieldset>
