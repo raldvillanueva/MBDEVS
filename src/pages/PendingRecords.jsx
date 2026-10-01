@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
-import { X, Save, CheckCircle, Info, Upload } from 'lucide-react'
+import { X, Save, CheckCircle, Info, Upload, Plus } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import ImportModal from '../components/ImportModal'
 import { useSettings } from '../lib/SettingsContext'
@@ -153,7 +154,11 @@ export default function PendingRecords() {
   const [bulkAction, setBulkAction] = useState(null)
   const [pageError, setPageError] = useState('')
   const [missing, setMissing] = useState([])
+  const navigate = useNavigate()
   const [showImport, setShowImport] = useState(false)
+  // How many copies of the next record to create in a row, for a batch
+  // of near-identical jobs.
+  const [repeatCount, setRepeatCount] = useState(1)
 
   const cls = key => (missing.includes(key) ? `${iCls} !border-red-500 !bg-red-50` : iCls)
 
@@ -379,6 +384,27 @@ async function sendSelectedToFieldOrders() {
           {/* Imports land here by default, so this is where the button
               belongs. It was on Field Orders, a page the rows no longer
               arrive on. */}
+          {canEdit && (
+            <>
+              <input
+                type="number"
+                min="1"
+                value={repeatCount}
+                onChange={e => setRepeatCount(Number(e.target.value))}
+                placeholder="Qty"
+                title="How many copies of the next record to create"
+                className="w-20 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={() => navigate('/field-orders/add', { state: { repeatCount, currentRepeat: 1 } })}
+                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                <Plus size={16} />
+                Add Record
+              </button>
+            </>
+          )}
+
           {isAdmin && (
             <button
               onClick={() => setShowImport(true)}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable } from '../lib/sectorTables'
-import { Plus, ChevronLeft, ChevronRight, X, Save, Download, Upload, Archive, Send, Info } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Save, Download, Archive, Send, Info } from 'lucide-react'
 import RequestDeletionModal from '../components/RequestDeletionModal'
 import RequestEditModal from '../components/RequestEditModal'
 import { useAuth } from '../lib/AuthContext'
@@ -231,7 +231,6 @@ export default function FieldOrders() {
   const navigate = useNavigate()
   const [selectedRows,setSelectedRows]=useState([])
   const [selectAllPages, setSelectAllPages] = useState(false)
-  const [repeatCount,setRepeatCount] = useState(1)
 
 function deleteSelected() {
   const count = selectAllPages ? total : selectedRows.length
@@ -745,63 +744,6 @@ useEffect(() => {
         </div>
         <div className="flex items-center gap-3">
 
-  {canEncode && (
-    <>
-
-  <input
-    type="number"
-    min="1"
-    value={repeatCount}
-    onChange={
-      e => setRepeatCount(Number(e.target.value))
-    }
-    className="
-      px-3
-      py-2
-      border
-      border-slate-200
-      rounded-lg
-      w-24
-      text-sm
-      focus:outline-none
-      focus:ring-2
-      focus:ring-blue-500
-    "
-    placeholder="Qty"
-  />
-
-<button
-  onClick={() =>
-    navigate('/field-orders/add',{
-      state:{
-        repeatCount,
-        currentRepeat:1
-      }
-    })
-  }
-  className="
-    flex
-    items-center
-    gap-2
-    bg-blue-600
-    hover:bg-blue-700
-    text-white
-    px-4
-    py-2
-    rounded-lg
-    text-sm
-    font-medium
-    transition-colors
-  "
->
-
-<Plus size={16}/>
-
-Add Record
-
-</button>
-    </>
-  )}
 
 </div>
       </div>
