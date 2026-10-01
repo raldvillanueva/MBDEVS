@@ -207,11 +207,9 @@ export default function ImportModal({ onClose, onImported }) {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
   const poTable = pendingOrdersTable(sector)
-  // Imported rows are somebody else's spreadsheet, not reviewed records,
-  // so Pending is the default: they land somewhere they can be checked and
-  // completed before anyone treats them as real. Field Orders stays
-  // available for a backfill of records that are already finished.
-  const [destination, setDestination] = useState('pending')
+  // Everything imported goes to Pending. An imported sheet is somebody
+  // else's data, not a reviewed record, so it lands where it can be
+  // checked and completed before anyone treats it as real.
   const [step, setStep] = useState('upload')
   const [csvHeaders, setCsvHeaders] = useState([])
   const [csvRows, setCsvRows] = useState([])
@@ -411,7 +409,6 @@ export default function ImportModal({ onClose, onImported }) {
     // requests at this size rather than 120. A batch that fails is
     // retried row by row below, so the size costs nothing in accuracy.
     const BATCH = 500
-    const table = destination === 'fieldOrders' ? foTable : poTable
     const offset = rowOffset !== '' ? parseInt(rowOffset) : 0
     const limit = rowLimit !== '' ? parseInt(rowLimit) : csvRows.length
     const rowsToImport = csvRows.slice(offset, offset + limit)
@@ -445,13 +442,6 @@ export default function ImportModal({ onClose, onImported }) {
       }
       if (key) seenInThisFile.add(key)
 
-      // seq orders the Field Orders table and exists only there. Setting it
-      // on a pending row made Postgres reject the whole insert for a column
-      // that is not on that table, so nothing reached Pending at all.
-      //
-      // Numbered over the rows actually kept, so the sequence has no gaps
-      // where duplicates were dropped.
-      if (destination === 'fieldOrders') obj.seq = offset + payloads.length + 1
       payloads.push(obj)
     }
 
@@ -473,7 +463,7 @@ export default function ImportModal({ onClose, onImported }) {
 
     for (let i = 0; i < payloads.length; i += BATCH) {
       const batch = payloads.slice(i, i + BATCH)
-      const { error } = await supabase.from(table).insert(batch)
+      const { error } = await supabase.from(poTable).insert(batch)
 
       if (!error) {
         done += batch.length
@@ -483,7 +473,7 @@ export default function ImportModal({ onClose, onImported }) {
         // it. Retry them one at a time: slow, but only for the batch that
         // actually had a problem, and only the real offenders are lost.
         for (let j = 0; j < batch.length; j++) {
-          const { error: rowError } = await supabase.from(table).insert([batch[j]])
+          const { error: rowError } = await supabase.from(poTable).insert([batch[j]])
           if (rowError) {
             errors++
             noteFailure(rowError.message, offset + i + j + 2)
@@ -645,31 +635,7 @@ export default function ImportModal({ onClose, onImported }) {
                 </div>
               )}
 
-              {/* Where the rows land. Pending is the default because an
-            imported sheet is somebody else's data, not a reviewed record. */}
-        <div className="mb-4 rounded-lg border border-[#D9D9D9] bg-slate-50 px-3 py-2.5">
-          <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-slate-400">Import into</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { value: 'pending', label: 'Pending Records', hint: 'to be checked and completed first' },
-              { value: 'fieldOrders', label: 'Field Orders', hint: 'already-finished records' },
-            ].map(o => (
-              <button
-                key={o.value}
-                onClick={() => setDestination(o.value)}
-                className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
-                  destination === o.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-800'
-                    : 'border-[#D9D9D9] bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="block font-semibold">{o.label}</span>
-                <span className="block text-[11px] opacity-70">{o.hint}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
+      
         {/* Column Mapping. Hidden by default: the template pins the
             columns, so the grid of thirty-odd dropdowns is noise unless
             something actually failed to match. */}
