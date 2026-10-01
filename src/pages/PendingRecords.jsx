@@ -9,13 +9,13 @@ import { useDropdowns } from '../lib/DropdownContext'
 import { emptyFilters, rowMatchesFilters, withoutColumns } from '../lib/recordFilters'
 import { useFilterColumns, withSubmission } from '../lib/optionalColumns'
 import { useColumnOptions } from '../lib/useColumnOptions'
+import { FO_ACTION_OPTIONS } from '../lib/dropdownLists'
 import FilterBar from '../components/filters/FilterBar'
 
 const STATUS_CREW_OPTIONS = ['FOR ASSIGN', 'ASSIGNED', 'REASSIGN','CANCEL', 'CANCEL-EMC', 'FC CANCEL', 'FIELD COMPLETED', 'REVISITED FIELD COM.', 'REVISITED CANCEL']
 // Type of Meter, Job Description, FO Type, Billed Amount and For Batch come
 // from the Dropdown Lists page (useDropdowns). Status Crew and FO Action
 // stay fixed because the app reads them.
-const FO_ACTION_OPTIONS = ['Replace FO', 'Energized FO', 'Retirement FO', 'Others']
 
 const EMPTY_FORM = {
   status_crew: '', date_assign: '', for_check: false, date_executed: '', type_of_meter: '',

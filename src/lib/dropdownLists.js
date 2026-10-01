@@ -53,7 +53,19 @@ export const STATUS_CREW_OPTIONS = [
   'REVISITED FIELD COM.', 'REVISITED CANCEL',
 ]
 
-export const FO_ACTION_OPTIONS = ['Replace FO', 'Energized FO', 'Retirement FO', 'Others']
+export const FO_ACTION_OPTIONS = [
+  'Replace FO',
+  'Energized FO',
+  'Retirement FO',
+  'Rep/rel FO',
+  'Replace Standard FO',
+  'Reconnection FO',
+  'Reconnect Damaged FO',
+  'Disconnection FO',
+  // Last on purpose: the Dashboard counts anything it does not
+  // recognise under Others, so this is where the leftovers land.
+  'Others',
+]
 
 /** Same comparison the database unique index uses. */
 export function normalizeOption(value) {

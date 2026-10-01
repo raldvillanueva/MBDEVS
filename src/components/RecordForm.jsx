@@ -8,6 +8,7 @@ import { addPendingOrders } from '../lib/pendingStorage'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useSettings } from '../lib/SettingsContext'
+import { FO_ACTION_OPTIONS } from '../lib/dropdownLists'
 import { useDropdowns } from '../lib/DropdownContext'
 import { useSubmissionColumns, withSubmission } from '../lib/optionalColumns'
  
@@ -451,10 +452,7 @@ label="FO Action"
 {...text('fo_action')}
 >
   <option value="">— Select —</option>
-  <option value="Replace FO">Replace FO</option>
-  <option value="Energized FO">Energized FO</option>
-  <option value="Retirement FO">Retirement FO</option>
-  <option value="Others">Others</option>
+  {FO_ACTION_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
 </select>
 
 </Field>

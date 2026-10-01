@@ -57,7 +57,13 @@ export function computeStats(list, { warningDays = 10, criticalDays = 21 } = {})
     replacement: list.filter(r => action(r) === 'REPLACE FO').length,
     retirement: list.filter(r => action(r) === 'RETIREMENT FO').length,
     energize: list.filter(r => action(r) === 'ENERGIZED FO').length,
-    others: list.filter(r => action(r) === 'OTHERS').length,
+    // Everything else, rather than only the literal word "Others". A new
+    // FO Action used to count towards no tile at all, so the four
+    // numbers silently stopped adding up to the total.
+    others: list.filter(r => {
+      const a = action(r)
+      return a !== '' && !['REPLACE FO', 'RETIREMENT FO', 'ENERGIZED FO'].includes(a)
+    }).length,
   }
 }
 
