@@ -1265,12 +1265,6 @@ useEffect(() => {
                     <span className="text-sm text-slate-600">Checked</span>
                   </label>
                 </PF>
-                <PF label="For Batch">
-                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} disabled={fieldLocked('for_batch')} className={iCls}>
-                    <option value="">— Select —</option>
-                    {opts('for_batch').map(o => <option key={o}>{o}</option>)}
-                  </select>
-                </PF>
                 {hasSubmission && (
                   <>
                     <PF label="Submitted To">
@@ -1383,6 +1377,12 @@ useEffect(() => {
               </PS>
 
               <PS title="Remarks & Batch">
+                <PF label="For Batch">
+                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} disabled={fieldLocked('for_batch')} className={iCls}>
+                    <option value="">— Select —</option>
+                    {opts('for_batch').map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </PF>
                 <PF label="FO Amount (₱)">
                   <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} disabled={fieldLocked('billed_amount')} className={iCls}>
                     <option value="">— Select —</option>

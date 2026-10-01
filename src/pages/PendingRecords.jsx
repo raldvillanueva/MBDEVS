@@ -685,17 +685,6 @@ async function sendSelectedToFieldOrders() {
                     <span className="text-sm text-slate-600">Checked</span>
                   </label>
                 </PF>
-                {/* Nothing came back from a cancelled job, so there is
-                    nothing to batch. Hidden on the record form too, which
-                    keeps the two in step. */}
-                {!isCancelled && (
-                <PF label="For Batch">
-                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={cls('for_batch')}>
-                    <option value="">— Select —</option>
-                    {opts('for_batch').map(option => <option key={option}>{option}</option>)}
-                  </select>
-                </PF>
-                )}
               </PS>
 
               {showRemoveMeterSection && (
@@ -802,6 +791,17 @@ async function sendSelectedToFieldOrders() {
               )}
 
               <PS title="Remarks & Batch">
+                {/* Nothing came back from a cancelled job, so there is
+                    nothing to batch. Hidden on the record form too, which
+                    keeps the two in step. */}
+                {!isCancelled && (
+                <PF label="For Batch">
+                  <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={cls('for_batch')}>
+                    <option value="">— Select —</option>
+                    {opts('for_batch').map(option => <option key={option}>{option}</option>)}
+                  </select>
+                </PF>
+                )}
                 <PF label="FO Amount (₱)">
                   <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} className={cls('billed_amount')}>
                     <option value="">— Select —</option>
