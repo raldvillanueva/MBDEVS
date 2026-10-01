@@ -22,7 +22,7 @@ function friendly(err) {
   const m = err?.message || ''
   if (m.includes('duplicate') || m.includes('unique')) return 'That value is already on this list (it may be hidden — check "Hidden values" below).'
   if (m.includes('row-level') || m.includes('policy') || err?.code === '42501') return 'Only an Admin or Super Admin can change the dropdown lists.'
-  if (m.includes('Billed Amount')) return m
+  if (m.includes('FO Amount')) return m
   return m || 'Something went wrong. Please try again.'
 }
 

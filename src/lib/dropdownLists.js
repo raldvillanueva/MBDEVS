@@ -9,7 +9,7 @@ export const DROPDOWN_FIELDS = [
   { key: 'type_of_meter',   label: 'Type of Meter' },
   { key: 'fo_type',         label: 'FO Type' },
   { key: 'for_batch',       label: 'For Batch' },
-  { key: 'billed_amount',   label: 'Billed Amount', numeric: true },
+  { key: 'billed_amount',   label: 'FO Amount', numeric: true },
   // Suggestions only: the form still accepts any name typed in.
   { key: 'submitted_to',    label: 'Submitted To', freeText: true },
   // Moved here from the General tab. Crews are per sector in practice,

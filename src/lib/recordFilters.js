@@ -73,7 +73,7 @@ export const FILTER_FIELDS = [
   { key: 'location',               label: 'Location',              type: 'text' },
   { key: 'mflt_checklist',         label: 'MFLT Checklist',        type: 'bool' },
   { key: 'fo_type',                label: 'FO Type',               type: 'text', list: true },
-  { key: 'billed_amount',          label: 'Billed Amount',         type: 'number', list: true },
+  { key: 'billed_amount',          label: 'FO Amount',             type: 'number', list: true },
   { key: 'for_batch',              label: 'For Batch',             type: 'text', list: true },
   { key: 'date_returned',          label: 'Date Returned',         type: 'date' },
   { key: 'crew_payrol',            label: 'Crew Payroll',          type: 'number' },

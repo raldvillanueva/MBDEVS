@@ -165,7 +165,7 @@ const COLS = [
   { label: 'LOCATION',            key: 'location',              w: 260, render: r => r.location || '—' },
   { label: 'MFLT CHECKLIST',      key: 'mflt_checklist',        w: 110, render: r => r.mflt_checklist ? <span className="text-emerald-600 font-bold">✓</span> : '' },
   { label: 'FO TYPE',             key: 'fo_type',               w: 90,  render: r => <FoTypeBadge type={r.fo_type} /> },
-  { label: 'BILLED AMOUNT',       key: 'billed_amount',         w: 110, render: r => r.billed_amount != null ? `₱${parseFloat(r.billed_amount).toFixed(2)}` : '—' },
+  { label: 'FO AMOUNT',           key: 'billed_amount',         w: 110, render: r => r.billed_amount != null ? `₱${parseFloat(r.billed_amount).toFixed(2)}` : '—' },
   { label: 'FOR BATCH',           key: 'for_batch',             w: 100, render: r => r.for_batch?.toUpperCase().includes('ALREADY') ? <span className="px-2 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">Batched</span> : <span className="text-slate-300">—</span> },
   { label: 'DATE RETURNED',       key: 'date_returned',         w: 115, render: r => r.date_returned || '—' },
   { label: 'CREW PAYROLL',        key: 'crew_payrol',           w: 110, render: r => r.crew_payrol != null ? `₱${r.crew_payrol}` : '—' },
@@ -654,7 +654,7 @@ useEffect(() => {
     { key: 'remarks',               label: 'Remarks' },
     { key: 'mflt_checklist',        label: 'MFLT Checklist' },
     { key: 'fo_type',               label: 'FO Type' },
-    { key: 'billed_amount',         label: 'Billed Amount' },
+    { key: 'billed_amount',         label: 'FO Amount' },
     { key: 'for_batch',             label: 'For Batch' },
     { key: 'date_returned',         label: 'Date Returned' },
     { key: 'crew_payrol',           label: 'Crew Payroll' },
@@ -1383,13 +1383,7 @@ useEffect(() => {
               </PS>
 
               <PS title="Remarks & Batch">
-                <PF label="FO Type">
-                  <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} disabled={fieldLocked('fo_type')} className={iCls}>
-                    <option value="">— Select —</option>
-                    {opts('fo_type').map(o => <option key={o}>{o}</option>)}
-                  </select>
-                </PF>
-                <PF label="Billed Amount (₱)">
+                <PF label="FO Amount (₱)">
                   <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} disabled={fieldLocked('billed_amount')} className={iCls}>
                     <option value="">— Select —</option>
                     {opts('billed_amount').map(option => <option key={option}>{option}</option>)}

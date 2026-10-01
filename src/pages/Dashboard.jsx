@@ -298,7 +298,7 @@ export default function Dashboard() {
           <StatCard label="Field Complete" value={stats.fieldComplete} icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600" />
           <StatCard label="Cancelled" value={stats.cancelled} icon={XCircle} tint="bg-rose-50 text-rose-600" />
           <StatCard
-            label="Total Billed"
+            label="Total FO Amount"
             value={`₱${stats.totalBilled.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}
             icon={PackageCheck}
             tint="bg-violet-50 text-violet-600"
@@ -349,7 +349,7 @@ export default function Dashboard() {
                 <th className="px-4 py-2.5 text-right font-medium">Field Complete</th>
                 <th className="px-4 py-2.5 text-right font-medium">Cancelled</th>
                 <th className="px-4 py-2.5 text-right font-medium">Overdue (&gt;{days.criticalDays})</th>
-                <th className="px-4 py-2.5 text-right font-medium">Total Billed</th>
+                <th className="px-4 py-2.5 text-right font-medium">Total FO Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

@@ -167,7 +167,7 @@ export default function EncoderAuditReports() {
                 <th className="px-4 py-2.5 text-left font-medium">Sector</th>
                 <th className="px-4 py-2.5 text-left font-medium">Covers</th>
                 <th className="px-4 py-2.5 text-right font-medium">Total Records</th>
-                <th className="px-4 py-2.5 text-right font-medium">Total Billed</th>
+                <th className="px-4 py-2.5 text-right font-medium">Total FO Amount</th>
                 <th className="px-4 py-2.5 text-right font-medium">View</th>
               </tr>
             </thead>

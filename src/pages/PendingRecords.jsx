@@ -71,7 +71,7 @@ function requiredKeys(form) {
     'date_assign', 'date_executed', 'type_of_meter', 'job_description',
     'crew_name', 'location',
     'installed_seal',
-    'fo_type', 'billed_amount', 'for_batch', 'date_returned', 'crew_payrol', 'pluscode',
+    'billed_amount', 'for_batch', 'date_returned', 'crew_payrol', 'pluscode',
   ]
   if (form.fo_action !== 'Energized FO') {
     keys.push(
@@ -793,13 +793,7 @@ async function sendSelectedToFieldOrders() {
               </PS>
 
               <PS title="Remarks & Batch">
-                <PF label="FO Type">
-                  <select value={editForm.fo_type} onChange={e => sf('fo_type', e.target.value)} className={cls('fo_type')}>
-                    <option value="">— Select —</option>
-                    {opts('fo_type').map(option => <option key={option}>{option}</option>)}
-                  </select>
-                </PF>
-                <PF label="Billed Amount (₱)">
+                <PF label="FO Amount (₱)">
                   <select value={editForm.billed_amount} onChange={e => sf('billed_amount', e.target.value)} className={cls('billed_amount')}>
                     <option value="">— Select —</option>
                     {opts('billed_amount').map(option => <option key={option}>{option}</option>)}

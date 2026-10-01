@@ -36,7 +36,7 @@ export const FIELD_LABELS = {
   remarks: 'Remarks',
   mflt_checklist: 'MFLT Checklist',
   fo_type: 'FO Type',
-  billed_amount: 'Billed Amount',
+  billed_amount: 'FO Amount',
   for_batch: 'For Batch',
   date_returned: 'Date Returned',
   crew_payrol: 'Crew Payroll',

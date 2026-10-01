@@ -520,14 +520,6 @@ label="FO Action"
             </div>
           </Field>
 
-          {/* Sits beside For Check: both are the reviewer ticking off
-              where a record has got to, so they are read together. */}
-          <Field label="For Batch">
-            <select{...text('for_batch')}>
-              <option value="">— Select —</option>
-              {opts('for_batch').map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </Field>
 
           <Field label="Type of Meter">
             <select {...text('type_of_meter')} className={selectClass}>
@@ -764,28 +756,21 @@ label="FO Action"
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SectionTitle title="Remarks & Batch Information" />
 
-          <Field label="FO Type" >
-          <select
-            {...text('fo_type')}
-            
-            >
+          <Field label="For Batch">
+            <select {...text('for_batch')} className={selectClass}>
               <option value="">— Select —</option>
-              {opts('fo_type').map(o => <option key={o} value={o}>{o}</option>)}
+              {opts('for_batch').map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
 
-          <Field label="Billed Amount (₱)" >
-            <input type="number" value={form.billed_amount ?? ''}
-              onChange={e => { set('billed_amount', e.target.value) 
-                setFieldErrors(prev=>({...prev, billed_amount:false}))}}
-                className={`${inputClass}${fieldErrors.billed_amount? '!border-red-500 !bg-red-200':''}`}
-                // The usual amounts are suggested (from Dropdown Lists); any
-                // other amount can still be typed.
-                list="billed-amount-options"
-                />
-            <datalist id="billed-amount-options">
-              {optionsFor('billed_amount', sector).map(o => <option key={o} value={o} />)}
-            </datalist>
+          {/* A select like every other list here. It was a number input
+              with a datalist, which opens the browser's own popup and
+              looked nothing like the fields around it. */}
+          <Field label="FO Amount (₱)">
+            <select {...text('billed_amount')} className={selectClass}>
+              <option value="">— Select —</option>
+              {opts('billed_amount').map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
           </Field>
 
           <Field label="Date Returned">
