@@ -28,7 +28,7 @@ const EMPTY_FORM = {
   demand_seal_installed: '', installed_seal: '', cabinet_seal_installed: '', tln_tag: '',
   pole_tag: '', booba_number: '', mdltr_no: '', aging: '', witness_date: '', remarks: '',
   mflt_checklist: false, fo_type: '', billed_amount: '', for_batch: '', date_returned: '',
-  crew_payrol: '', pluscode: '',
+  crew_payrol: '', pluscode: '', plangrid: '',
   // Optional; only saved once the database has these columns.
   submitted_to: '', date_submitted: '',
 }
@@ -809,6 +809,11 @@ async function sendSelectedToFieldOrders() {
                 </PF>
                 <PF label="Plus Code">
                   <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} className={cls('pluscode')} />
+                </PF>
+                {/* optional: it is not on the client sheet, so making it
+                    required would block every record already waiting. */}
+                <PF label="PlanGrid" optional>
+                  <input value={editForm.plangrid} onChange={e => sf('plangrid', e.target.value)} className={cls('plangrid')} />
                 </PF>
                 <PF label="Remarks" span2 optional>
                   <textarea value={editForm.remarks} onChange={e => sf('remarks', e.target.value)} rows={3} className={`${iCls} resize-none`} />

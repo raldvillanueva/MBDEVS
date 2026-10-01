@@ -79,6 +79,7 @@ export const FILTER_FIELDS = [
   { key: 'crew_payrol',            label: 'Crew Payroll',          type: 'number' },
   { key: 'percentage',             label: '%',                     type: 'text', pages: ['field_orders', 'archived'], notByDefault: true },
   { key: 'pluscode',               label: 'Pluscode',              type: 'text' },
+  { key: 'plangrid',               label: 'PlanGrid',              type: 'text' },
   { key: 'archived_at',            label: 'Archived On',           type: 'date', pages: ['archived'] },
   { key: 'created_at',             label: 'Date Added',            type: 'date', pages: ['pending'] },
 ]

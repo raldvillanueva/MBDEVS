@@ -54,6 +54,7 @@ const EMPTY_FORM = {
   crew_payrol: '',
   percentage: '',
   pluscode: '',
+  plangrid: '',
   // Main Info, new — only shown/saved once the database has the columns
   submitted_to: '',
   date_submitted: '',
@@ -805,6 +806,10 @@ label="FO Action"
 
           <Field label="Plus Code">
             <input {...text('pluscode')} placeholder="Plus code" />
+          </Field>
+
+          <Field label="PlanGrid">
+            <input {...text('plangrid')} placeholder="PlanGrid" />
           </Field>
 
           <Field label="Remarks">

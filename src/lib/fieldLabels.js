@@ -42,6 +42,7 @@ export const FIELD_LABELS = {
   crew_payrol: 'Crew Payroll',
   percentage: '%',
   pluscode: 'Pluscode',
+  plangrid: 'PlanGrid',
 }
 
 export function labelFor(field) {

@@ -59,7 +59,7 @@ const EMPTY_FORM = {
   demand_seal_installed: '', installed_seal: '', cabinet_seal_installed: '', tln_tag: '',
   pole_tag: '', booba_number: '', mdltr_no: '', aging: '', witness_date: '', remarks: '',
   mflt_checklist: false, fo_type: '', billed_amount: '', for_batch: '', date_returned: '',
-  crew_payrol: '', percentage: '', pluscode: '',
+  crew_payrol: '', percentage: '', pluscode: '', plangrid: '',
   submitted_to: '', date_submitted: '',
 }
 
@@ -170,6 +170,7 @@ const COLS = [
   { label: 'DATE RETURNED',       key: 'date_returned',         w: 115, render: r => r.date_returned || '—' },
   { label: 'CREW PAYROLL',        key: 'crew_payrol',           w: 110, render: r => r.crew_payrol != null ? `₱${r.crew_payrol}` : '—' },
   { label: 'PLUSCODE',            key: 'pluscode',              w: 90,  render: r => r.pluscode || '—' },
+  { label: 'PLANGRID',            key: 'plangrid',              w: 110, render: r => r.plangrid || '—' },
 ]
 
 // Columns pinned to the left (Field Order → Check). Everything after this —
@@ -659,6 +660,7 @@ useEffect(() => {
     { key: 'crew_payrol',           label: 'Crew Payroll' },
     { key: 'percentage',            label: '%' },
     { key: 'pluscode',              label: 'Pluscode' },
+    { key: 'plangrid',              label: 'PlanGrid' },
   ]
 
   async function exportSelected() {
@@ -1404,6 +1406,9 @@ useEffect(() => {
                 </PF>
                 <PF label="Plus Code">
                   <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} disabled={fieldLocked('pluscode')} className={iCls} />
+                </PF>
+                <PF label="PlanGrid">
+                  <input value={editForm.plangrid} onChange={e => sf('plangrid', e.target.value)} disabled={fieldLocked('plangrid')} className={iCls} />
                 </PF>
                 <PF label="Remarks" span2>
   <textarea

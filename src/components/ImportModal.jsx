@@ -49,6 +49,7 @@ const DB_FIELDS = [
   { key: 'date_returned',         label: 'Date Returned' },
   { key: 'crew_payrol',           label: 'Crew Payrol' },
   { key: 'pluscode',              label: 'Plus Code' },
+  { key: 'plangrid',              label: 'PlanGrid' },
 ]
 
 const DATE_FIELDS = new Set(['date_assign', 'date_executed', 'witness_date', 'date_returned', 'date_submitted'])
@@ -98,6 +99,7 @@ const ALIASES = {
   for_batch:             ['for batch', 'batch', 'batch status', 'for_batch'],
   date_returned:         ['date returned', 'return date', 'date_returned'],
   crew_payrol:           ['crew payroll', 'crew payrol', 'payroll', 'crew_payrol'],
+  plangrid:              ['plangrid', 'plan grid', 'plan-grid'],
   pluscode:              ['p-code / tln tag / p-tag (location)', 'p-code', 'pcode', 'p code', 'pluscode', 'plus code', 'plus_code'],
 }
 
