@@ -11,15 +11,19 @@ import { fieldOrdersTable, pendingOrdersTable, isDataSector } from './sectorTabl
 
 export const SUBMISSION_COLUMNS = ['submitted_to', 'date_submitted']
 
-const cache = new Map() // table -> Promise<boolean>
+// Keyed on the table *and* the columns asked about: more than one set of
+// new columns is checked now, and keying on the table alone would hand
+// back the answer to a different question.
+const cache = new Map() // 'table:col,col' -> Promise<boolean>
 
 function tableHas(table, columns) {
-  if (!cache.has(table)) {
-    cache.set(table, supabase.from(table).select(columns.join(',')).limit(1)
+  const key = `${table}:${columns.join(',')}`
+  if (!cache.has(key)) {
+    cache.set(key, supabase.from(table).select(columns.join(',')).limit(1)
       .then(({ error }) => !error)
       .catch(() => false))
   }
-  return cache.get(table)
+  return cache.get(key)
 }
 
 /** true once both of the sector's tables have the submission columns. */
@@ -45,6 +49,35 @@ export function withSubmission(payload, has) {
   }
   const out = { ...payload }
   for (const c of SUBMISSION_COLUMNS) delete out[c]
+  return out
+}
+
+// Photos arrived the same way, with record_photos_setup.sql. Until that
+// has been run the strip stays hidden and `photos` is left out of saves,
+// so the app works either side of the migration.
+
+export const PHOTO_COLUMNS = ['photos']
+
+/** true once both of the sector's tables can hold photo paths. */
+export function usePhotoColumn(sector) {
+  const [has, setHas] = useState(false)
+  useEffect(() => {
+    let alive = true
+    if (!isDataSector(sector)) { setHas(false); return undefined }
+    Promise.all([
+      tableHas(fieldOrdersTable(sector), PHOTO_COLUMNS),
+      tableHas(pendingOrdersTable(sector), PHOTO_COLUMNS),
+    ]).then(([a, b]) => { if (alive) setHas(a && b) })
+    return () => { alive = false }
+  }, [sector])
+  return has
+}
+
+/** Drop the photo list from a save when the table cannot take it. */
+export function withPhotos(payload, has) {
+  if (has) return payload
+  const out = { ...payload }
+  for (const c of PHOTO_COLUMNS) delete out[c]
   return out
 }
 

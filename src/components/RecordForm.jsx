@@ -11,7 +11,8 @@ import { useSettings } from '../lib/SettingsContext'
 import { isCancelledRecord } from '../lib/cancelled'
 import { FO_ACTION_OPTIONS } from '../lib/dropdownLists'
 import { useDropdowns } from '../lib/DropdownContext'
-import { useSubmissionColumns, withSubmission } from '../lib/optionalColumns'
+import { useSubmissionColumns, usePhotoColumn, withPhotos, withSubmission } from '../lib/optionalColumns'
+import RecordPhotos from './RecordPhotos'
  
 const EMPTY_FORM = {
   // Main Info
@@ -59,6 +60,7 @@ const EMPTY_FORM = {
   // Main Info, new — only shown/saved once the database has the columns
   submitted_to: '',
   date_submitted: '',
+  photos: [],
 }
 
 function Field({ label, children, required, errorMessage }) {
@@ -106,6 +108,7 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   const { optionsFor } = useDropdowns()
   const opts = field => optionsFor(field, sector, form[field])
   const hasSubmission = useSubmissionColumns(sector)
+  const hasPhotos = usePhotoColumn(sector)
   // A Viewer has no business on this form at all. An Encoder does: they
   // add to Pending, and a reviewer moves it on to Field Orders.
   const isStaff = accountType === 'viewer' || !canEncode
@@ -258,7 +261,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
   // =========================
   // PAYLOAD
   // =========================
-  const payload = withSubmission({
+  const payload = withPhotos(withSubmission({
     ...form,
     aging: form.aging ? parseInt(form.aging) : null,
     billed_amount: form.billed_amount ? parseFloat(form.billed_amount) : null,
@@ -267,7 +270,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
     date_executed: form.date_executed || null,
     witness_date: form.witness_date || null,
     date_returned: form.date_returned || null,
-  }, hasSubmission)
+  }, hasSubmission), hasPhotos)
 
   let error = null
 
@@ -824,6 +827,19 @@ label="FO Action"
     {(form.remarks?.length || 0)}/100 characters
   </div>
 </Field>
+
+          {/* A row of thumbnails across the bottom. The pictures are
+              uploaded as they are picked, so they are already in place by
+              the time the record is saved. */}
+          {hasPhotos && (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <RecordPhotos
+                value={form.photos}
+                onChange={next => set('photos', next)}
+                sector={sector}
+              />
+            </div>
+          )}
         </div>
       </div>
 

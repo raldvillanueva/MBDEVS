@@ -13,6 +13,7 @@ import { useDropdowns } from '../lib/DropdownContext'
 import { useColumnOptions } from '../lib/useColumnOptions'
 import { emptyFilters, applyFiltersToQuery, hasActiveFilters, filterField, ruleIsComplete, withoutColumns } from '../lib/recordFilters'
 import { useFilterColumns, withSubmission, SUBMISSION_COLUMNS } from '../lib/optionalColumns'
+import RecordPhotos from '../components/RecordPhotos'
 import FilterBar from '../components/filters/FilterBar'
 import { FloatingPanel, ValuePicker, RuleEditor } from '../components/filters/FilterControls'
 
@@ -1402,6 +1403,12 @@ useEffect(() => {
     {(editForm.remarks || '').length}/100
   </p>
 </PF>
+                {/* Read from the stored row, not the form: a record here
+                    is settled, so its pictures are there to be looked at
+                    and nothing more. Renders nothing when there are none. */}
+                <div className="col-span-2">
+                  <RecordPhotos value={editRow.photos} onChange={() => {}} sector={sector} readOnly />
+                </div>
               </PS>
 
               </fieldset>
