@@ -222,6 +222,10 @@ export default function ImportModal({ onClose, onImported }) {
   const [failures, setFailures] = useState([])
   // Rows already on file, left out rather than rejected.
   const [skipped, setSkipped] = useState(0)
+  // The first few field order numbers that were already on file. A bare
+  // count left people thinking the import had silently failed.
+  const [skippedSample, setSkippedSample] = useState([])
+  const [showMapping, setShowMapping] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [rowLimit, setRowLimit] = useState('')
   const [rowOffset, setRowOffset] = useState('')
@@ -402,6 +406,7 @@ export default function ImportModal({ onClose, onImported }) {
     setStep('importing')
     setFailures([])
     setSkipped(0)
+    setSkippedSample([])
     // Bigger batches mean far fewer round trips — 12,000 rows is 24
     // requests at this size rather than 120. A batch that fails is
     // retried row by row below, so the size costs nothing in accuracy.
@@ -414,6 +419,7 @@ export default function ImportModal({ onClose, onImported }) {
 
     const alreadyOnFile = await existingFieldOrderNumbers()
     const seenInThisFile = new Set()
+    const skippedNumbers = []
     const payloads = []
     let duplicates = 0
 
@@ -434,6 +440,7 @@ export default function ImportModal({ onClose, onImported }) {
       const key = String(obj.field_order_no ?? '').trim().toUpperCase()
       if (key && (alreadyOnFile.has(key) || seenInThisFile.has(key))) {
         duplicates++
+        if (skippedNumbers.length < 8) skippedNumbers.push(obj.field_order_no)
         continue
       }
       if (key) seenInThisFile.add(key)
@@ -445,6 +452,7 @@ export default function ImportModal({ onClose, onImported }) {
     }
 
     setSkipped(duplicates)
+    setSkippedSample(skippedNumbers)
 
     const total = payloads.length
     setProgress({ done: 0, total, errors: 0 })
@@ -658,9 +666,21 @@ export default function ImportModal({ onClose, onImported }) {
           </div>
         </div>
 
-        {/* Column Mapping */}
+        {/* Column Mapping. Hidden by default: the template pins the
+            columns, so the grid of thirty-odd dropdowns is noise unless
+            something actually failed to match. */}
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Column Mapping</p>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    {mappedCount} column{mappedCount === 1 ? '' : 's'} matched
+                  </p>
+                  <button
+                    onClick={() => setShowMapping(v => !v)}
+                    className="text-xs font-medium text-blue-600 hover:underline"
+                  >
+                    {showMapping ? 'Hide column mapping' : 'Change column mapping'}
+                  </button>
+                </div>
 
                 {/* Naming the columns nothing claimed. Hunting for them
                     across thirty-odd dropdowns is the slow way to find out
@@ -675,11 +695,11 @@ export default function ImportModal({ onClose, onImported }) {
                       {unusedHeaders.join(' · ')}
                     </p>
                     <p className="mt-1 text-[11px] text-amber-600">
-                      Pick one from a dropdown below to bring it in, or leave it out.
+                      Use Change column mapping above to bring one in, or leave them out.
                     </p>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                <div className={`grid grid-cols-2 gap-x-6 gap-y-1.5 ${showMapping ? '' : 'hidden'}`}>
                   {fields.map(({ key, label }) => (
                     <div key={key} className="flex items-center gap-2">
                       <span className="text-xs text-slate-600 w-36 shrink-0 truncate">{label}</span>
@@ -768,12 +788,24 @@ export default function ImportModal({ onClose, onImported }) {
                     {progress.errors.toLocaleString()} rows failed
                   </span>
                 )}
-                {skipped > 0 && (
-                  <span className="mt-1 block text-slate-500">
-                    {skipped.toLocaleString()} already on file, left as they were
-                  </span>
-                )}
               </p>
+
+              {skipped > 0 && (
+                <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left">
+                  <p className="text-xs font-semibold text-slate-700">
+                    {skipped.toLocaleString()} row{skipped === 1 ? '' : 's'} already on file, left as
+                    {skipped === 1 ? ' it was' : ' they were'}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {skippedSample.filter(Boolean).join(' · ')}
+                    {skipped > skippedSample.length && ` and ${(skipped - skippedSample.length).toLocaleString()} more`}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    These already exist in Pending Records or Field Orders, so they were
+                    not added again.
+                  </p>
+                </div>
+              )}
 
               {failures.length > 0 && (
                 <div className="mt-4 max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left">
