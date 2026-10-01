@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
 import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
-import { X, Upload, CheckCircle, Download, ListPlus } from 'lucide-react'
+import { X, Upload, CheckCircle, Download, ListPlus, AlertTriangle } from 'lucide-react'
 import { useDropdowns } from '../lib/DropdownContext'
 import { downloadImportTemplate } from '../lib/importTemplate'
 import { useAuth } from '../lib/AuthContext'
@@ -445,9 +445,13 @@ export default function ImportModal({ onClose, onImported }) {
       }
       if (key) seenInThisFile.add(key)
 
+      // seq orders the Field Orders table and exists only there. Setting it
+      // on a pending row made Postgres reject the whole insert for a column
+      // that is not on that table, so nothing reached Pending at all.
+      //
       // Numbered over the rows actually kept, so the sequence has no gaps
       // where duplicates were dropped.
-      obj.seq = offset + payloads.length + 1
+      if (destination === 'fieldOrders') obj.seq = offset + payloads.length + 1
       payloads.push(obj)
     }
 
@@ -779,8 +783,17 @@ export default function ImportModal({ onClose, onImported }) {
         {step === 'done' && (
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center">
-              <CheckCircle size={52} className="mx-auto text-emerald-500 mb-3" />
-              <p className="text-slate-800 font-bold text-xl">Import Complete</p>
+              {/* A green tick over "0 rows imported" reads as success. If
+                  nothing landed, say so with the colour as well as the
+                  number. */}
+              {progress.total - progress.errors > 0 ? (
+                <CheckCircle size={52} className="mx-auto mb-3 text-emerald-500" />
+              ) : (
+                <AlertTriangle size={52} className="mx-auto mb-3 text-amber-500" />
+              )}
+              <p className="text-slate-800 font-bold text-xl">
+                {progress.total - progress.errors > 0 ? 'Import Complete' : 'Nothing was imported'}
+              </p>
               <p className="text-slate-500 text-sm mt-2">
                 {(progress.total - progress.errors).toLocaleString()} rows imported successfully
                 {progress.errors > 0 && (
