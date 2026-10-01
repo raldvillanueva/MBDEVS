@@ -115,7 +115,7 @@ const COLS = [
   { label: 'DATE OF SUBMITTED',   key: 'date_submitted',        w: 140, render: r => r.date_submitted || '—' },
   // — REMOVE METER —
   { label: 'REMOVE METER',        key: 'remove_meter',          w: 130, render: r => r.remove_meter || '—' },
-  { label: 'R. SERIAL NUMBER',    key: 'r_serial_number',       w: 130, render: r => r.r_serial_number || '—' },
+  { label: 'TERMINAL SEAL (REMOVED)', key: 'r_serial_number',   w: 160, render: r => r.r_serial_number || '—' },
   { label: 'DEMAND SEAL NO.5',    key: 'demand_seal_aerolock',  w: 140, render: r => r.demand_seal_aerolock || '—' },
   { label: 'REMOVED SEAL',        key: 'removed_seal',          w: 120, render: r => r.removed_seal || '—' },
   { label: 'CABINET SEAL (2)',     key: 'cabinet_seal_remove',   w: 130, render: r => r.cabinet_seal_remove || '—' },
@@ -125,7 +125,7 @@ const COLS = [
   { label: 'INS. METER',          key: 'ins_meter',             w: 130, render: r => r.ins_meter || '—' },
   { label: 'SERIAL NUMBER',       key: 'ins_serial_number',     w: 130, render: r => r.ins_serial_number || '—' },
   { label: 'DEMAND SEAL (5)',      key: 'demand_seal_installed', w: 130, render: r => r.demand_seal_installed || '—' },
-  { label: 'INSTALLED SEAL (1)',   key: 'installed_seal',        w: 130, render: r => r.installed_seal || '—' },
+  { label: 'TERMINAL SEAL (INSTALLED)', key: 'installed_seal',  w: 170, render: r => r.installed_seal || '—' },
   { label: 'CABINET SEAL (2)',     key: 'cabinet_seal_installed',w: 130, render: r => r.cabinet_seal_installed || '—' },
   // — OTHER INFO —
   { label: 'TLN TAG',             key: 'tln_tag',               w: 90,  render: r => r.tln_tag || '—' },
@@ -633,7 +633,7 @@ useEffect(() => {
     { key: 'date_submitted',        label: 'Date of Submitted' },
     { key: 'field_order_no',        label: 'Field Order/FO' },
     { key: 'remove_meter',          label: 'Remove Meter' },
-    { key: 'r_serial_number',       label: 'R. Serial Number' },
+    { key: 'r_serial_number',       label: 'Terminal Seal (Removed)' },
     { key: 'demand_seal_aerolock',  label: 'Demand Seal No.5' },
     { key: 'removed_seal',          label: 'Removed Seal' },
     { key: 'cabinet_seal_remove',   label: 'Cabinet Seal (2)' },
@@ -642,7 +642,7 @@ useEffect(() => {
     { key: 'ins_meter',             label: 'INS. Meter' },
     { key: 'ins_serial_number',     label: 'Serial Number' },
     { key: 'demand_seal_installed', label: 'Demand Seal (5)' },
-    { key: 'installed_seal',        label: 'Installed Seal (1)' },
+    { key: 'installed_seal',        label: 'Terminal Seal (Installed)' },
     { key: 'cabinet_seal_installed',label: 'Cabinet Seal (2)' },
     { key: 'tln_tag',               label: 'TLN Tag' },
     { key: 'pole_tag',              label: 'Pole Tag' },
@@ -1296,7 +1296,7 @@ useEffect(() => {
                 <PF label="Remove Meter No.">
                   <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} disabled={fieldLocked('remove_meter')} className={iCls} />
                 </PF>
-                <PF label="R. Serial Number">
+                <PF label="Terminal Seal">
                   <input value={editForm.r_serial_number} onChange={e => sf('r_serial_number', e.target.value)} disabled={fieldLocked('r_serial_number')} className={iCls} />
                 </PF>
                 <PF label="Demand Seal Aerolock">
@@ -1362,7 +1362,7 @@ useEffect(() => {
                 <PF label="Demand Seal (5)">
                   <input value={editForm.demand_seal_installed} onChange={e => sf('demand_seal_installed', e.target.value)} disabled={fieldLocked('demand_seal_installed')} className={iCls} />
                 </PF>
-                <PF label="Installed Seal (1)">
+                <PF label="Terminal Seal">
                   <input value={editForm.installed_seal} onChange={e => sf('installed_seal', e.target.value)} disabled={fieldLocked('installed_seal')} className={iCls} />
                 </PF>
                 <PF label="Cabinet Seal (2)">

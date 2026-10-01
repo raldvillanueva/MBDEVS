@@ -365,7 +365,7 @@ async function sendSelectedToFieldOrders() {
   //   Replace FO     -> everything
   //   Energized FO   -> New Installed Meter + Remarks & Batch (no Remove Meter)
   //   Retirement FO  -> Remove Meter + Remarks & Batch, and of the New Installed
-  //                     Meter fields only "Installed Seal (1)"
+  //                     Meter fields only the installed Terminal Seal
   //   Others / none  -> everything (safe default)
   const isRetirementFO = editForm?.fo_action === 'Retirement FO'
   const showRemoveMeterSection = editForm?.fo_action !== 'Energized FO'
@@ -692,7 +692,7 @@ async function sendSelectedToFieldOrders() {
                 <PF label="Remove Meter No.">
                   <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} className={cls('remove_meter')} />
                 </PF>
-                <PF label="R. Serial Number">
+                <PF label="Terminal Seal">
                   <input value={editForm.r_serial_number} onChange={e => sf('r_serial_number', e.target.value)} className={cls('r_serial_number')} />
                 </PF>
                 <PF label="Demand Seal Aerolock">
@@ -763,7 +763,7 @@ async function sendSelectedToFieldOrders() {
                     </PF>
                   </>
                 )}
-                <PF label="Installed Seal (1)">
+                <PF label="Terminal Seal">
                   <input value={editForm.installed_seal} onChange={e => sf('installed_seal', e.target.value)} className={cls('installed_seal')} />
                 </PF>
                 {showInstalledMeterFields && (

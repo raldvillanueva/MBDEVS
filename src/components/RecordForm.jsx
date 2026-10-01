@@ -408,7 +408,7 @@ function deletePendingRecord(id) {
   //   Replace FO     -> everything
   //   Energized FO   -> New Installed Meter + Remarks & Batch (no Remove Meter)
   //   Retirement FO  -> Remove Meter + Remarks & Batch, and of the New Installed
-  //                     Meter fields only "Installed Seal (1)"
+  //                     Meter fields only the installed Terminal Seal
   //   Others / none  -> everything (safe default)
   const isRetirementFO = form.fo_action === 'Retirement FO'
   const showRemoveMeterSection = form.fo_action !== 'Energized FO'
@@ -615,7 +615,7 @@ label="FO Action"
             <input {...text('remove_meter')} placeholder="e.g. 108BA055151" />
           </Field>
 
-          <Field label="R. Serial Number">
+          <Field label="Terminal Seal">
             <input {...text('r_serial_number')} placeholder="e.g. 0824851" />
           </Field>
 
@@ -719,7 +719,7 @@ label="FO Action"
             </>
           )}
 
-          <Field label="Installed Seal (1)" >
+          <Field label="Terminal Seal" >
             <input {...text('installed_seal')} placeholder="e.g. A25PT0196346" />
           </Field>
 
