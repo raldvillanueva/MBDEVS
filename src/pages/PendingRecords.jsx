@@ -156,6 +156,9 @@ export default function PendingRecords() {
   const [missing, setMissing] = useState([])
   const navigate = useNavigate()
   const [showImport, setShowImport] = useState(false)
+  // Survives closing the modal, so the outcome is still on screen while
+  // the rows that just arrived are being looked at.
+  const [importResult, setImportResult] = useState(null)
   // How many copies of the next record to create in a row, for a batch
   // of near-identical jobs.
   const [repeatCount, setRepeatCount] = useState(1)
@@ -835,8 +838,46 @@ async function sendSelectedToFieldOrders() {
       {showImport && (
         <ImportModal
           onClose={() => setShowImport(false)}
-          onImported={() => { fetchPending(); setShowImport(false) }}
+          onImported={summary => { fetchPending(); setImportResult(summary) }}
         />
+      )}
+
+      {/* Bottom right, outside the modal, so it is still there after the
+          modal is closed and the new rows are on screen. */}
+      {importResult && (
+        <div className="fixed bottom-6 right-6 z-[80] w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-2xl">
+          <div className="flex items-start gap-3">
+            {importResult.imported > 0 ? (
+              <CheckCircle size={20} className="mt-0.5 shrink-0 text-emerald-500" />
+            ) : (
+              <Info size={20} className="mt-0.5 shrink-0 text-amber-500" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-800">
+                {importResult.imported > 0
+                  ? `${importResult.imported.toLocaleString()} record${importResult.imported === 1 ? '' : 's'} imported`
+                  : 'Nothing was imported'}
+              </p>
+              {importResult.skipped > 0 && (
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {importResult.skipped.toLocaleString()} already on file, left as {importResult.skipped === 1 ? 'it was' : 'they were'}
+                </p>
+              )}
+              {importResult.failed > 0 && (
+                <p className="mt-0.5 text-xs text-red-600">
+                  {importResult.failed.toLocaleString()} failed — open Import again to see why
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setImportResult(null)}
+              className="shrink-0 rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Dismiss"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
       )}
 
       {confirm && (

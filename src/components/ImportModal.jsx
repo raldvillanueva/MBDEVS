@@ -489,7 +489,11 @@ export default function ImportModal({ onClose, onImported }) {
 
     setFailures([...reasons.values()].sort((a, b) => b.count - a.count))
     setStep('done')
-    if (onImported) onImported()
+
+    // The caller refreshes its list on this. It must not also close the
+    // modal: doing so unmounted the result screen the instant it appeared,
+    // so what was skipped and what failed were never actually readable.
+    if (onImported) onImported({ imported: done, skipped: duplicates, failed: errors })
   }
 
   const mappedCount = Object.values(mapping).filter(Boolean).length
