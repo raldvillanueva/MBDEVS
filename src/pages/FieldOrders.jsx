@@ -70,15 +70,6 @@ function StatusBadge({ status }) {
   return <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
 }
 
-function FoTypeBadge({ type }) {
-  const t = type?.toUpperCase() || ''
-  if (t === 'REPLACE') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">REPLACE</span>
-  if (t === 'RETIRE') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">RETIRE</span>
-  if (t === 'REMOVE') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">REMOVE</span>
-  if (t === 'CANCEL') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">CANCEL</span>
-  return <span className="text-slate-400 text-xs">{type || '—'}</span>
-}
-
 const iCls = 'w-full px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
 
 function PF({ label, children, span2 }) {
@@ -164,11 +155,9 @@ const COLS = [
   { label: 'REMARKS',             key: 'remarks',               w: 200, render: r => r.remarks || '—' },
   { label: 'LOCATION',            key: 'location',              w: 260, render: r => r.location || '—' },
   { label: 'MFLT CHECKLIST',      key: 'mflt_checklist',        w: 110, render: r => r.mflt_checklist ? <span className="text-emerald-600 font-bold">✓</span> : '' },
-  { label: 'FO TYPE',             key: 'fo_type',               w: 90,  render: r => <FoTypeBadge type={r.fo_type} /> },
   { label: 'FO AMOUNT',           key: 'billed_amount',         w: 110, render: r => r.billed_amount != null ? `₱${parseFloat(r.billed_amount).toFixed(2)}` : '—' },
   { label: 'FOR BATCH',           key: 'for_batch',             w: 100, render: r => r.for_batch?.toUpperCase().includes('ALREADY') ? <span className="px-2 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">Batched</span> : <span className="text-slate-300">—</span> },
   { label: 'DATE RETURNED',       key: 'date_returned',         w: 115, render: r => r.date_returned || '—' },
-  { label: 'CREW PAYROLL',        key: 'crew_payrol',           w: 110, render: r => r.crew_payrol != null ? `₱${r.crew_payrol}` : '—' },
   { label: 'PLUSCODE',            key: 'pluscode',              w: 90,  render: r => r.pluscode || '—' },
   { label: 'PLANGRID',            key: 'plangrid',              w: 110, render: r => r.plangrid || '—' },
 ]
@@ -653,11 +642,9 @@ useEffect(() => {
     { key: 'due_date',              label: 'Due Date (days left)' },
     { key: 'remarks',               label: 'Remarks' },
     { key: 'mflt_checklist',        label: 'MFLT Checklist' },
-    { key: 'fo_type',               label: 'FO Type' },
     { key: 'billed_amount',         label: 'FO Amount' },
     { key: 'for_batch',             label: 'For Batch' },
     { key: 'date_returned',         label: 'Date Returned' },
-    { key: 'crew_payrol',           label: 'Crew Payroll' },
     { key: 'percentage',            label: '%' },
     { key: 'pluscode',              label: 'Pluscode' },
     { key: 'plangrid',              label: 'PlanGrid' },

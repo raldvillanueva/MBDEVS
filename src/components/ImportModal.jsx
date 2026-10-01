@@ -43,11 +43,9 @@ const DB_FIELDS = [
   { key: 'witness_date',          label: 'Witness Date' },
   { key: 'remarks',               label: 'Remarks' },
   { key: 'mflt_checklist',        label: 'MFLT Checklist' },
-  { key: 'fo_type',               label: 'FO Type' },
   { key: 'billed_amount',         label: 'FO Amount' },
   { key: 'for_batch',             label: 'For Batch' },
   { key: 'date_returned',         label: 'Date Returned' },
-  { key: 'crew_payrol',           label: 'Crew Payrol' },
   { key: 'pluscode',              label: 'Plus Code' },
   { key: 'plangrid',              label: 'PlanGrid' },
 ]
