@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useSector } from '../lib/SectorContext'
-import { fieldOrdersTable } from '../lib/sectorTables'
+import { fieldOrdersTable, pendingOrdersTable } from '../lib/sectorTables'
 import { X, Upload, CheckCircle, Download, ListPlus } from 'lucide-react'
 import { useDropdowns } from '../lib/DropdownContext'
 import { useAuth } from '../lib/AuthContext'
@@ -10,6 +10,7 @@ import { useSubmissionColumns, SUBMISSION_COLUMNS } from '../lib/optionalColumns
  
 const DB_FIELDS = [
   { key: 'field_order_no',        label: 'Field Order No.' },
+  { key: 'fo_action',             label: 'FO Action' },
   { key: 'service_number',        label: 'Service ID Number' },
   { key: 'submitted_to',          label: 'Submitted To' },
   { key: 'date_submitted',        label: 'Date of Submitted' },
@@ -57,6 +58,7 @@ const BOOL_FIELDS = new Set(['mflt_checklist', 'for_check'])
 // Aliases: db field → lowercase CSV header variants
 const ALIASES = {
   status_crew:           ['status crew', 'status', 'crew status', 'status_crew'],
+  fo_action:             ['fo action', 'fo_action', 'action'],
   date_assign:           ['date assign', 'date assigned', 'assign date', 'date_assign'],
   for_check:             ['for checking', 'for check', 'chk', 'checked', 'for_check'],
   date_executed:         ['date of executed', 'for checking (2)', 'date exec', 'date executed', 'date executed', 'execution date', 'date_executed', 'for checking (date)'],
@@ -66,11 +68,11 @@ const ALIASES = {
   location:              ['location', 'address'],
   // Every alias is compared against a lowercased header, so an alias with
   // a capital in it can never match. 'service ID number' used to.
-  service_number:        ['sin/ssn', 'sin', 'ssn', 'sin / ssn', 'service id number', 'service no', 'service no.', 'acct no', 'account number', 'service #'],
+  service_number:        ['sin/ssn', 'sin', 'ssn', 'sin / ssn', 'service id number', 'service number', 'service no', 'service no.', 'acct no', 'account number', 'service #'],
   submitted_to:          ['submitted to', 'submitted_to', 'submit to', 'submitted'],
   date_submitted:        ['date of submitted', 'date submitted', 'date of submission', 'submission date', 'date_submitted'],
   field_order_no:        ['field order/fo', 'field order no', 'field order no.', 'fo no', 'fo number', 'field order', 'fo#'],
-  remove_meter:          ['remove meter', 'removed meter', 'meter removed', 'remove_meter'],
+  remove_meter:          ['removed meter number', 'remove meter number', 'remove meter', 'removed meter', 'meter removed', 'remove_meter'],
   r_serial_number:       ['r. serial number', 'r serial number', 'removed serial', 'r_serial_number'],
   demand_seal_aerolock:  ['remove (demand seal)', 'remove demand seal', 'demand seal no. (5) aerolock', 'demand seal no. (5)', 'demand seal aerolock', 'aerolock', 'demand_seal_aerolock'],
   removed_seal:          ['remove (t-seal)', 'remove t-seal', 't-seal', 'remove (tseal)', 'removed seal', 'seal removed', 'removed_seal'],
@@ -199,6 +201,12 @@ function coerce(dbField, raw) {
 export default function ImportModal({ onClose, onImported }) {
   const { sector } = useSector()
   const foTable = fieldOrdersTable(sector)
+  const poTable = pendingOrdersTable(sector)
+  // Imported rows are somebody else's spreadsheet, not reviewed records,
+  // so Pending is the default: they land somewhere they can be checked and
+  // completed before anyone treats them as real. Field Orders stays
+  // available for a backfill of records that are already finished.
+  const [destination, setDestination] = useState('pending')
   const [step, setStep] = useState('upload')
   const [csvHeaders, setCsvHeaders] = useState([])
   const [csvRows, setCsvRows] = useState([])
@@ -207,6 +215,8 @@ export default function ImportModal({ onClose, onImported }) {
   // What actually went wrong, grouped by reason. A count on its own is
   // no use across twelve thousand rows.
   const [failures, setFailures] = useState([])
+  // Rows already on file, left out rather than rejected.
+  const [skipped, setSkipped] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [rowLimit, setRowLimit] = useState('')
   const [rowOffset, setRowOffset] = useState('')
@@ -360,22 +370,51 @@ export default function ImportModal({ onClose, onImported }) {
     else reader.readAsText(file)
   }
 
+  // Every field order number already on file, from both tables. Checked
+  // against Field Orders as well as Pending: a record that has already
+  // been reviewed and moved on must not come back as a new pending row.
+  //
+  // Paged, because PostgREST caps a response at 1,000 and a silent cap
+  // here would quietly let the rest back in as duplicates.
+  async function existingFieldOrderNumbers() {
+    const seen = new Set()
+    for (const table of [poTable, foTable]) {
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase
+          .from(table)
+          .select('field_order_no')
+          .not('field_order_no', 'is', null)
+          .range(from, from + 999)
+        if (error || !data || data.length === 0) break
+        for (const r of data) seen.add(String(r.field_order_no).trim().toUpperCase())
+        if (data.length < 1000) break
+      }
+    }
+    return seen
+  }
+
   async function doImport() {
     setStep('importing')
     setFailures([])
+    setSkipped(0)
     // Bigger batches mean far fewer round trips — 12,000 rows is 24
     // requests at this size rather than 120. A batch that fails is
     // retried row by row below, so the size costs nothing in accuracy.
     const BATCH = 500
+    const table = destination === 'fieldOrders' ? foTable : poTable
     const offset = rowOffset !== '' ? parseInt(rowOffset) : 0
     const limit = rowLimit !== '' ? parseInt(rowLimit) : csvRows.length
     const rowsToImport = csvRows.slice(offset, offset + limit)
     let done = 0, errors = 0
-    const total = rowsToImport.length
-    setProgress({ done: 0, total, errors: 0 })
 
-    const payloads = rowsToImport.map((row, i) => {
-      const obj = { seq: offset + i + 1 }
+    const alreadyOnFile = await existingFieldOrderNumbers()
+    const seenInThisFile = new Set()
+    const payloads = []
+    let duplicates = 0
+
+    for (let i = 0; i < rowsToImport.length; i++) {
+      const row = rowsToImport[i]
+      const obj = {}
       for (const [dbField, csvHeader] of Object.entries(mapping)) {
         if (!csvHeader) continue
         if (!hasSubmission && SUBMISSION_COLUMNS.includes(dbField)) continue
@@ -383,8 +422,27 @@ export default function ImportModal({ onClose, onImported }) {
         if (idx === -1) continue
         obj[dbField] = coerce(dbField, row[idx] ?? '')
       }
-      return obj
-    })
+
+      // The same export is downloaded again each time with new rows added,
+      // so most of a file is usually already here. Matching on the field
+      // order number, ignoring case and stray spaces.
+      const key = String(obj.field_order_no ?? '').trim().toUpperCase()
+      if (key && (alreadyOnFile.has(key) || seenInThisFile.has(key))) {
+        duplicates++
+        continue
+      }
+      if (key) seenInThisFile.add(key)
+
+      // Numbered over the rows actually kept, so the sequence has no gaps
+      // where duplicates were dropped.
+      obj.seq = offset + payloads.length + 1
+      payloads.push(obj)
+    }
+
+    setSkipped(duplicates)
+
+    const total = payloads.length
+    setProgress({ done: 0, total, errors: 0 })
 
     // Reason -> { count, firstRow, message }. Twenty distinct reasons is
     // already more than anyone will read; the counts still add up.
@@ -398,7 +456,7 @@ export default function ImportModal({ onClose, onImported }) {
 
     for (let i = 0; i < payloads.length; i += BATCH) {
       const batch = payloads.slice(i, i + BATCH)
-      const { error } = await supabase.from(foTable).insert(batch)
+      const { error } = await supabase.from(table).insert(batch)
 
       if (!error) {
         done += batch.length
@@ -408,7 +466,7 @@ export default function ImportModal({ onClose, onImported }) {
         // it. Retry them one at a time: slow, but only for the batch that
         // actually had a problem, and only the real offenders are lost.
         for (let j = 0; j < batch.length; j++) {
-          const { error: rowError } = await supabase.from(foTable).insert([batch[j]])
+          const { error: rowError } = await supabase.from(table).insert([batch[j]])
           if (rowError) {
             errors++
             noteFailure(rowError.message, offset + i + j + 2)
@@ -571,7 +629,32 @@ export default function ImportModal({ onClose, onImported }) {
                 </div>
               )}
 
-              {/* Column Mapping */}
+              {/* Where the rows land. Pending is the default because an
+            imported sheet is somebody else's data, not a reviewed record. */}
+        <div className="mb-4 rounded-lg border border-[#D9D9D9] bg-slate-50 px-3 py-2.5">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-slate-400">Import into</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: 'pending', label: 'Pending Records', hint: 'to be checked and completed first' },
+              { value: 'fieldOrders', label: 'Field Orders', hint: 'already-finished records' },
+            ].map(o => (
+              <button
+                key={o.value}
+                onClick={() => setDestination(o.value)}
+                className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
+                  destination === o.value
+                    ? 'border-blue-500 bg-blue-50 text-blue-800'
+                    : 'border-[#D9D9D9] bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className="block font-semibold">{o.label}</span>
+                <span className="block text-[11px] opacity-70">{o.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Column Mapping */}
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Column Mapping</p>
 
@@ -679,6 +762,11 @@ export default function ImportModal({ onClose, onImported }) {
                 {progress.errors > 0 && (
                   <span className="text-red-500 block mt-1">
                     {progress.errors.toLocaleString()} rows failed
+                  </span>
+                )}
+                {skipped > 0 && (
+                  <span className="mt-1 block text-slate-500">
+                    {skipped.toLocaleString()} already on file, left as they were
                   </span>
                 )}
               </p>
