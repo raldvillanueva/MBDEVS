@@ -8,6 +8,7 @@ import { X, Save, CheckCircle, Info, Upload, Plus } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import ImportModal from '../components/ImportModal'
 import { useSettings } from '../lib/SettingsContext'
+import { isCancelledRecord } from '../lib/cancelled'
 import { useDropdowns } from '../lib/DropdownContext'
 import { emptyFilters, rowMatchesFilters, withoutColumns } from '../lib/recordFilters'
 import { useFilterColumns, withSubmission } from '../lib/optionalColumns'
@@ -66,6 +67,18 @@ function PS({ title, children }) {
 // optional. The rest follow whichever sections the chosen FO Action shows, so
 // a record is never blocked on a field it isn't being asked for.
 function requiredKeys(form) {
+  // A cancelled job has no meter work, so it is asked only for the main
+  // details and what it was billed at. Requiring a Type of Meter, a seal or
+  // a returned date for a visit that never happened would have made a
+  // cancelled record impossible to send on at all.
+  if (isCancelledRecord(form)) {
+    return [
+      'field_order_no', 'fo_action', 'service_number', 'status_crew',
+      'date_assign', 'date_executed', 'job_description', 'crew_name',
+      'location', 'billed_amount',
+    ]
+  }
+
   const keys = [
     'field_order_no', 'fo_action', 'service_number', 'status_crew',
     'date_assign', 'date_executed', 'type_of_meter', 'job_description',
@@ -373,8 +386,10 @@ async function sendSelectedToFieldOrders() {
   //                     Meter fields only the installed Terminal Seal
   //   Others / none  -> everything (safe default)
   const isRetirementFO = editForm?.fo_action === 'Retirement FO'
-  const showRemoveMeterSection = editForm?.fo_action !== 'Energized FO'
-  const showInstalledMeterFields = !isRetirementFO
+  // Neither meter section applies to a cancelled job.
+  const isCancelled = isCancelledRecord(editForm)
+  const showRemoveMeterSection = editForm?.fo_action !== 'Energized FO' && !isCancelled
+  const showInstalledMeterFields = !isRetirementFO && !isCancelled
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }} className="gap-4">
@@ -753,7 +768,9 @@ async function sendSelectedToFieldOrders() {
               </PS>
               )}
 
-              {/* Retirement FO keeps only Installed Seal, with no heading. */}
+              {/* Retirement FO keeps only Installed Seal, with no heading;
+                  a cancelled job keeps none, so the block goes entirely. */}
+              {!isCancelled && (
               <PS title={showInstalledMeterFields ? 'New Installed Meter' : ''}>
                 {showInstalledMeterFields && (
                   <>
@@ -791,6 +808,7 @@ async function sendSelectedToFieldOrders() {
                   </>
                 )}
               </PS>
+              )}
 
               <PS title="Remarks & Batch">
                 <PF label="FO Amount (₱)">
@@ -799,6 +817,9 @@ async function sendSelectedToFieldOrders() {
                     {opts('billed_amount').map(option => <option key={option}>{option}</option>)}
                   </select>
                 </PF>
+                {/* None of these apply to a cancelled job: no meter came
+                    back, no crew was paid for the work. */}
+                {!isCancelled && (<>
                 <PF label="Date Returned">
                   <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} className={cls('date_returned')} />
                 </PF>
@@ -813,6 +834,7 @@ async function sendSelectedToFieldOrders() {
                 <PF label="PlanGrid" optional>
                   <input value={editForm.plangrid} onChange={e => sf('plangrid', e.target.value)} className={cls('plangrid')} />
                 </PF>
+                </>)}
                 <PF label="Remarks" span2 optional>
                   <textarea value={editForm.remarks} onChange={e => sf('remarks', e.target.value)} rows={3} className={`${iCls} resize-none`} />
                 </PF>

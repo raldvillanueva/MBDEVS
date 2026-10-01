@@ -8,6 +8,7 @@ import { addPendingOrders } from '../lib/pendingStorage'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useSettings } from '../lib/SettingsContext'
+import { isCancelledRecord } from '../lib/cancelled'
 import { FO_ACTION_OPTIONS } from '../lib/dropdownLists'
 import { useDropdowns } from '../lib/DropdownContext'
 import { useSubmissionColumns, withSubmission } from '../lib/optionalColumns'
@@ -414,8 +415,11 @@ function deletePendingRecord(id) {
   //                     Meter fields only the installed Terminal Seal
   //   Others / none  -> everything (safe default)
   const isRetirementFO = form.fo_action === 'Retirement FO'
-  const showRemoveMeterSection = form.fo_action !== 'Energized FO'
-  const showInstalledMeterFields = !isRetirementFO
+  // A cancelled job never reached a meter, so neither meter section applies
+  // and Remarks keeps only the amount and the note explaining it.
+  const isCancelled = isCancelledRecord(form)
+  const showRemoveMeterSection = form.fo_action !== 'Energized FO' && !isCancelled
+  const showInstalledMeterFields = !isRetirementFO && !isCancelled
 
   return (
     
@@ -693,7 +697,9 @@ label="FO Action"
       )}
 
       {/* Section 3 – New Installed Meter. Retirement FO keeps only the
-          Installed Seal field, with no section heading above it. */}
+          Installed Seal field; a cancelled job keeps none, so the panel
+          itself goes rather than being left as an empty white box. */}
+      {!isCancelled && (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {showInstalledMeterFields && (
@@ -750,18 +756,24 @@ label="FO Action"
           )}
         </div>
       </div>
+      )}
 
-      {/* Section 4 – Remarks & Batch (always shown, for every FO Action) */}
+      {/* Section 4 – Remarks & Batch. Always shown, but a cancelled job
+          keeps only the amount and the remarks. */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SectionTitle title="Remarks & Batch Information" />
 
+          {/* On a cancelled job none of these apply: no meter came back, no
+              crew was paid for the work, and there is no location to pin. */}
+          {!isCancelled && (
           <Field label="For Batch">
             <select {...text('for_batch')} className={selectClass}>
               <option value="">— Select —</option>
               {opts('for_batch').map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </Field>
+          )}
 
           {/* A select like every other list here. It was a number input
               with a datalist, which opens the browser's own popup and
@@ -773,6 +785,8 @@ label="FO Action"
             </select>
           </Field>
 
+          {!isCancelled && (
+          <>
           <Field label="Date Returned">
             <input type="date" {...text('date_returned')} />
           </Field>
@@ -799,6 +813,8 @@ label="FO Action"
           <Field label="PlanGrid">
             <input {...text('plangrid')} placeholder="PlanGrid" />
           </Field>
+          </>
+          )}
 
           <Field label="Remarks">
   <textarea
