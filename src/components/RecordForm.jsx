@@ -592,19 +592,6 @@ label="FO Action"
             </div>
           </Field>
 
-          {hasSubmission && (
-            <>
-              <Field label="Submitted To">
-                <input {...text('submitted_to')} list="record-submitted-to-options" placeholder="Who it was submitted to" />
-                <datalist id="record-submitted-to-options">
-                  {optionsFor('submitted_to', sector).map(o => <option key={o} value={o} />)}
-                </datalist>
-              </Field>
-              <Field label="Date of Submitted">
-                <input type="date" {...text('date_submitted')} />
-              </Field>
-            </>
-          )}
         </div>
       </div>
 
@@ -795,16 +782,6 @@ label="FO Action"
             <input type="date" {...text('date_returned')} />
           </Field>
 
-          <Field label="Crew Payrol (₱)">
-            <input
-              type="number"
-              step="0.01"
-              value={form.crew_payrol ?? ''}
-              onChange={e => set('crew_payrol', e.target.value)}
-              className={inputClass}
-              placeholder="e.g. 220"
-            />
-          </Field>
 
           <Field label="Percentage (%)">
             <input {...text('percentage')} placeholder="e.g. 29%" />
@@ -818,6 +795,20 @@ label="FO Action"
             <input {...text('plangrid')} placeholder="PlanGrid" />
           </Field>
           </>
+          )}
+
+          {hasSubmission && (
+            <>
+              <Field label="Submitted To">
+                <input {...text('submitted_to')} list="record-submitted-to-options" placeholder="Who it was submitted to" />
+                <datalist id="record-submitted-to-options">
+                  {optionsFor('submitted_to', sector).map(o => <option key={o} value={o} />)}
+                </datalist>
+              </Field>
+              <Field label="Date of Submitted">
+                <input type="date" {...text('date_submitted')} />
+              </Field>
+            </>
           )}
 
           <Field label="Remarks">

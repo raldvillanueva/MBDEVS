@@ -1392,9 +1392,6 @@ useEffect(() => {
                 <PF label="Date Returned">
                   <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} disabled={fieldLocked('date_returned')} className={iCls} />
                 </PF>
-                <PF label="Crew Payrol (₱)">
-                  <input type="number" step="0.01" value={editForm.crew_payrol} onChange={e => sf('crew_payrol', e.target.value)} disabled={fieldLocked('crew_payrol')} className={iCls} />
-                </PF>
                 <PF label="Percentage (%)">
                   <input value={editForm.percentage} onChange={e => sf('percentage', e.target.value)} disabled={fieldLocked('percentage')} className={iCls} />
                 </PF>

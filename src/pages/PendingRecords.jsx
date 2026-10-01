@@ -84,7 +84,7 @@ function requiredKeys(form) {
     'date_assign', 'date_executed', 'type_of_meter', 'job_description',
     'crew_name', 'location',
     'installed_seal',
-    'billed_amount', 'for_batch', 'date_returned', 'crew_payrol', 'pluscode',
+    'billed_amount', 'for_batch', 'date_returned', 'pluscode',
   ]
   if (form.fo_action !== 'Energized FO') {
     keys.push(
@@ -696,24 +696,6 @@ async function sendSelectedToFieldOrders() {
                   </select>
                 </PF>
                 )}
-                {hasSubmission && (
-                  <>
-                    <PF label="Submitted To" optional>
-                      <input
-                        value={editForm.submitted_to ?? ''}
-                        onChange={e => sf('submitted_to', e.target.value)}
-                        list="pending-submitted-to-options"
-                        className={iCls}
-                      />
-                      <datalist id="pending-submitted-to-options">
-                        {optionsFor('submitted_to', sector).map(o => <option key={o} value={o} />)}
-                      </datalist>
-                    </PF>
-                    <PF label="Date of Submitted" optional>
-                      <input type="date" value={editForm.date_submitted ?? ''} onChange={e => sf('date_submitted', e.target.value)} className={iCls} />
-                    </PF>
-                  </>
-                )}
               </PS>
 
               {showRemoveMeterSection && (
@@ -832,9 +814,6 @@ async function sendSelectedToFieldOrders() {
                 <PF label="Date Returned">
                   <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} className={cls('date_returned')} />
                 </PF>
-                <PF label="Crew Payrol (₱)">
-                  <input type="number" step="0.01" value={editForm.crew_payrol} onChange={e => sf('crew_payrol', e.target.value)} className={cls('crew_payrol')} />
-                </PF>
                 <PF label="Plus Code">
                   <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} className={cls('pluscode')} />
                 </PF>
@@ -844,6 +823,24 @@ async function sendSelectedToFieldOrders() {
                   <input value={editForm.plangrid} onChange={e => sf('plangrid', e.target.value)} className={cls('plangrid')} />
                 </PF>
                 </>)}
+                {hasSubmission && (
+                  <>
+                    <PF label="Submitted To" optional>
+                      <input
+                        value={editForm.submitted_to ?? ''}
+                        onChange={e => sf('submitted_to', e.target.value)}
+                        list="pending-submitted-to-options"
+                        className={iCls}
+                      />
+                      <datalist id="pending-submitted-to-options">
+                        {optionsFor('submitted_to', sector).map(o => <option key={o} value={o} />)}
+                      </datalist>
+                    </PF>
+                    <PF label="Date of Submitted" optional>
+                      <input type="date" value={editForm.date_submitted ?? ''} onChange={e => sf('date_submitted', e.target.value)} className={iCls} />
+                    </PF>
+                  </>
+                )}
                 <PF label="Remarks" span2 optional>
                   <textarea value={editForm.remarks} onChange={e => sf('remarks', e.target.value)} rows={3} className={`${iCls} resize-none`} />
                 </PF>
