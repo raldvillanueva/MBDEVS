@@ -4,6 +4,7 @@
 import { supabase } from './supabase'
 import { fieldOrdersTable, pendingOrdersTable } from './sectorTables'
 import { fetchAllRows } from './fetchAllRows'
+import { baseFoAction } from './dropdownLists'
 import { isOverdueBy } from './aging'
 
 export const FO_COLUMNS =
@@ -60,7 +61,8 @@ export function isAssigned(row) {
 
 export function computeStats(list, { warningDays = 10, criticalDays = 21 } = {}) {
   const status = row => row.status_crew?.toUpperCase() || ''
-  const action = row => row.fo_action?.toUpperCase() || ''
+  // Base action: a Replace FO EMC counts towards Replacement, not Others.
+  const action = row => baseFoAction(row.fo_action)
 
   return {
     total: list.length,

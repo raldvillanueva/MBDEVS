@@ -13,7 +13,7 @@ import { useDropdowns } from '../lib/DropdownContext'
 import { emptyFilters, rowMatchesFilters, withoutColumns } from '../lib/recordFilters'
 import { useFilterColumns, withSubmission } from '../lib/optionalColumns'
 import { useColumnOptions } from '../lib/useColumnOptions'
-import { FO_ACTION_OPTIONS } from '../lib/dropdownLists'
+import { FO_ACTION_OPTIONS, baseFoAction } from '../lib/dropdownLists'
 import FilterBar from '../components/filters/FilterBar'
 
 const STATUS_CREW_OPTIONS = ['FOR ASSIGN', 'ASSIGNED', 'REASSIGN','CANCEL', 'CANCEL-EMC', 'FC CANCEL', 'FIELD COMPLETED', 'REVISITED FIELD COM.', 'REVISITED CANCEL']
@@ -86,13 +86,13 @@ function requiredKeys(form) {
     'installed_seal',
     'billed_amount', 'for_batch', 'date_returned', 'pluscode',
   ]
-  if (form.fo_action !== 'Energized FO') {
+  if (baseFoAction(form.fo_action) !== 'ENERGIZED FO') {
     keys.push(
       'remove_meter', 'r_serial_number', 'demand_seal_aerolock',
       'removed_seal', 'cabinet_seal_remove', 'reading_kwh',
     )
   }
-  if (form.fo_action !== 'Retirement FO') {
+  if (baseFoAction(form.fo_action) !== 'RETIREMENT FO') {
     keys.push(
       'ins_meter', 'ins_serial_number', 'demand_seal_installed', 'cabinet_seal_installed',
       'tln_tag', 'pole_tag', 'mdltr_no', 'aging',
@@ -385,10 +385,10 @@ async function sendSelectedToFieldOrders() {
   //   Retirement FO  -> Remove Meter + Remarks & Batch, and of the New Installed
   //                     Meter fields only the installed Terminal Seal
   //   Others / none  -> everything (safe default)
-  const isRetirementFO = editForm?.fo_action === 'Retirement FO'
+  const isRetirementFO = baseFoAction(editForm?.fo_action) === 'RETIREMENT FO'
   // Neither meter section applies to a cancelled job.
   const isCancelled = isCancelledRecord(editForm)
-  const showRemoveMeterSection = editForm?.fo_action !== 'Energized FO' && !isCancelled
+  const showRemoveMeterSection = baseFoAction(editForm?.fo_action) !== 'ENERGIZED FO' && !isCancelled
   const showInstalledMeterFields = !isRetirementFO && !isCancelled
 
   return (

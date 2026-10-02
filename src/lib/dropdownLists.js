@@ -60,8 +60,10 @@ export const STATUS_CREW_OPTIONS = [
 
 export const FO_ACTION_OPTIONS = [
   'Replace FO',
+  'Replace FO EMC',
   'Energized FO',
   'Retirement FO',
+  'Retirement FO EMC',
   'Rep/rel FO',
   'Replace Standard FO',
   'Reconnection FO',
@@ -71,6 +73,23 @@ export const FO_ACTION_OPTIONS = [
   // recognise under Others, so this is where the leftovers land.
   'Others',
 ]
+
+/**
+ * An FO Action with the EMC marker taken off, upper-cased.
+ *
+ * An EMC job is the same job done to an EMC meter: a Retirement FO EMC
+ * retires a meter exactly as a Retirement FO does. So everything that
+ * reads FO Action to decide something — which form sections show, which
+ * fields are required, which Dashboard tile it counts under — reads the
+ * base action, and the EMC variants follow their plain counterpart
+ * without each of those places having to list them.
+ *
+ * Nothing else in the list ends in "EMC", so this only ever strips the
+ * marker it is meant to.
+ */
+export function baseFoAction(value) {
+  return String(value ?? '').trim().replace(/\s+EMC$/i, '').toUpperCase()
+}
 
 /** Same comparison the database unique index uses. */
 export function normalizeOption(value) {

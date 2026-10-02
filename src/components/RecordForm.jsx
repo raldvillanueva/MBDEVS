@@ -9,7 +9,7 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { useSettings } from '../lib/SettingsContext'
 import { isCancelledRecord } from '../lib/cancelled'
-import { FO_ACTION_OPTIONS } from '../lib/dropdownLists'
+import { FO_ACTION_OPTIONS, baseFoAction } from '../lib/dropdownLists'
 import { useDropdowns } from '../lib/DropdownContext'
 import { useSubmissionColumns, withSubmission } from '../lib/optionalColumns'
  
@@ -414,11 +414,11 @@ function deletePendingRecord(id) {
   //   Retirement FO  -> Remove Meter + Remarks & Batch, and of the New Installed
   //                     Meter fields only the installed Terminal Seal
   //   Others / none  -> everything (safe default)
-  const isRetirementFO = form.fo_action === 'Retirement FO'
+  const isRetirementFO = baseFoAction(form.fo_action) === 'RETIREMENT FO'
   // A cancelled job never reached a meter, so neither meter section applies
   // and Remarks keeps only the amount and the note explaining it.
   const isCancelled = isCancelledRecord(form)
-  const showRemoveMeterSection = form.fo_action !== 'Energized FO' && !isCancelled
+  const showRemoveMeterSection = baseFoAction(form.fo_action) !== 'ENERGIZED FO' && !isCancelled
   const showInstalledMeterFields = !isRetirementFO && !isCancelled
 
   return (
