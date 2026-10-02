@@ -80,27 +80,85 @@ function StatusBadge({ status }) {
   return <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
 }
 
-// Job Description is an editable list — an Admin can add a value from the
-// Dropdown Lists page at any time — so this colours by what kind of work
-// the description names rather than by matching the list entry for entry.
-// A value nobody has written a rule for still shows, in grey, which is
-// what a new entry gets until someone decides it deserves its own colour.
+// Every Job Description gets a colour of its own, and keeps it.
 //
-// Checked in order, first match wins, so the narrower rule goes above the
-// broader one it would otherwise be swallowed by.
+// Assigned by position in the Job Description list rather than by hashing
+// the text: a hash puts two values on the same colour surprisingly often
+// — three pairs collided out of the twenty-five standard descriptions —
+// and the whole point is that no two look alike. By position, the first
+// thirty-two are guaranteed distinct.
+//
+// Hues are ordered to jump around the spectrum rather than run through
+// it, because neighbouring entries in the list are the ones most often
+// confused: REPLACE, REPLACE-EMC and REPLACE-EMX sit together, so they
+// want colours that are far apart, not three shades of the same one.
+// Written out in full rather than built from a list of hue names:
+// Tailwind only generates the classes it can see spelled out in the
+// source, so `bg-${hue}-100` would compile to nothing and every badge
+// would come out unstyled.
+//
+// Soft first, then solid, so the descriptions near the top of the list —
+// the everyday ones — get the quieter treatment and the long tail is
+// still told apart. Red is in neither: it is reserved below.
 const JOB_TINTS = [
-  // Nothing happened. Same red the status badge uses for a cancelled job.
-  [/CANCEL/,                        'bg-red-100 text-red-700'],
-  // Power on / power off, the pair most worth telling apart at a glance.
-  [/ENERGIZ|RECONNECT/,             'bg-emerald-100 text-emerald-700'],
-  [/DISCONNECT/,                    'bg-orange-100 text-orange-700'],
-  // A meter went in. REPREL is rep/rel — a replacement by another name.
-  [/REPLACE|REPREL|INTERCHANGE/,    'bg-blue-100 text-blue-700'],
-  // A meter came out.
-  [/RETIRE|REMOVE/,                 'bg-violet-100 text-violet-700'],
-  // Seal work: no meter changed hands.
-  [/SEAL/,                          'bg-amber-100 text-amber-700'],
+  'bg-blue-100 text-blue-700',
+  'bg-orange-100 text-orange-700',
+  'bg-green-100 text-green-700',
+  'bg-fuchsia-100 text-fuchsia-700',
+  'bg-amber-100 text-amber-700',
+  'bg-cyan-100 text-cyan-700',
+  'bg-rose-100 text-rose-700',
+  'bg-lime-100 text-lime-700',
+  'bg-indigo-100 text-indigo-700',
+  'bg-yellow-100 text-yellow-700',
+  'bg-teal-100 text-teal-700',
+  'bg-pink-100 text-pink-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-violet-100 text-violet-700',
+  'bg-sky-100 text-sky-700',
+  'bg-purple-100 text-purple-700',
+  'bg-blue-600 text-white',
+  'bg-orange-600 text-white',
+  'bg-green-600 text-white',
+  'bg-fuchsia-600 text-white',
+  'bg-amber-600 text-white',
+  'bg-cyan-600 text-white',
+  'bg-rose-600 text-white',
+  'bg-lime-600 text-white',
+  'bg-indigo-600 text-white',
+  'bg-yellow-600 text-white',
+  'bg-teal-600 text-white',
+  'bg-pink-600 text-white',
+  'bg-emerald-600 text-white',
+  'bg-violet-600 text-white',
+  'bg-sky-600 text-white',
+  'bg-purple-600 text-white',
 ]
+
+// Cancelled is pinned, not assigned: it has to stay the same red the
+// Status Crew badge uses, or the two columns would disagree about what
+// red means on the same row.
+const CANCELLED_TINT = 'bg-red-100 text-red-700'
+
+// Stable for a description the list no longer offers — an older record
+// keeps a sensible colour instead of falling back to grey.
+function fallbackTint(value) {
+  let h = 5381
+  for (let i = 0; i < value.length; i++) h = ((h * 33) ^ value.charCodeAt(i)) >>> 0
+  return JOB_TINTS[h % JOB_TINTS.length]
+}
+
+/** { description -> tint } for the Job Description list as it stands. */
+function buildJobTints(options) {
+  const map = new Map()
+  let i = 0
+  for (const option of options) {
+    const key = option.toUpperCase()
+    if (map.has(key)) continue
+    map.set(key, /CANCEL/.test(key) ? CANCELLED_TINT : JOB_TINTS[i++ % JOB_TINTS.length])
+  }
+  return map
+}
 
 // A plain inline span, exactly like StatusBadge, and it has to stay that
 // way. The frozen and scrolling halves of the table are two separate
@@ -113,9 +171,12 @@ const JOB_TINTS = [
 //
 // The cell already clips with overflow-hidden and an ellipsis, so a long
 // description still truncates without the badge needing to do it.
-function JobBadge({ job }) {
+function JobBadge({ job, tints }) {
   if (!job) return <span className="text-slate-300">—</span>
-  const tint = JOB_TINTS.find(([pattern]) => pattern.test(job.toUpperCase()))?.[1] || 'bg-slate-100 text-slate-600'
+  const key = job.toUpperCase()
+  const tint =
+    /CANCEL/.test(key) ? CANCELLED_TINT
+    : tints?.get(key) || fallbackTint(key)
   return <span className={`px-2 py-0.5 rounded text-xs font-medium ${tint}`} title={job}>{job}</span>
 }
 
@@ -142,7 +203,7 @@ function PS({ title, children }) {
 const COLS = [
   // — MAIN DATA —
   { label: 'FIELD ORDER/FO',      key: 'field_order_no',        w: 145, mono: true, render: r => r.field_order_no || '—' },
-  { label: 'JOB DESCRIPTION',     key: 'job_description',       w: 150, render: r => <JobBadge job={r.job_description} /> },
+  { label: 'JOB DESCRIPTION',     key: 'job_description',       w: 150, render: (r, ctx) => <JobBadge job={r.job_description} tints={ctx?.jobTints} /> },
   { label: 'CREW NAME',           key: 'crew_name',             w: 130, render: r => r.crew_name || '—' },
   { label: 'DATE EXECUTED',       key: 'date_executed',         w: 140, render: r => r.date_executed || '—' },
   { label: 'STATUS CREW',         key: 'status_crew',           w: 120, render: r => <StatusBadge status={r.status_crew} /> },
@@ -517,6 +578,15 @@ useEffect(() => {
   // The drawer's dropdowns: the list for this sector, plus the record's own
   // value if it is no longer on the list.
   const opts = field => optionsFor(field, sector, editForm?.[field])
+
+  // Built from the list as it currently stands, so a description added on
+  // the Dropdown Lists page gets its own colour straight away instead of
+  // sharing one. Column renderers receive this as their second argument.
+  const jobTints = useMemo(
+    () => buildJobTints(optionsFor('job_description', sector)),
+    [optionsFor, sector],
+  )
+  const renderCtx = useMemo(() => ({ jobTints }), [jobTints])
 
   function openEdit(row) {
     setEditRow(row)
@@ -1024,7 +1094,7 @@ useEffect(() => {
                             style={{ minWidth: col.w, maxWidth: col.w }}
                             className={`px-3 py-2 border-r border-slate-100 last:border-0 text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis${col.mono ? ' font-mono' : ''}`}
                           >
-                            {col.render(row)}
+                            {col.render(row, renderCtx)}
                           </td>
                         ))}
                       </tr>
@@ -1115,7 +1185,7 @@ useEffect(() => {
                             style={{ minWidth: col.w, maxWidth: col.w }}
                             className={`px-3 py-2 border-r border-slate-100 last:border-0 text-slate-700 whitespace-nowrap overflow-hidden text-ellipsis${col.mono ? ' font-mono' : ''}`}
                           >
-                            {col.render(row)}
+                            {col.render(row, renderCtx)}
                           </td>
                         ))}
                       </tr>
