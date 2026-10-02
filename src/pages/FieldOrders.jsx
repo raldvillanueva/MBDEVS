@@ -166,7 +166,20 @@ const COLS = [
   { label: 'LOCATION',            key: 'location',              w: 260, render: r => r.location || '—' },
   { label: 'MFLT CHECKLIST',      key: 'mflt_checklist',        w: 110, render: r => r.mflt_checklist ? <span className="text-emerald-600 font-bold">✓</span> : '' },
   { label: 'FO AMOUNT',           key: 'billed_amount',         w: 110, render: r => r.billed_amount != null ? `₱${parseFloat(r.billed_amount).toFixed(2)}` : '—' },
-  { label: 'FOR BATCH',           key: 'for_batch',             w: 100, render: r => r.for_batch?.toUpperCase().includes('ALREADY') ? <span className="px-2 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">Batched</span> : <span className="text-slate-300">—</span> },
+  // Four values come out of the For Batch list, not two. This column used
+  // to show a badge for ALREADY BATCH and a dash for everything else,
+  // which read as "nothing set" on every record that had FOR BATCH,
+  // MISSING METER or OTHERS PENDING on it. The badge stays — already
+  // batched is the state worth spotting down a column — and the rest now
+  // show what they actually say. A dash means genuinely empty.
+  { label: 'FOR BATCH',           key: 'for_batch',             w: 135, render: r => {
+      if (!r.for_batch) return <span className="text-slate-300">—</span>
+      if (r.for_batch.toUpperCase().includes('ALREADY')) {
+        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">Batched</span>
+      }
+      return r.for_batch
+    }
+  },
   { label: 'DATE RETURNED',       key: 'date_returned',         w: 115, render: r => r.date_returned || '—' },
   { label: 'PLUSCODE',            key: 'pluscode',              w: 90,  render: r => r.pluscode || '—' },
   { label: 'PLANGRID',            key: 'plangrid',              w: 110, render: r => r.plangrid || '—' },
