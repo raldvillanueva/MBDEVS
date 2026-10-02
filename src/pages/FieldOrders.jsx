@@ -80,6 +80,39 @@ function StatusBadge({ status }) {
   return <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
 }
 
+// Job Description is an editable list — an Admin can add a value from the
+// Dropdown Lists page at any time — so this colours by what kind of work
+// the description names rather than by matching the list entry for entry.
+// A value nobody has written a rule for still shows, in grey, which is
+// what a new entry gets until someone decides it deserves its own colour.
+//
+// Checked in order, first match wins, so the narrower rule goes above the
+// broader one it would otherwise be swallowed by.
+const JOB_TINTS = [
+  // Nothing happened. Same red the status badge uses for a cancelled job.
+  [/CANCEL/,                        'bg-red-100 text-red-700'],
+  // Power on / power off, the pair most worth telling apart at a glance.
+  [/ENERGIZ|RECONNECT/,             'bg-emerald-100 text-emerald-700'],
+  [/DISCONNECT/,                    'bg-orange-100 text-orange-700'],
+  // A meter went in. REPREL is rep/rel — a replacement by another name.
+  [/REPLACE|REPREL|INTERCHANGE/,    'bg-blue-100 text-blue-700'],
+  // A meter came out.
+  [/RETIRE|REMOVE/,                 'bg-violet-100 text-violet-700'],
+  // Seal work: no meter changed hands.
+  [/SEAL/,                          'bg-amber-100 text-amber-700'],
+]
+
+function JobBadge({ job }) {
+  if (!job) return <span className="text-slate-300">—</span>
+  const j = job.toUpperCase()
+  const tint = JOB_TINTS.find(([pattern]) => pattern.test(j))?.[1] || 'bg-slate-100 text-slate-600'
+  return (
+    <span className={`inline-block max-w-full truncate px-2 py-0.5 rounded text-xs font-medium ${tint}`} title={job}>
+      {job}
+    </span>
+  )
+}
+
 const iCls = 'w-full px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
 
 function PF({ label, children, span2 }) {
@@ -103,7 +136,7 @@ function PS({ title, children }) {
 const COLS = [
   // — MAIN DATA —
   { label: 'FIELD ORDER/FO',      key: 'field_order_no',        w: 145, mono: true, render: r => r.field_order_no || '—' },
-  { label: 'JOB DESCRIPTION',     key: 'job_description',       w: 120, render: r => r.job_description || '—' },
+  { label: 'JOB DESCRIPTION',     key: 'job_description',       w: 150, render: r => <JobBadge job={r.job_description} /> },
   { label: 'CREW NAME',           key: 'crew_name',             w: 130, render: r => r.crew_name || '—' },
   { label: 'DATE EXECUTED',       key: 'date_executed',         w: 140, render: r => r.date_executed || '—' },
   { label: 'STATUS CREW',         key: 'status_crew',           w: 120, render: r => <StatusBadge status={r.status_crew} /> },
