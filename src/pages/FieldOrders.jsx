@@ -234,12 +234,14 @@ const COLS = [
   { label: 'BOOBA NUMBER',        key: 'booba_number',          w: 115, render: r => r.booba_number || '—' },
   { label: 'MDLTR NO.',           key: 'mdltr_no',              w: 90,  render: r => r.mdltr_no || '—' },
   { label: 'AGING',               key: 'aging',                 w: 70,  render: r => {
-      // A checked record has been dealt with, so how long it has been
-      // sitting stops being a question worth asking. Blanking it keeps the
-      // column to rows that still need chasing.
-      if (r.for_check) return <span className="text-slate-300">—</span>
       const days = displayAgingDays(r)
       if (days == null) return '—'
+      // A checked record keeps its number but loses the colour. The
+      // yellow and red mean "this still needs chasing", and a record
+      // that has been dealt with does not — leaving them on would fill
+      // the column with warnings about finished work. Grey says the
+      // same thing the blank used to, without hiding the number.
+      if (r.for_check) return <span className="text-slate-400">{days}</span>
       // Yellow from the warning threshold, red past the overdue one.
       // A batched or returned meter is neither — it has come home.
       const level = agingLevel(r)
