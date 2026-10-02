@@ -102,15 +102,21 @@ const JOB_TINTS = [
   [/SEAL/,                          'bg-amber-100 text-amber-700'],
 ]
 
+// A plain inline span, exactly like StatusBadge, and it has to stay that
+// way. The frozen and scrolling halves of the table are two separate
+// tables held in step by a 33px row height, which for a table row is a
+// minimum rather than a fixed size. Vertical padding on an inline element
+// does not add to the line box, so a badge like this leaves the row at
+// 33px; inline-block does add to it, and the half of the table holding
+// the badge grows taller than the half that does not, so the two drift
+// further apart with every row down the page.
+//
+// The cell already clips with overflow-hidden and an ellipsis, so a long
+// description still truncates without the badge needing to do it.
 function JobBadge({ job }) {
   if (!job) return <span className="text-slate-300">—</span>
-  const j = job.toUpperCase()
-  const tint = JOB_TINTS.find(([pattern]) => pattern.test(j))?.[1] || 'bg-slate-100 text-slate-600'
-  return (
-    <span className={`inline-block max-w-full truncate px-2 py-0.5 rounded text-xs font-medium ${tint}`} title={job}>
-      {job}
-    </span>
-  )
+  const tint = JOB_TINTS.find(([pattern]) => pattern.test(job.toUpperCase()))?.[1] || 'bg-slate-100 text-slate-600'
+  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${tint}`} title={job}>{job}</span>
 }
 
 const iCls = 'w-full px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
