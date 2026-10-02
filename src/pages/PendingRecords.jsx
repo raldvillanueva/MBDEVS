@@ -84,7 +84,11 @@ function requiredKeys(form) {
     'date_assign', 'date_executed', 'type_of_meter', 'job_description',
     'crew_name', 'location',
     'installed_seal',
-    'billed_amount', 'for_batch', 'date_returned', 'pluscode',
+    // Date Returned is deliberately not here. The meter often comes back
+    // after the record has moved on, so requiring it in Pending held
+    // finished records back waiting on something that had not happened
+    // yet. It is editable in Field Orders instead.
+    'billed_amount', 'for_batch', 'pluscode',
   ]
   if (baseFoAction(form.fo_action) !== 'ENERGIZED FO') {
     keys.push(
@@ -621,9 +625,15 @@ async function sendSelectedToFieldOrders() {
 
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 <Info size={14} className="mt-0.5 shrink-0" />
+                {/* Not a list of the optional ones: which fields those
+                    are depends on the FO Action and on whether the job
+                    was cancelled, so any list written here goes stale the
+                    moment one of those rules changes. The asterisks are
+                    already on the fields themselves and are always right. */}
                 <p>
                   Fields marked <span className="font-bold text-red-500">*</span> must be filled in
-                  before this record is sent to Field Orders. Only <strong>Remarks</strong>{hasSubmission ? <>, <strong>Submitted To</strong> and <strong>Date of Submitted</strong> are</> : ' is'} optional.
+                  before this record is sent to Field Orders. Anything without one can be left
+                  blank and filled in later.
                 </p>
               </div>
 
@@ -811,7 +821,7 @@ async function sendSelectedToFieldOrders() {
                 {/* None of these apply to a cancelled job: no meter came
                     back, no crew was paid for the work. */}
                 {!isCancelled && (<>
-                <PF label="Date Returned">
+                <PF label="Date Returned" optional>
                   <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} className={cls('date_returned')} />
                 </PF>
                 <PF label="Plus Code">

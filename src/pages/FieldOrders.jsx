@@ -28,9 +28,12 @@ const PAGE_SIZE = 50
 // routinely read off the paperwork after the record has moved on, and
 // sending every one of those through review was making work out of
 // ordinary completion.
+// Date Returned is here for the same reason: the meter frequently comes
+// back after the record has already moved on, so it is no longer asked
+// for in Pending and is filled in here instead.
 const FIELD_ORDER_EDITABLE = [
   'status_crew', 'for_check', 'for_batch', 'submitted_to', 'date_submitted',
-  'ins_meter', 'installed_seal',
+  'ins_meter', 'installed_seal', 'date_returned',
 ]
 
 // Aging and Due Date are worked out in the browser, so there is no column
