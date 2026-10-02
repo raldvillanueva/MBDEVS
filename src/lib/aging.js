@@ -37,14 +37,30 @@ export function isAlreadyBatched(row) {
   return !!row?.for_batch?.toUpperCase().includes('ALREADY')
 }
 
+/**
+ * Whether a record ages at all.
+ *
+ * Only a witnessed record does. Ageing measures how long something has
+ * been outstanding since it was witnessed, so a record that has not been
+ * witnessed has not started — it is not a record that is nought days old,
+ * it is one the clock has not begun on.
+ *
+ * Asked here rather than at each call site so the column, the red row
+ * highlight and the Dashboard's overdue counts cannot answer it
+ * differently.
+ */
+export function hasAging(row) {
+  return !!row?.witness_date
+}
+
 export function displayAgingDays(row) {
-  if (!row) return null
+  if (!hasAging(row)) return null
   if (isAlreadyBatched(row)) return 0
   return computeAgingDays(row.date_executed)
 }
 
 export function isOverdueBy(row, thresholdDays) {
-  if (!row) return false
+  if (!hasAging(row)) return false
   if (isAlreadyBatched(row)) return false
   const days = computeAgingDays(row.date_executed)
   if (days == null) return false
@@ -64,10 +80,11 @@ export function isOverdue(row) {
  *   'critical' past the overdue threshold (21 days) — red
  *
  * A batched or returned meter is in no band: it has come back, so it has
- * stopped ageing and cannot be late.
+ * stopped ageing and cannot be late. Nor is one that was never witnessed,
+ * which has not started ageing in the first place.
  */
 export function agingLevel(row) {
-  if (!row || isAlreadyBatched(row) || row.date_returned) return null
+  if (!hasAging(row) || isAlreadyBatched(row) || row.date_returned) return null
   const days = computeAgingDays(row.date_executed)
   if (days == null) return null
   if (days > overdueThresholdDays) return 'critical'
