@@ -15,6 +15,7 @@ import { emptyFilters, applyFiltersToQuery, hasActiveFilters, filterField, ruleI
 import { useFilterColumns, withSubmission, SUBMISSION_COLUMNS } from '../lib/optionalColumns'
 import FilterBar from '../components/filters/FilterBar'
 import { FloatingPanel, ValuePicker, RuleEditor } from '../components/filters/FilterControls'
+import StatusBadge from '../components/StatusBadge'
 
 const PAGE_SIZE = 50
 
@@ -73,12 +74,6 @@ const EMPTY_FORM = {
   submitted_to: '', date_submitted: '',
 }
 
-function StatusBadge({ status }) {
-  const s = status?.toUpperCase() || ''
-  if (s === 'CANCEL') return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">CANCEL</span>
-  if (s.includes('FIELD')) return <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">FIELD COMPL.</span>
-  return <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
-}
 
 // Every Job Description gets a colour of its own, and keeps it.
 //

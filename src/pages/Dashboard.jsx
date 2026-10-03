@@ -8,6 +8,7 @@ import { useSector } from '../lib/SectorContext'
 import { DATA_SECTORS, SECTOR_LABELS, isDataSector } from '../lib/sectorTables'
 import { YEAR_START, TODAY, inDateRange, computeStats, isAssigned, fetchSectorRows, fetchSectorPendingRows } from '../lib/reportStats'
 import { useSettings } from '../lib/SettingsContext'
+import StatusBadge from '../components/StatusBadge'
 
 function Section({ title, children }) {
   return (
@@ -468,9 +469,3 @@ export default function Dashboard() {
   )
 }
 
-function StatusBadge({ status }) {
-  const s = status?.toUpperCase() || ''
-  if (s === 'CANCEL') return <span className="rounded px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-700">CANCEL</span>
-  if (s.includes('FIELD')) return <span className="rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700">FIELD COMPL.</span>
-  return <span className="rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600">{status || '—'}</span>
-}

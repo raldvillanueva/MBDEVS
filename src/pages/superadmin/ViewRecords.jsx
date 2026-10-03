@@ -2,15 +2,10 @@ import { useEffect, useState } from 'react'
 import { RefreshCw, AlertTriangle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import SuperAdminLayout from './SuperAdminLayout'
+import StatusBadge from '../../components/StatusBadge'
 
 const PAGE_SIZE = 50
 
-function StatusBadge({ status }) {
-  const s = (status || '').toUpperCase()
-  if (s === 'CANCEL') return <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">CANCEL</span>
-  if (s.includes('FIELD')) return <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">FIELD COMPL.</span>
-  return <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{status || '—'}</span>
-}
 
 // This queries the `field_orders` table directly (no ProtectedRoute, no
 // session check) — it works today because that table's Row Level Security
