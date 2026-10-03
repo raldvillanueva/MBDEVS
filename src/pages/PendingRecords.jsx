@@ -11,7 +11,8 @@ import { useSettings } from '../lib/SettingsContext'
 import { isCancelledRecord } from '../lib/cancelled'
 import { useDropdowns } from '../lib/DropdownContext'
 import { emptyFilters, rowMatchesFilters, withoutColumns } from '../lib/recordFilters'
-import { useFilterColumns, withSubmission } from '../lib/optionalColumns'
+import { useFilterColumns, useSectorFieldColumns, withSubmission } from '../lib/optionalColumns'
+import { extraFields, withSectorFields } from '../lib/sectorFields'
 import { useColumnOptions } from '../lib/useColumnOptions'
 import { FO_ACTION_OPTIONS, baseFoAction } from '../lib/dropdownLists'
 import FilterBar from '../components/filters/FilterBar'
@@ -33,6 +34,8 @@ const EMPTY_FORM = {
   crew_payrol: '', pluscode: '', plangrid: '',
   // Optional; only saved once the database has these columns.
   submitted_to: '', date_submitted: '',
+  // Pasig only (lib/sectorFields.js); stripped from every other sector.
+  lcg_others: '', mcb_others: '',
 }
 
 const iCls = 'w-full px-2 py-1.5 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
@@ -187,6 +190,8 @@ export default function PendingRecords() {
   // `unavailable`: new columns not in the database yet; switched-off
   // column filters (System Settings) are dropped too.
   const { hasSubmission, missing: unavailable, disabled: filterOff, hidden: filterHidden } = useFilterColumns(sector)
+  const hasSectorFields = useSectorFieldColumns(sector)
+  const sectorExtras = extraFields(sector)
   const filtered = useMemo(
     () => pending.filter(r => rowMatchesFilters(r, withoutColumns(filters, filterHidden), { page: 'pending', missing: unavailable })),
     [pending, filters, filterHidden, unavailable],
@@ -257,8 +262,11 @@ export default function PendingRecords() {
       date_returned: rest.date_returned || null,
     }
   }
-  // Leaves Submitted To / Date of Submitted out until the table has them.
-  const toSave = record => withSubmission(toPayload(record), hasSubmission)
+  // Leaves out Submitted To / Date of Submitted until the table has them,
+  // and the sector-specific fields unless this sector is the one that
+  // asks for them.
+  const toSave = record =>
+    withSectorFields(withSubmission(toPayload(record), hasSubmission), sector, hasSectorFields)
   function savePayload() { return toSave(editForm) }
 
   async function updatePending() {
@@ -795,6 +803,19 @@ async function sendSelectedToFieldOrders() {
                     <PF label="Aging (days)">
                       <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={cls('aging')} />
                     </PF>
+                    {/* Optional: Pasig is the only sector asked for these,
+                        and they are not on the client sheet, so requiring
+                        them would block every record already waiting. */}
+                    {hasSectorFields && sectorExtras.map(f => (
+                      <PF key={f.key} label={f.label} optional>
+                        <input
+                          value={editForm[f.key] ?? ''}
+                          onChange={e => sf(f.key, e.target.value)}
+                          placeholder={f.placeholder}
+                          className={iCls}
+                        />
+                      </PF>
+                    ))}
                   </>
                 )}
               </PS>

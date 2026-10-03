@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase'
 import { useSettings } from './SettingsContext'
 import { fieldOrdersTable, pendingOrdersTable, isDataSector } from './sectorTables'
+import { extraFieldKeys } from './sectorFields'
 
 // Submitted To / Date of Submitted are new columns. They only exist once
 // dropdown_lists_and_filters_setup.sql has been run in Supabase, so the app
@@ -50,6 +51,27 @@ export function withSubmission(payload, has) {
   const out = { ...payload }
   for (const c of SUBMISSION_COLUMNS) delete out[c]
   return out
+}
+
+// Pasig's LCG and MCB seals arrived the same way, with
+// pasig_seal_fields_setup.sql. A sector that asks for no extra fields
+// has nothing to check, so it answers false without a round trip.
+
+/** true once this sector's tables have the extra fields it asks for. */
+export function useSectorFieldColumns(sector) {
+  const [has, setHas] = useState(false)
+  const keys = extraFieldKeys(sector).join(',')
+  useEffect(() => {
+    let alive = true
+    const columns = keys ? keys.split(',') : []
+    if (!isDataSector(sector) || columns.length === 0) { setHas(false); return undefined }
+    Promise.all([
+      tableHas(fieldOrdersTable(sector), columns),
+      tableHas(pendingOrdersTable(sector), columns),
+    ]).then(([a, b]) => { if (alive) setHas(a && b) })
+    return () => { alive = false }
+  }, [sector, keys])
+  return has
 }
 
 /**

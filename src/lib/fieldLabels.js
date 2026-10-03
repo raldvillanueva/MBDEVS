@@ -31,6 +31,9 @@ export const FIELD_LABELS = {
   pole_tag: 'Pole Tag',
   booba_number: 'Booba Number',
   mdltr_no: 'MDLTR No.',
+  // Pasig only, but an edit request names the field wherever it is read.
+  lcg_others: 'LCG (Others)',
+  mcb_others: 'MCB (Others)',
   aging: 'Aging',
   witness_date: 'Witness Date',
   remarks: 'Remarks',

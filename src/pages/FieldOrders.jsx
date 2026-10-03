@@ -12,7 +12,8 @@ import { logAudit, AUDIT_ACTIONS } from '../lib/auditLog'
 import { useDropdowns } from '../lib/DropdownContext'
 import { useColumnOptions } from '../lib/useColumnOptions'
 import { emptyFilters, applyFiltersToQuery, hasActiveFilters, filterField, ruleIsComplete, withoutColumns } from '../lib/recordFilters'
-import { useFilterColumns, withSubmission, SUBMISSION_COLUMNS } from '../lib/optionalColumns'
+import { useFilterColumns, useSectorFieldColumns, withSubmission, SUBMISSION_COLUMNS } from '../lib/optionalColumns'
+import { extraFields, withSectorFields, ALL_EXTRA_FIELD_KEYS } from '../lib/sectorFields'
 import FilterBar from '../components/filters/FilterBar'
 import { FloatingPanel, ValuePicker, RuleEditor } from '../components/filters/FilterControls'
 import StatusBadge from '../components/StatusBadge'
@@ -70,6 +71,8 @@ const EMPTY_FORM = {
   demand_seal_installed: '', installed_seal: '', cabinet_seal_installed: '', tln_tag: '',
   pole_tag: '', booba_number: '', mdltr_no: '', aging: '', witness_date: '', remarks: '',
   mflt_checklist: false, fo_type: '', billed_amount: '', for_batch: '', date_returned: '',
+  // Pasig only (lib/sectorFields.js); stripped from every other sector.
+  lcg_others: '', mcb_others: '',
   crew_payrol: '', percentage: '', pluscode: '', plangrid: '',
   submitted_to: '', date_submitted: '',
 }
@@ -277,6 +280,9 @@ const COLS = [
       return r.for_batch
     }
   },
+  // Pasig only. Filtered out for every other sector (see scrollCols).
+  { label: 'LCG (OTHERS)',        key: 'lcg_others',            w: 150, render: r => r.lcg_others || '—' },
+  { label: 'MCB (OTHERS)',        key: 'mcb_others',            w: 150, render: r => r.mcb_others || '—' },
   { label: 'DATE RETURNED',       key: 'date_returned',         w: 115, render: r => r.date_returned || '—' },
   { label: 'PLUSCODE',            key: 'pluscode',              w: 90,  render: r => r.pluscode || '—' },
   { label: 'PLANGRID',            key: 'plangrid',              w: 110, render: r => r.plangrid || '—' },
@@ -298,8 +304,21 @@ export default function FieldOrders() {
   // New columns the database may not have yet, and columns the Super Admin
   // switched filtering off for (System Settings → General).
   const { hasSubmission, missing, disabled, hidden } = useFilterColumns(sector)
-  const scrollCols = hasSubmission ? SCROLL_COLS : SCROLL_COLS.filter(c => !SUBMISSION_COLUMNS.includes(c.key))
-  const exportFields = f => hasSubmission || !SUBMISSION_COLUMNS.includes(f.key)
+  // Sector-specific columns (Pasig's LCG and MCB seals) are carried by
+  // every sector's COLS and filtered out here, so only the sector that
+  // asks for them sees a column — and nobody sees one made of dashes.
+  const hasSectorFields = useSectorFieldColumns(sector)
+  const sectorExtras = extraFields(sector)
+  const extraKeys = useMemo(
+    () => new Set(hasSectorFields ? [] : ALL_EXTRA_FIELD_KEYS),
+    [hasSectorFields],
+  )
+  const showsColumn = key => !SUBMISSION_COLUMNS.includes(key) || hasSubmission
+  const scrollCols = useMemo(
+    () => SCROLL_COLS.filter(c => showsColumn(c.key) && !extraKeys.has(c.key)),
+    [hasSubmission, extraKeys],
+  )
+  const exportFields = f => showsColumn(f.key) && !extraKeys.has(f.key)
   // canManage covers Admin and up — everything except permanent delete,
   // which is canDelete.
   const isAdmin = canManage || role === 'admin'
@@ -672,7 +691,10 @@ useEffect(() => {
 
 
 
-  const { error } = await supabase.from(foTable).update(withSubmission(payload, hasSubmission)).eq('id', editRow.id)
+  const { error } = await supabase
+    .from(foTable)
+    .update(withSectorFields(withSubmission(payload, hasSubmission), sector, hasSectorFields))
+    .eq('id', editRow.id)
 
 
 
@@ -766,6 +788,8 @@ useEffect(() => {
     { key: 'pole_tag',              label: 'Pole Tag' },
     { key: 'booba_number',          label: 'Booba Number' },
     { key: 'mdltr_no',              label: 'MDLTR No.' },
+    { key: 'lcg_others',            label: 'LCG (Others)' },
+    { key: 'mcb_others',            label: 'MCB (Others)' },
     { key: 'aging',                 label: 'Aging' },
     { key: 'witness_date',          label: 'Witness Date' },
     { key: 'due_date',              label: 'Due Date (days left)' },
@@ -1490,6 +1514,17 @@ useEffect(() => {
                 <PF label="Aging (days)">
                   <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} disabled={fieldLocked('aging')} className={iCls} />
                 </PF>
+                {hasSectorFields && sectorExtras.map(f => (
+                  <PF key={f.key} label={f.label}>
+                    <input
+                      value={editForm[f.key] ?? ''}
+                      onChange={e => sf(f.key, e.target.value)}
+                      disabled={fieldLocked(f.key)}
+                      placeholder={f.placeholder}
+                      className={iCls}
+                    />
+                  </PF>
+                ))}
               </PS>
 
               <PS title="Remarks & Batch">

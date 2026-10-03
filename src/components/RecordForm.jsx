@@ -11,7 +11,8 @@ import { useSettings } from '../lib/SettingsContext'
 import { isCancelledRecord } from '../lib/cancelled'
 import { FO_ACTION_OPTIONS, baseFoAction } from '../lib/dropdownLists'
 import { useDropdowns } from '../lib/DropdownContext'
-import { useSubmissionColumns, withSubmission } from '../lib/optionalColumns'
+import { useSubmissionColumns, useSectorFieldColumns, withSubmission } from '../lib/optionalColumns'
+import { extraFields, withSectorFields } from '../lib/sectorFields'
  
 const EMPTY_FORM = {
   // Main Info
@@ -59,6 +60,10 @@ const EMPTY_FORM = {
   // Main Info, new — only shown/saved once the database has the columns
   submitted_to: '',
   date_submitted: '',
+  // Pasig only (lib/sectorFields.js); stripped from every other sector's
+  // save, so carrying them in the blank form costs nothing.
+  lcg_others: '',
+  mcb_others: '',
 }
 
 function Field({ label, children, required, errorMessage }) {
@@ -106,6 +111,8 @@ export default function RecordForm({ initialData, recordId, repeatCount }) {
   const { optionsFor } = useDropdowns()
   const opts = field => optionsFor(field, sector, form[field])
   const hasSubmission = useSubmissionColumns(sector)
+  const hasSectorFields = useSectorFieldColumns(sector)
+  const sectorExtras = extraFields(sector)
   // A Viewer has no business on this form at all. An Encoder does: they
   // add to Pending, and a reviewer moves it on to Field Orders.
   const isStaff = accountType === 'viewer' || !canEncode
@@ -258,7 +265,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
   // =========================
   // PAYLOAD
   // =========================
-  const payload = withSubmission({
+  const payload = withSectorFields(withSubmission({
     ...form,
     aging: form.aging ? parseInt(form.aging) : null,
     billed_amount: form.billed_amount ? parseFloat(form.billed_amount) : null,
@@ -267,7 +274,7 @@ async function handleSubmit(e, mode = "supabase", { auto = false } = {}) {
     date_executed: form.date_executed || null,
     witness_date: form.witness_date || null,
     date_returned: form.date_returned || null,
-  }, hasSubmission)
+  }, hasSubmission), sector, hasSectorFields)
 
   let error = null
 
@@ -742,6 +749,14 @@ label="FO Action"
                   placeholder="e.g. -238"
                 />
               </Field>
+
+              {/* Sector-specific, and only once the columns exist: Pasig
+                  records LCG and MCB seals that nobody else is asked for. */}
+              {hasSectorFields && sectorExtras.map(f => (
+                <Field key={f.key} label={f.label}>
+                  <input {...text(f.key)} placeholder={f.placeholder} />
+                </Field>
+              ))}
 
             </>
           )}
