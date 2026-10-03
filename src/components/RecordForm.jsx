@@ -13,6 +13,7 @@ import { FO_ACTION_OPTIONS, baseFoAction } from '../lib/dropdownLists'
 import { useDropdowns } from '../lib/DropdownContext'
 import { useSubmissionColumns, useSectorFieldColumns, withSubmission } from '../lib/optionalColumns'
 import { extraFields, withSectorFields } from '../lib/sectorFields'
+import { isPasigEnergization, ENERGIZATION_REMOVED_SEALS, energizationHides } from '../lib/pasigEnergization'
  
 const EMPTY_FORM = {
   // Main Info
@@ -425,7 +426,11 @@ function deletePendingRecord(id) {
   // A cancelled job never reached a meter, so neither meter section applies
   // and Remarks keeps only the amount and the note explaining it.
   const isCancelled = isCancelledRecord(form)
-  const showRemoveMeterSection = baseFoAction(form.fo_action) !== 'ENERGIZED FO' && !isCancelled
+  // Pasig keeps a trimmed removed section on an energization — three
+  // seals, all optional — where the other sectors drop it entirely.
+  const pasigEnergization = isPasigEnergization(sector, form.fo_action)
+  const showRemoveMeterSection =
+    (baseFoAction(form.fo_action) !== 'ENERGIZED FO' || pasigEnergization) && !isCancelled
   const showInstalledMeterFields = !isRetirementFO && !isCancelled
 
   return (
@@ -606,8 +611,20 @@ label="FO Action"
       {showRemoveMeterSection && (
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <SectionTitle title="Remove Meter" />
+          <SectionTitle title={pasigEnergization ? 'Removed Seal' : 'Remove Meter'} />
 
+          {/* An energization takes nothing out, so the only thing worth
+              recording is whichever old seals are still intact on a
+              recontracted service. A new application has none, which is
+              why not one of the three is required. */}
+          {pasigEnergization ? (
+            ENERGIZATION_REMOVED_SEALS.map(f => (
+              <Field key={f.key} label={f.label}>
+                <input {...text(f.key)} placeholder="Leave blank if there was none" />
+              </Field>
+            ))
+          ) : (
+          <>
           <Field label="Remove Meter No." >
             <input {...text('remove_meter')} placeholder="e.g. 108BA055151" />
           </Field>
@@ -690,6 +707,8 @@ label="FO Action"
               className={`${inputClass} ${fieldErrors.witness_date ? '!border-red-500 !bg-red-200' : ''} disabled:bg-slate-100 disabled:text-slate-400`}
             />
           </Field>
+          </>
+          )}
         </div>
       </div>
       )}
@@ -736,10 +755,16 @@ label="FO Action"
                 <input {...text('pole_tag')} placeholder="e.g. 115-0833" />
               </Field>
 
+              {/* Neither applies to an energization: there is no removed
+                  meter to log against an MDLTR, and nothing is sitting
+                  out waiting to come back, so nothing is ageing. */}
+              {!energizationHides('mdltr_no', pasigEnergization) && (
               <Field label="MDLTR No.">
                 <input {...text('mdltr_no')} placeholder="e.g. 384356" />
               </Field>
+              )}
 
+              {!energizationHides('aging', pasigEnergization) && (
               <Field label="Aging (days)">
                 <input
                   type="number"
@@ -749,6 +774,7 @@ label="FO Action"
                   placeholder="e.g. -238"
                 />
               </Field>
+              )}
 
               {/* Sector-specific, and only once the columns exist: Pasig
                   records LCG and MCB seals that nobody else is asked for. */}
@@ -772,7 +798,9 @@ label="FO Action"
 
           {/* On a cancelled job none of these apply: no meter came back, no
               crew was paid for the work, and there is no location to pin. */}
-          {!isCancelled && (
+          {/* Batching is what happens to a meter that came back. An
+              energization produced none, so there is nothing to batch. */}
+          {!isCancelled && !energizationHides('for_batch', pasigEnergization) && (
           <Field label="For Batch">
             <select {...text('for_batch')} className={selectClass}>
               <option value="">— Select —</option>
@@ -793,9 +821,11 @@ label="FO Action"
 
           {!isCancelled && (
           <>
+          {!energizationHides('date_returned', pasigEnergization) && (
           <Field label="Date Returned">
             <input type="date" {...text('date_returned')} />
           </Field>
+          )}
 
 
           <Field label="Percentage (%)">

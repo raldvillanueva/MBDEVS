@@ -13,6 +13,7 @@ import { useDropdowns } from '../lib/DropdownContext'
 import { emptyFilters, rowMatchesFilters, withoutColumns } from '../lib/recordFilters'
 import { useFilterColumns, useSectorFieldColumns, withSubmission } from '../lib/optionalColumns'
 import { extraFields, withSectorFields } from '../lib/sectorFields'
+import { isPasigEnergization, ENERGIZATION_REMOVED_SEALS, energizationHides } from '../lib/pasigEnergization'
 import { useColumnOptions } from '../lib/useColumnOptions'
 import { FO_ACTION_OPTIONS, baseFoAction } from '../lib/dropdownLists'
 import FilterBar from '../components/filters/FilterBar'
@@ -69,7 +70,7 @@ function PS({ title, children }) {
 // Checkboxes are excluded (a checkbox always has a value) and Remarks is
 // optional. The rest follow whichever sections the chosen FO Action shows, so
 // a record is never blocked on a field it isn't being asked for.
-function requiredKeys(form) {
+function requiredKeys(form, sector) {
   // A cancelled job has no meter work, so it is asked only for the main
   // details and what it was billed at. Requiring a Type of Meter, a seal or
   // a returned date for a visit that never happened would have made a
@@ -110,11 +111,14 @@ function requiredKeys(form) {
   if (form.mflt_checklist) {
     keys.push('booba_number', 'witness_date')
   }
-  return keys
+  // A field the form has stopped showing cannot be required, or the
+  // record is blocked on something nobody is being asked for and the
+  // red highlight points at a field that is not on screen.
+  return keys.filter(key => !energizationHides(key, isPasigEnergization(sector, form.fo_action)))
 }
 
-function findMissing(form) {
-  return requiredKeys(form).filter(key => {
+function findMissing(form, sector) {
+  return requiredKeys(form, sector).filter(key => {
     const value = form[key]
     return value === '' || value === null || value === undefined
   })
@@ -280,7 +284,7 @@ export default function PendingRecords() {
   }
 
   async function saveToFieldOrders() {
-    const gaps = findMissing(editForm)
+    const gaps = findMissing(editForm, sector)
     if (gaps.length > 0) {
       setMissing(gaps)
       setSaveError(
@@ -369,7 +373,7 @@ async function sendSelectedToFieldOrders() {
   const selected = pending.filter(row => selectedRows.includes(row.id))
 
   // Same completeness rule as the single-record send, so bulk cannot bypass it.
-  const incomplete = selected.filter(row => findMissing({ ...EMPTY_FORM, ...row }).length > 0)
+  const incomplete = selected.filter(row => findMissing({ ...EMPTY_FORM, ...row }, sector).length > 0)
   if (incomplete.length > 0) {
     setPageError(
       `${incomplete.length} of the selected record${incomplete.length > 1 ? 's are' : ' is'} incomplete ` +
@@ -400,7 +404,11 @@ async function sendSelectedToFieldOrders() {
   const isRetirementFO = baseFoAction(editForm?.fo_action) === 'RETIREMENT FO'
   // Neither meter section applies to a cancelled job.
   const isCancelled = isCancelledRecord(editForm)
-  const showRemoveMeterSection = baseFoAction(editForm?.fo_action) !== 'ENERGIZED FO' && !isCancelled
+  // Pasig keeps a trimmed removed section on an energization — three
+  // seals, all optional — where the other sectors drop it entirely.
+  const pasigEnergization = isPasigEnergization(sector, editForm?.fo_action)
+  const showRemoveMeterSection =
+    (baseFoAction(editForm?.fo_action) !== 'ENERGIZED FO' || pasigEnergization) && !isCancelled
   const showInstalledMeterFields = !isRetirementFO && !isCancelled
 
   return (
@@ -706,7 +714,24 @@ async function sendSelectedToFieldOrders() {
               </PS>
 
               {showRemoveMeterSection && (
-              <PS title="Remove Meter">
+              <PS title={pasigEnergization ? 'Removed Seal' : 'Remove Meter'}>
+                {/* An energization takes nothing out. All that is worth
+                    recording is whichever old seals are still intact on a
+                    recontracted service, and a new application has none —
+                    so not one of the three is required. */}
+                {pasigEnergization ? (
+                  ENERGIZATION_REMOVED_SEALS.map(f => (
+                    <PF key={f.key} label={f.label} optional>
+                      <input
+                        value={editForm[f.key] ?? ''}
+                        onChange={e => sf(f.key, e.target.value)}
+                        placeholder="Leave blank if there was none"
+                        className={iCls}
+                      />
+                    </PF>
+                  ))
+                ) : (
+                <>
                 <PF label="Remove Meter No.">
                   <input value={editForm.remove_meter} onChange={e => sf('remove_meter', e.target.value)} className={cls('remove_meter')} />
                 </PF>
@@ -763,6 +788,8 @@ async function sendSelectedToFieldOrders() {
                     className={`${cls('witness_date')} disabled:bg-slate-100 disabled:text-slate-400`}
                   />
                 </PF>
+                </>
+                )}
               </PS>
               )}
 
@@ -797,12 +824,19 @@ async function sendSelectedToFieldOrders() {
                     <PF label="Pole Tag">
                       <input value={editForm.pole_tag} onChange={e => sf('pole_tag', e.target.value)} className={cls('pole_tag')} />
                     </PF>
+                    {/* Neither applies to an energization: no removed
+                        meter to log against an MDLTR, and nothing sitting
+                        out waiting to come back, so nothing ageing. */}
+                    {!energizationHides('mdltr_no', pasigEnergization) && (
                     <PF label="MDLTR No.">
                       <input value={editForm.mdltr_no} onChange={e => sf('mdltr_no', e.target.value)} className={cls('mdltr_no')} />
                     </PF>
+                    )}
+                    {!energizationHides('aging', pasigEnergization) && (
                     <PF label="Aging (days)">
                       <input type="number" value={editForm.aging} onChange={e => sf('aging', e.target.value)} className={cls('aging')} />
                     </PF>
+                    )}
                     {/* Optional: Pasig is the only sector asked for these,
                         and they are not on the client sheet, so requiring
                         them would block every record already waiting. */}
@@ -825,7 +859,7 @@ async function sendSelectedToFieldOrders() {
                 {/* Nothing came back from a cancelled job, so there is
                     nothing to batch. Hidden on the record form too, which
                     keeps the two in step. */}
-                {!isCancelled && (
+                {!isCancelled && !energizationHides('for_batch', pasigEnergization) && (
                 <PF label="For Batch">
                   <select value={editForm.for_batch} onChange={e => sf('for_batch', e.target.value)} className={cls('for_batch')}>
                     <option value="">— Select —</option>
@@ -842,9 +876,11 @@ async function sendSelectedToFieldOrders() {
                 {/* None of these apply to a cancelled job: no meter came
                     back, no crew was paid for the work. */}
                 {!isCancelled && (<>
+                {!energizationHides('date_returned', pasigEnergization) && (
                 <PF label="Date Returned" optional>
                   <input type="date" value={editForm.date_returned} onChange={e => sf('date_returned', e.target.value)} className={cls('date_returned')} />
                 </PF>
+                )}
                 <PF label="Plus Code">
                   <input value={editForm.pluscode} onChange={e => sf('pluscode', e.target.value)} className={cls('pluscode')} />
                 </PF>
